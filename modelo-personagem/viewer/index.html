@@ -1,0 +1,478 @@
+<meta charset="utf-8">
+<title>Espadachim Prateada 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=Barlow:wght@400;500&display=swap">
+<style>
+/* Layout: one-screen viewer, model stage fills the window, title block top-left,
+   control toolbar docked at the bottom (wraps to rows on phones). */
+:root {
+  --bg: #ECEBF1;
+  --bg-glow: #F8F7FB;
+  --surface: rgba(250, 249, 253, 0.86);
+  --ink: #1D1C24;
+  --muted: #646273;
+  --line: #D3D1DC;
+  --accent: #C3242B;
+  --accent-ink: #FFFFFF;
+  --chip: #E2E0EA;
+  --font-display: "Chakra Petch", "Bahnschrift", "Arial Narrow", sans-serif;
+  --font-body: "Barlow", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121117; --bg-glow: #23212C; --surface: rgba(28, 27, 35, 0.86);
+    --ink: #ECEAF2; --muted: #A29FB1; --line: #34313F; --accent: #E4474D;
+    --accent-ink: #FFFFFF; --chip: #2A2833; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121117; --bg-glow: #23212C; --surface: rgba(28, 27, 35, 0.86);
+  --ink: #ECEAF2; --muted: #A29FB1; --line: #34313F; --accent: #E4474D;
+  --accent-ink: #FFFFFF; --chip: #2A2833; color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: radial-gradient(ellipse at 50% 38%, var(--bg-glow) 0%, var(--bg) 62%);
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  overflow: hidden;
+}
+.app { position: relative; height: 100%; display: flex; flex-direction: column; }
+#stage { position: absolute; inset: 0; touch-action: none; }
+#stage canvas { display: block; width: 100%; height: 100%; outline: none; }
+.head {
+  position: relative; z-index: 2; pointer-events: none;
+  padding-block: 18px 0; padding-inline: 20px;
+  display: flex; flex-direction: column; gap: 6px; max-width: 30rem;
+}
+.eyebrow {
+  font-family: var(--font-display); font-weight: 500; font-size: 12px;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent);
+}
+h1 {
+  margin: 0; font-family: var(--font-display); font-weight: 600;
+  font-size: clamp(26px, 4.2vw, 40px); line-height: 1.02; letter-spacing: 0.01em;
+  text-wrap: balance;
+}
+.lede { margin: 0; color: var(--muted); line-height: 1.45; max-width: 34ch; }
+.stats {
+  display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px;
+  font-family: var(--font-display); font-size: 13px; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.stats b { color: var(--ink); font-weight: 600; }
+.bar {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 3;
+  padding-block: 12px calc(14px + env(safe-area-inset-bottom, 0px));
+  padding-inline: 16px;
+  display: flex; justify-content: center;
+}
+.toolbar {
+  display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: center;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  padding: 10px 14px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  max-width: 100%;
+}
+.group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.group > span {
+  font-family: var(--font-display); font-size: 11px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted); margin-right: 2px;
+}
+button {
+  font: 500 14px/1 var(--font-body); color: var(--ink); background: var(--chip);
+  border: 1px solid transparent; border-radius: 8px; padding: 8px 11px; cursor: pointer;
+  transition: background-color .15s, color .15s, border-color .15s;
+}
+button:hover { border-color: var(--line); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.loading[hidden] { display: none; }
+.loading {
+  position: absolute; inset: 0; z-index: 4; display: grid; place-items: center;
+  pointer-events: none;
+}
+.loading .box { display: grid; gap: 10px; justify-items: center; color: var(--muted);
+  font-family: var(--font-display); letter-spacing: 0.06em; }
+.track { width: min(240px, 60vw); height: 3px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.fill { height: 100%; width: 0%; background: var(--accent); transition: width .2s; }
+.hint { position: absolute; right: 18px; top: 20px; z-index: 2; color: var(--muted);
+  font-size: 13px; text-align: right; line-height: 1.4; pointer-events: none; }
+@media (max-width: 640px) {
+  .hint { display: none; }
+  .toolbar { gap: 8px 12px; padding: 8px 10px; }
+  button { padding: 7px 9px; font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <div id="stage" aria-label="Visualização 3D da personagem; arraste para girar, role para aproximar"></div>
+  <header class="head">
+    <div class="eyebrow">Modelo 3D · estilo anime</div>
+    <h1>Espadachim Prateada</h1>
+    <p class="lede">Cabelo prateado, olhos heterocromáticos, casaco branco com forro carmim e três espadas. Modelado e riggado no Blender a partir de uma única imagem.</p>
+    <div class="stats" id="stats">
+      <span><b>1,68 m</b> de altura</span>
+      <span><b id="st-tris">–</b> triângulos</span>
+      <span><b id="st-parts">–</b> peças</span>
+      <span><b id="st-bones">–</b> ossos</span>
+    </div>
+  </header>
+  <div class="hint">Arraste para girar<br>Role ou pince para aproximar<br>Botão direito move a câmera</div>
+  <div class="loading" id="loading">
+    <div class="box"><div id="load-text">Carregando modelo… 0%</div><div class="track"><div class="fill" id="load-fill"></div></div></div>
+  </div>
+  <div class="bar">
+    <div class="toolbar" role="toolbar" aria-label="Controles do visualizador">
+      <div class="group" id="g-view"><span>Vista</span>
+        <button id="v-front" data-view="front" aria-pressed="true">Frente</button>
+        <button id="v-three" data-view="three" aria-pressed="false">¾</button>
+        <button id="v-side" data-view="side" aria-pressed="false">Lado</button>
+        <button id="v-back" data-view="back" aria-pressed="false">Costas</button>
+        <button id="v-face" data-view="face" aria-pressed="false">Rosto</button>
+      </div>
+      <div class="group" id="g-pose"><span>Pose</span>
+        <button id="p-rest" data-pose="rest" aria-pressed="true">Original</button>
+        <button id="p-wave" data-pose="wave" aria-pressed="false">Acenando</button>
+        <button id="p-guard" data-pose="guard" aria-pressed="false">Em guarda</button>
+      </div>
+      <div class="group"><span>Exibir</span>
+        <button id="t-spin" aria-pressed="false">Girar</button>
+        <button id="t-line" aria-pressed="true">Contorno</button>
+        <button id="t-swords" aria-pressed="true">Espadas</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// lit, shadow, outline, threshold, spec, gloss(roughness), spec colour, rim, emissive
+const PALETTE = {"skin":["#FCE9E3","#EDB9B2","#9C5A55",0.3,0,0.3,"#FFFFFF",0,0],"face":["#FCE9E3","#EDB9B2","#9C5A55",0.06,0,0.3,"#FFFFFF",0,0],"hair":["#F3F2F6","#C8C5D6","#77738E",0.3,0.3,0.35,"#FFFFFF",0,0],"coat":["#F2F2F4","#C3C5D0","#6C6E7C",0.4,0,0.3,"#FFFFFF",0,0],"coat_trim":["#D9DBE3","#A9ACBA","#5D606E",0.4,0,0.3,"#FFFFFF",0,0],"lining":["#A3181E","#6E0F14","#3A0508",0.4,0,0.3,"#FFFFFF",0,0],"red":["#D9262C","#94161B","#4A070A",0.4,0.25,0.3,"#FFFFFF",0,0],"black":["#2C3039","#181A20","#07080A",0.4,0.35,0.25,"#7A8394",0,0],"leather":["#323844","#1A1D24","#060709",0.4,0.75,0.18,"#8B95A8",0.35,0],"metal":["#E3E6EC","#8E939F","#3B3E46",0.45,1.0,0.15,"#FFFFFF",0,0],"white":["#EDEDF0","#B8BAC5","#5E606C",0.4,0,0.3,"#FFFFFF",0,0],"sole":["#D6D7DD","#9D9FAA","#4E505A",0.4,0,0.3,"#FFFFFF",0,0],"sheer":["#867A73","#5E5550","#2E2826",0.4,0,0.3,"#FFFFFF",0,0],"glow_blue":["#9FD4FF","#6FA9E8","#2E5C8E",0.4,0,0.3,"#FFFFFF",0,1],"glow_red":["#FF5A60","#E0343A","#7A0E12",0.4,0,0.3,"#FFFFFF",0,1],"lens":["#C42A31","#7E1418","#2A0406",0.4,1.0,0.1,"#FFD0D0",0,0],"gold":["#D8B45A","#9A7A2E","#4A3A12",0.45,0.8,0.2,"#FFF2C0",0,0]};
+
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setClearColor(0x000000, 0);
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(28, 1, 0.05, 50);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 0.5;
+controls.maxDistance = 9;
+controls.autoRotateSpeed = 1.2;
+
+// light direction in view space: from the upper left, slightly in front
+const LIGHT_VIEW = new THREE.Vector3(-0.42, 0.62, 0.66).normalize();
+
+const VERT = /* glsl */`
+#include <common>
+#include <skinning_pars_vertex>
+varying vec3 vN; varying vec3 vViewPos; varying vec2 vUv;
+void main() {
+  #include <beginnormal_vertex>
+  #include <skinbase_vertex>
+  #include <skinnormal_vertex>
+  #include <defaultnormal_vertex>
+  #include <begin_vertex>
+  #include <skinning_vertex>
+  #include <project_vertex>
+  vN = normalize(transformedNormal);
+  vViewPos = -mvPosition.xyz;
+  vUv = uv;
+}`;
+const FRAG = /* glsl */`
+uniform vec3 uLit; uniform vec3 uShade; uniform vec3 uSpecCol; uniform vec3 uLight;
+uniform float uThr; uniform float uSpec; uniform float uGloss; uniform float uRim; uniform float uEmit;
+uniform float uUseMap; uniform sampler2D uMap;
+varying vec3 vN; varying vec3 vViewPos; varying vec2 vUv;
+void main() {
+  vec3 n = normalize(vN);
+  if (!gl_FrontFacing) n = -n;
+  vec3 l = normalize(uLight);
+  float d = max(dot(n, l), 0.0) * 0.955;
+  float f = smoothstep(uThr - 0.02, uThr + 0.02, d);
+  vec3 lit = uLit; vec3 sh = uShade;
+  if (uUseMap > 0.5) { vec3 t = texture2D(uMap, vUv).rgb; lit = t; sh = t * (uShade / max(uLit, vec3(1e-3))); }
+  vec3 col = mix(sh, lit, f);
+  vec3 v = normalize(vViewPos);
+  vec3 h = normalize(l + v);
+  float sp = pow(max(dot(n, h), 0.0), mix(160.0, 12.0, clamp(uGloss * 2.5, 0.0, 1.0)));
+  float s = smoothstep(0.45, 0.6, sp) * uSpec;
+  float rim = smoothstep(0.55, 0.68, 1.0 - max(dot(n, v), 0.0)) * uRim * f;
+  col = mix(col, uSpecCol, clamp(s + rim, 0.0, 1.0));
+  if (uEmit > 0.5) col = uLit;
+  gl_FragColor = vec4(col, 1.0);
+  #include <colorspace_fragment>
+}`;
+const OVERT = /* glsl */`
+#include <common>
+#include <skinning_pars_vertex>
+uniform float uWidth;
+void main() {
+  #include <beginnormal_vertex>
+  #include <skinbase_vertex>
+  #include <skinnormal_vertex>
+  #include <begin_vertex>
+  #include <skinning_vertex>
+  transformed += normalize(objectNormal) * uWidth;
+  vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);
+  gl_Position = projectionMatrix * mvPosition;
+}`;
+const OFRAG = /* glsl */`
+uniform vec3 uColor;
+void main() { gl_FragColor = vec4(uColor, 1.0);
+  #include <colorspace_fragment>
+}`;
+
+const lin = (hex) => new THREE.Color(hex);   // setStyle converts sRGB -> linear
+const toonCache = new Map();
+const outlineCache = new Map();
+
+function baseName(name) {
+  if (!name) return 'white';
+  const n = name.replace(/\.\d+$/, '');
+  return PALETTE[n] ? n : 'white';
+}
+
+function toonMaterial(src) {
+  const key = baseName(src.name);
+  const hasMap = key === 'face' && src.map;
+  const ck = key + (hasMap ? ':map' : '');
+  if (toonCache.has(ck)) return toonCache.get(ck);
+  const p = PALETTE[key];
+  const m = new THREE.ShaderMaterial({
+    vertexShader: VERT, fragmentShader: FRAG,
+    uniforms: {
+      uLit: { value: lin(p[0]) }, uShade: { value: lin(p[1]) }, uSpecCol: { value: lin(p[6]) },
+      uLight: { value: LIGHT_VIEW.clone() }, uThr: { value: p[3] }, uSpec: { value: p[4] },
+      uGloss: { value: p[5] }, uRim: { value: p[7] }, uEmit: { value: p[8] },
+      uUseMap: { value: hasMap ? 1 : 0 }, uMap: { value: hasMap ? src.map : null },
+    },
+    side: THREE.DoubleSide,
+  });
+  m.userData.key = key;
+  toonCache.set(ck, m);
+  return m;
+}
+
+function outlineMaterial(key, width) {
+  const ck = key + ':' + width;
+  if (outlineCache.has(ck)) return outlineCache.get(ck);
+  const m = new THREE.ShaderMaterial({
+    vertexShader: OVERT, fragmentShader: OFRAG, side: THREE.BackSide,
+    uniforms: { uColor: { value: lin(PALETTE[key][2]) }, uWidth: { value: width } },
+  });
+  outlineCache.set(ck, m);
+  return m;
+}
+
+const outlines = [];
+const swords = [];
+let skeleton = null;
+const restQuat = new Map();
+
+// soft contact shadow on the floor
+{
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 4, 64, 64, 64);
+  grd.addColorStop(0, 'rgba(20,16,30,0.32)'); grd.addColorStop(1, 'rgba(20,16,30,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const tex = new THREE.CanvasTexture(c);
+  const shadow = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.75),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+  shadow.rotation.x = -Math.PI / 2; shadow.position.set(0.07, 0.001, 0.08);
+  scene.add(shadow);
+}
+
+const draco = new DRACOLoader();
+draco.setDecoderPath('./draco/');
+const loader = new GLTFLoader();
+loader.setDRACOLoader(draco);
+
+const loadText = document.getElementById('load-text');
+const loadFill = document.getElementById('load-fill');
+
+function onModel(gltf) {
+  const root = gltf.scene;
+  let tris = 0, parts = new Set();
+  root.traverse((o) => {
+    if (o.isBone && !restQuat.has(o)) restQuat.set(o, o.quaternion.clone());
+    if (!o.isMesh) return;
+    if (o.isSkinnedMesh && !skeleton) skeleton = o.skeleton;
+    const idx = o.geometry.index;
+    tris += (idx ? idx.count : o.geometry.attributes.position.count) / 3;
+    // multi-material objects become a group of meshes named <object>_<n>
+    const nm = (o.parent && o.parent.isGroup && !o.parent.isBone && o.parent !== root && /_\d+$/.test(o.name))
+      ? o.parent.name : o.name.replace(/_\d+$/, '');
+    parts.add(nm);
+    o.frustumCulled = false;
+    const key = baseName(o.material.name);
+    o.material = toonMaterial(o.material);
+    if (/^Sword/.test(nm)) swords.push(o);
+    const w = /^Hair/.test(nm) ? 0.0011 : /Glow/.test(nm) ? 0 : 0.0016;
+    if (w > 0) {
+      const ol = o.clone();
+      ol.material = outlineMaterial(key, w);
+      ol.renderOrder = -1;
+      o.parent.add(ol);
+      outlines.push(ol);
+      if (/^Sword/.test(nm)) swords.push(ol);
+    }
+  });
+  scene.add(root);
+  document.getElementById('st-tris').textContent = Math.round(tris).toLocaleString('pt-BR');
+  document.getElementById('st-parts').textContent = parts.size;
+  document.getElementById('st-bones').textContent = skeleton ? skeleton.bones.length : '0';
+  document.getElementById('loading').hidden = true;
+  setView('front', true);
+}
+
+function fail(err) {
+  loadText.textContent = 'Não foi possível carregar o modelo (' + (err && err.message ? err.message : 'erro de rede') + '). Recarregue a página para tentar de novo.';
+}
+
+// the model ships as base64 text (binary glTF is not a served file type)
+new THREE.FileLoader().load('./personagem_web.b64.txt', (text) => {
+  loadText.textContent = 'Preparando modelo…';
+  try {
+    const bin = atob(text.trim());
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    loader.parse(bytes.buffer, './', onModel, fail);
+  } catch (e) { fail(e); }
+}, (e) => {
+  if (e.total) {
+    const pc = Math.round(e.loaded / e.total * 100);
+    loadText.textContent = `Carregando modelo… ${pc}%`;
+    loadFill.style.width = pc + '%';
+  }
+}, fail);
+
+// ----------------------------------------------------------- camera views
+const VIEWS = {
+  front: { pos: [0.02, 0.95, 4.6], target: [0.02, 0.84, 0] },
+  three: { pos: [-2.6, 1.05, 3.8], target: [0.02, 0.84, 0] },
+  side:  { pos: [-4.6, 0.95, 0.05], target: [0.02, 0.84, 0] },
+  back:  { pos: [0.02, 1.0, -4.6], target: [0.02, 0.84, 0] },
+  face:  { pos: [-0.32, 1.60, 1.55], target: [0.011, 1.50, 0] },
+};
+let camAnim = null;
+function setView(name, instant) {
+  const v = VIEWS[name];
+  const to = { pos: new THREE.Vector3(...v.pos), target: new THREE.Vector3(...v.target) };
+  if (instant) { camera.position.copy(to.pos); controls.target.copy(to.target); controls.update(); return; }
+  camAnim = { t: 0, from: { pos: camera.position.clone(), target: controls.target.clone() }, to };
+  document.querySelectorAll('#g-view button').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === name));
+}
+document.querySelectorAll('#g-view button').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+
+// ----------------------------------------------------------- poses
+const AX = { x: new THREE.Vector3(1, 0, 0), y: new THREE.Vector3(0, 1, 0), z: new THREE.Vector3(0, 0, 1) };
+// world-space rotations (degrees) per bone; applied root to tip
+const POSES = {
+  rest: [],
+  wave: [['UpperArmL', 'z', 118], ['LowerArmL', 'z', 48], ['HandL', 'x', -10],
+         ['Head', 'z', -9], ['Neck', 'y', 8], ['Spine', 'z', -4]],
+  guard: [['UpperArmR', 'x', -58], ['UpperArmR', 'z', -18], ['LowerArmR', 'x', -40],
+          ['Spine', 'y', 14], ['Chest', 'y', 8], ['Head', 'y', -16],
+          ['UpperLegL', 'x', -12], ['LowerLegL', 'x', 14], ['UpperArmL', 'z', 14]],
+};
+let poseAnim = null;
+function boneByName(n) { return skeleton ? skeleton.bones.find(b => b.name === n) : null; }
+function computePose(name) {
+  if (!skeleton) return null;
+  // start from rest
+  const target = new Map();
+  for (const b of skeleton.bones) b.quaternion.copy(restQuat.get(b) || b.quaternion);
+  skeleton.bones[0].parent.updateMatrixWorld(true);
+  for (const [bn, ax, deg] of POSES[name]) {
+    const b = boneByName(bn);
+    if (!b) continue;
+    b.parent.updateMatrixWorld(true);
+    const pw = new THREE.Quaternion(); b.parent.getWorldQuaternion(pw);
+    const r = new THREE.Quaternion().setFromAxisAngle(AX[ax], THREE.MathUtils.degToRad(deg));
+    const q = pw.clone().invert().multiply(r).multiply(pw).multiply(b.quaternion);
+    b.quaternion.copy(q);
+    b.updateMatrixWorld(true);
+  }
+  for (const b of skeleton.bones) target.set(b, b.quaternion.clone());
+  return target;
+}
+let currentPose = new Map();
+function setPose(name) {
+  if (!skeleton) return;
+  const from = new Map(skeleton.bones.map(b => [b, (currentPose.get(b) || b.quaternion).clone()]));
+  const to = computePose(name);
+  for (const b of skeleton.bones) b.quaternion.copy(from.get(b));
+  poseAnim = { t: 0, from, to };
+  currentPose = to;
+  document.querySelectorAll('#g-pose button').forEach(btn => btn.setAttribute('aria-pressed', btn.dataset.pose === name));
+}
+document.querySelectorAll('#g-pose button').forEach(b => b.addEventListener('click', () => setPose(b.dataset.pose)));
+
+// ----------------------------------------------------------- toggles
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function toggle(id, fn) {
+  const b = document.getElementById(id);
+  b.addEventListener('click', () => { const on = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', on); fn(on); });
+}
+toggle('t-spin', (on) => { controls.autoRotate = on; });
+toggle('t-line', (on) => { outlines.forEach(o => { o.visible = on && (!swords.includes(o) || swordsOn); }); });
+let swordsOn = true;
+toggle('t-swords', (on) => {
+  swordsOn = on;
+  const lineOn = document.getElementById('t-line').getAttribute('aria-pressed') === 'true';
+  swords.forEach(o => { o.visible = on && (!outlines.includes(o) || lineOn); });
+});
+
+// ----------------------------------------------------------- loop
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.fov = w / h < 0.75 ? 38 : 28;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+setView('front', true);
+
+const clock = new THREE.Clock();
+const ease = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (camAnim) {
+    camAnim.t = Math.min(1, camAnim.t + dt / (reduceMotion ? 0.01 : 0.7));
+    const k = ease(camAnim.t);
+    camera.position.lerpVectors(camAnim.from.pos, camAnim.to.pos, k);
+    controls.target.lerpVectors(camAnim.from.target, camAnim.to.target, k);
+    if (camAnim.t >= 1) camAnim = null;
+  }
+  if (poseAnim) {
+    poseAnim.t = Math.min(1, poseAnim.t + dt / (reduceMotion ? 0.01 : 0.6));
+    const k = ease(poseAnim.t);
+    for (const b of skeleton.bones) b.quaternion.slerpQuaternions(poseAnim.from.get(b), poseAnim.to.get(b), k);
+    if (poseAnim.t >= 1) poseAnim = null;
+  }
+  controls.update();
+  renderer.render(scene, camera);
+});
+</script>

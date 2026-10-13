@@ -1,0 +1,150 @@
+{
+ "skin": {
+  "lit": "#FCE9E3",
+  "shadow": "#EDB9B2",
+  "outline": "#9C5A55",
+  "thr": 0.3
+ },
+ "face": {
+  "lit": "#FCE9E3",
+  "shadow": "#EDB9B2",
+  "outline": "#9C5A55",
+  "thr": 0.06
+ },
+ "hair": {
+  "lit": "#F3F2F6",
+  "shadow": "#C8C5D6",
+  "outline": "#77738E",
+  "thr": 0.3,
+  "spec": 0.3,
+  "gloss": 0.35
+ },
+ "hair_dark": {
+  "lit": "#C9C6D6",
+  "shadow": "#9D99B2",
+  "outline": "#5E5A74",
+  "thr": 0.42
+ },
+ "coat": {
+  "lit": "#F2F2F4",
+  "shadow": "#C3C5D0",
+  "outline": "#6C6E7C",
+  "thr": 0.4
+ },
+ "coat_trim": {
+  "lit": "#D9DBE3",
+  "shadow": "#A9ACBA",
+  "outline": "#5D606E",
+  "thr": 0.4
+ },
+ "lining": {
+  "lit": "#A3181E",
+  "shadow": "#6E0F14",
+  "outline": "#3A0508",
+  "thr": 0.4
+ },
+ "red": {
+  "lit": "#D9262C",
+  "shadow": "#94161B",
+  "outline": "#4A070A",
+  "thr": 0.4,
+  "spec": 0.25,
+  "gloss": 0.3
+ },
+ "black": {
+  "lit": "#2C3039",
+  "shadow": "#181A20",
+  "outline": "#07080A",
+  "thr": 0.4,
+  "spec": 0.35,
+  "gloss": 0.25,
+  "spec_col": "#7A8394"
+ },
+ "leather": {
+  "lit": "#323844",
+  "shadow": "#1A1D24",
+  "outline": "#060709",
+  "thr": 0.4,
+  "spec": 0.75,
+  "gloss": 0.18,
+  "spec_col": "#8B95A8",
+  "rim": 0.35
+ },
+ "metal": {
+  "lit": "#E3E6EC",
+  "shadow": "#8E939F",
+  "outline": "#3B3E46",
+  "thr": 0.45,
+  "spec": 1.0,
+  "gloss": 0.15,
+  "spec_col": "#FFFFFF",
+  "metallic": 1.0
+ },
+ "white": {
+  "lit": "#EDEDF0",
+  "shadow": "#B8BAC5",
+  "outline": "#5E606C",
+  "thr": 0.4
+ },
+ "sole": {
+  "lit": "#D6D7DD",
+  "shadow": "#9D9FAA",
+  "outline": "#4E505A",
+  "thr": 0.4
+ },
+ "sheer": {
+  "lit": "#867A73",
+  "shadow": "#5E5550",
+  "outline": "#2E2826",
+  "thr": 0.4,
+  "alpha": 0.85
+ },
+ "glow_blue": {
+  "lit": "#9FD4FF",
+  "shadow": "#6FA9E8",
+  "outline": "#2E5C8E",
+  "emit": 1.0
+ },
+ "glow_red": {
+  "lit": "#FF5A60",
+  "shadow": "#E0343A",
+  "outline": "#7A0E12",
+  "emit": 1.0
+ },
+ "lens": {
+  "lit": "#C42A31",
+  "shadow": "#7E1418",
+  "outline": "#2A0406",
+  "thr": 0.4,
+  "spec": 1.0,
+  "gloss": 0.1,
+  "spec_col": "#FFD0D0"
+ },
+ "gold": {
+  "lit": "#D8B45A",
+  "shadow": "#9A7A2E",
+  "outline": "#4A3A12",
+  "thr": 0.45,
+  "spec": 0.8,
+  "gloss": 0.2,
+  "spec_col": "#FFF2C0",
+  "metallic": 1.0
+ },
+ "gray": {
+  "lit": "#8D919C",
+  "shadow": "#5F636C",
+  "outline": "#25272C",
+  "thr": 0.4,
+  "spec": 0.3
+ },
+ "blade": {
+  "lit": "#E9EDF3",
+  "shadow": "#9DA4B2",
+  "outline": "#3E4450",
+  "thr": 0.45,
+  "spec": 1.0,
+  "gloss": 0.1,
+  "spec_col": "#FFFFFF",
+  "metallic": 1.0
+ }
+}
