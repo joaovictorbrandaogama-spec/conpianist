@@ -689,12 +689,12 @@ def fold_field(U, Vv):
     """Radial displacement: 4 folds on her right panel, 4 on the left,
     rounded ridges, sharp V valleys, growing towards the hem."""
     d = np.zeros_like(U)
-    for u0, u1, n, amp in ((0.03, 0.44, 4, 0.020), (0.56, 0.97, 4, 0.022)):
+    for u0, u1, n, amp in ((0.02, 0.45, 4, 0.030), (0.55, 0.98, 5, 0.030)):
         ph = (U - u0) / (u1 - u0)
         inside = (ph > 0) & (ph < 1)
         prof = np.abs(np.sin(np.pi * n * ph)) - 0.62
         fade = np.sin(np.pi * np.clip(ph, 0, 1)) ** 0.5
-        A = amp * np.clip((Vv - 0.12) / 0.88, 0, 1) ** 1.3
+        A = amp * np.clip((Vv - 0.06) / 0.94, 0, 1) ** 1.25
         d += np.where(inside, prof * A * fade, 0.0)
     return d
 
@@ -838,6 +838,119 @@ def tail():
     return {'CoatTail': cloth(V, F, ['coat'] * len(F), 0.0036)}
 
 
+# ------------------------------------------------------------ straps & harness
+
+_SKIRT_CACHE = None
+
+
+def skirt_grid():
+    global _SKIRT_CACHE
+    if _SKIRT_CACHE is None:
+        _SKIRT_CACHE = skirt_surface()
+    return _SKIRT_CACHE
+
+
+def surf_at(u, z, off=0.0):
+    """Skirt mid-surface point at parameter u and height z, moved `off`
+    metres outwards (radially, negative = inwards)."""
+    U, Vv, P = skirt_grid()
+    uu = U[:, 0]
+    i = np.clip(np.searchsorted(uu, u), 1, len(uu) - 1)
+    w = (u - uu[i - 1]) / (uu[i] - uu[i - 1])
+    col = P[i - 1] * (1 - w) + P[i] * w
+    zs = col[::-1, 2]
+    p = np.array([np.interp(z, zs, col[::-1, k]) for k in range(3)])
+    d = np.array([p[0] - PCX, p[1] - PCY, 0.0])
+    return p + d / np.linalg.norm(d) * off
+
+
+def radial(p):
+    d = np.array([p[0] - PCX, p[1] - PCY, 0.0])
+    return d / np.linalg.norm(d)
+
+
+def strap_between(a, b, width, thick, sag=0.0, n=24):
+    mid = (a + b) / 2 + np.array([0, 0, -sag])
+    path, _ = catmull([a, mid, b], n)
+    up = np.array([radial(p) for p in path])
+    prof = HS.rounded_rect(width, thick, thick * 0.45, seg=2)
+    return HS.sweep(prof, path, up)
+
+
+def straps():
+    """Red X lattice across the vent (inside the back panel) and red tags
+    on her right near the belt."""
+    items = []
+    off = -0.007                       # just inside the lining
+    A = (surf_at(0.405, 0.785, off), surf_at(0.615, 0.640, off))
+    Bb = (surf_at(0.640, 0.775, off), surf_at(0.395, 0.650, off))
+    for a, b in (A, Bb):
+        items.append(strap_between(a, b, 0.026, 0.0032, sag=0.006))
+    # small loop pieces where the straps are sewn to the panels
+    for p in (A[0], A[1], Bb[0], Bb[1]):
+        n = radial(p)
+        R = HS.frame_from(z=-n, x=np.cross([0, 0, 1.0], -n))
+        items.append(HS.prism(HS.rounded_rect(0.032, 0.014, 0.003), 0.004, p, R))
+    out = {'CoatStraps': HS.hard_mesh(items, 'red_dark', bevel=0.0005, angle=35,
+                                      outline_w=0.7)}
+    tags = []
+    for u, z, h in ((0.30, 1.005, 0.050), (0.335, 1.000, 0.040)):
+        top = surf_at(u, z, 0.004)
+        bot = surf_at(u, z - h, 0.004)
+        tags.append(strap_between(top, bot, 0.022, 0.003, n=8))
+    out['CoatTags'] = HS.hard_mesh(tags, 'red', bevel=0.0005, angle=35, outline_w=0.6)
+    return out
+
+
+def harness():
+    """Black harness block on the back of the belt with a ladder of short
+    vertical straps hanging below it."""
+    items = []
+    from outfit import belt_z
+    zc = belt_z(PCX) - 0.012
+    # block: a curved plate following the skirt, 11 cm wide, 4.4 cm tall
+    us = np.linspace(0.5 - 0.075, 0.5 + 0.075, 13)
+    rows = [np.array([surf_at(u, z, 0.0045) for u in us]) for z in (zc - 0.022, zc + 0.022)]
+    path = (rows[0] + rows[1]) / 2
+    up = np.array([radial(p) for p in path])
+    prof = HS.chamfer_rect(0.044, 0.007, 0.002)
+    prof = np.stack([prof[:, 1], prof[:, 0]], 1)      # tall side along z
+    V, F = HS.sweep(np.array([[p[0], p[1]] for p in prof]), path, up)
+    # sweep's local x is side (along the path), y is up: rebuild properly
+    blk = []
+    for p0, p1 in zip(path[:-1], path[1:]):
+        pass
+    t = path[-1] - path[0]
+    items.append(_curved_plate(path, up, 0.044, 0.0065))
+    # ladder: 4 straps
+    for u in (0.5 - 0.045, 0.5 - 0.015, 0.5 + 0.015, 0.5 + 0.045):
+        top = surf_at(u, zc - 0.015, 0.006)
+        bot = surf_at(u, zc - 0.135, 0.006)
+        items.append(strap_between(top, bot, 0.013, 0.003, n=10))
+        # metal-less keeper bar at the bottom of each strap
+    bar = [surf_at(u, zc - 0.10, 0.0085) for u in np.linspace(0.5 - 0.06, 0.5 + 0.06, 9)]
+    items.append(_curved_plate(np.array(bar), np.array([radial(p) for p in bar]), 0.010, 0.003))
+    return {'CoatHarness': HS.hard_mesh(items, 'black', bevel=0.0006, angle=35,
+                                        outline_w=0.7)}
+
+
+def _curved_plate(path, up, height, thick):
+    """Plate following a horizontal path: height along z, thickness along up."""
+    n = len(path)
+    V, F = [], []
+    for p, u in zip(path, up):
+        for dz, dt in ((-height / 2, -thick / 2), (height / 2, -thick / 2),
+                       (height / 2, thick / 2), (-height / 2, thick / 2)):
+            V.append(p + np.array([0, 0, dz]) + u * dt)
+    for i in range(n - 1):
+        for k in range(4):
+            a, b = i * 4 + k, i * 4 + (k + 1) % 4
+            F.append([a, b, b + 4, a + 4])
+    F.append([3, 2, 1, 0])
+    F.append([(n - 1) * 4 + k for k in range(4)])
+    return np.array(V), F
+
+
 # ------------------------------------------------------------ build
 
 def build():
@@ -848,4 +961,6 @@ def build():
     d.update(snaps_and_tab())
     d.update(skirt())
     d.update(tail())
+    d.update(straps())
+    d.update(harness())
     return d
