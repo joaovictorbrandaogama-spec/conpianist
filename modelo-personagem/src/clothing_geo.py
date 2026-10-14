@@ -531,3 +531,27 @@ def smooth_periodic(v, k=5, it=2):
     for _ in range(it):
         v = sum(np.roll(v, i, axis=-1) for i in range(-k, k + 1)) / (2 * k + 1)
     return v
+
+
+def torso_params_for_front(chart, xz, level, n=321, span=160.0):
+    """Torso chart parameters (a, z) whose surface point is seen at front
+    position (x, z); clamps to the silhouette when x is outside it."""
+    xz = np.asarray(xz, dtype=np.float64)
+    th = np.radians(np.linspace(-span, span, n))
+    out = []
+    for x, z in xz:
+        P, N = chart.lift(th * chart.R0, np.full_like(th, z), level)
+        cy = chart.t.prof('cy', z)
+        front = P[:, 1] < cy
+        i = np.nonzero(front)[0]
+        j = i[np.argmin(np.abs(P[i, 0] - x))]
+        tj = th[j]
+        # refine between neighbours (x(theta) is locally monotonic)
+        for k in (j - 1, j + 1):
+            if 0 <= k < n and front[k]:
+                x0, x1 = P[j, 0], P[k, 0]
+                if (x0 - x) * (x1 - x) <= 0 and abs(x1 - x0) > 1e-12:
+                    tj = th[j] + (th[k] - th[j]) * (x - x0) / (x1 - x0)
+                    break
+        out.append((tj * chart.R0, z))
+    return np.array(out)

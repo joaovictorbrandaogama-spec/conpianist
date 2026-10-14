@@ -166,7 +166,7 @@ def sdf_mesh(prims, lo, hi, h, mat, k=0.0, decimate=0, ops=None, **kw):
 
 # ------------------------------------------------------------ bikini
 
-def bikini():
+def bikini_old():
     g = region_grid([-0.15, -0.14, 1.20], [0.13, 0.10, 1.42], 0.001)
     out = {}
     cupL = [(350, 211), (360, 222), (368, 236), (372, 250), (371, 263), (322, 264),
@@ -281,7 +281,7 @@ def arm_grid(side, h=0.0012, pad=0.05):
     return arm, g
 
 
-def sleeves():
+def sleeves_old():
     out = {}
     # right: full sleeve to the wrist, glowing stripes on the forearm
     arm, g = arm_grid('R')
@@ -576,7 +576,7 @@ LEG_BAND_W = 0.021
 def armor_level(th, s):
     """Offset of the armour from the skin: thin where it tucks under the
     shorts, knee bulge in front, calf swell at the back, ankle pinch."""
-    lev = 0.0012 + 0.0009 * sstep(s, 0.05, 0.12)
+    lev = 0.0004 + 0.0017 * sstep(s, 0.08, 0.14)
     knee = 0.0065 * np.exp(-((s - (LK_L - 0.012)) / 0.048) ** 2) * \
         np.clip(np.cos(th), 0, None) ** 1.5
     calf = 0.0040 * np.exp(-((s - (LK_L + 0.15)) / 0.075) ** 2) * \
@@ -696,7 +696,7 @@ def leg_armor():
     for sc in STRAP_S:
         ss2 = np.linspace(sc - STRAP_W / 2, sc + STRAP_W / 2, 7)
         th2 = np.linspace(0, 2 * np.pi, 128, endpoint=False)
-        straps.append(G.band_shell(ch, th2, ss2, STRAP_LEVEL, STRAP_T))
+        straps.append(G.band_shell(ch, th2, ss2, strap_level(sc), STRAP_T))
     out['LegStraps'] = G.solid(straps, 'black', bevel=0.0005)
     return out
 
@@ -745,8 +745,8 @@ SHORTS_LEVEL, SHORTS_T = 0.0030, 0.0022
 # hem of the leg openings: s down each leg as a function of the leg angle
 HEM_R = [(0, 0.022), (45, 0.040), (90, 0.057), (135, 0.068), (180, 0.072), (225, 0.056),
          (260, 0.004), (285, -0.012), (320, 0.004)]
-HEM_L = [(0, 0.042), (45, 0.046), (90, 0.052), (135, 0.070), (180, 0.076), (225, 0.070),
-         (270, 0.058), (315, 0.048)]
+HEM_L = [(0, 0.042), (45, 0.046), (90, 0.052), (135, 0.072), (180, 0.084), (225, 0.088),
+         (270, 0.066), (315, 0.050)]
 SLIT_TH = (np.radians(64.0), np.radians(128.0))      # skin slit on her left hip
 
 
@@ -871,5 +871,436 @@ def zippers(fn):
     return out
 
 
+
+
+def strap_level(sc):
+    """Inner offset of a thigh strap: hugs the armour, rises over the
+    holster and over the shorts where they reach below the strap."""
+    s0, s1 = sc - STRAP_W / 2, sc + STRAP_W / 2
+
+    def lev(T, S):
+        ss = np.linspace(s0, s1, 7)
+        arm = np.max([armor_level(T, s) for s in ss], axis=0) + ARMOR_T
+        dh = np.abs(G.wrap_angle(T, HOLSTER_TH))
+        hw = HOLSTER_W / 2 / 0.068 + 0.06
+        hol = (holster_level(T, sc) + 0.0030) * (1 - sstep(dh, hw, hw + 0.25))
+        hem = G.periodic(T, HEM_L) + 0.004
+        cover = sstep(hem - s0, -0.004, 0.006)
+        sho = (SHORTS_LEVEL + SHORTS_T + 0.0008) * cover
+        return np.maximum(np.maximum(arm, hol), sho) + 0.0003
+    return lev
+
+
+# white diagonal belt / black base belt / flap / hanging straps
+BASEBELT_LEV, BASEBELT_T = 0.0056, 0.0028
+FLAP_LEV, FLAP_T = 0.0087, 0.0014
+WBELT_LEV, WBELT_T, WBELT_W = 0.0104, 0.0030, 0.024
+TONGUE_LEV = WBELT_LEV + WBELT_T + 0.0003
+_CL = {}
+
+
+def belt_centre(kind):
+    """Centre line z_c(theta) of a belt on the hip hull (table, smoothed)."""
+    if kind in _CL:
+        return _CL[kind]
+    ch = G.TorsoChart(hips_fn(), _TORSO, R0=0.12)
+    th = np.linspace(-np.pi, np.pi, 720, endpoint=False)
+    lev = BASEBELT_LEV if kind == 'base' else WBELT_LEV
+    z = np.full_like(th, 1.07)
+    for _ in range(4):
+        P, N = ch.lift(th * ch.R0, z, lev)
+        z = base_belt_z(P) if kind == 'base' else belt_z(P[:, 0])
+    z = G.smooth_periodic(z, 4, 2)
+    P, N = ch.lift(th * ch.R0, z, lev)
+    _CL[kind] = (th, z, P)
+    return _CL[kind]
+
+
+def zc_of(kind, th):
+    t, z, _ = belt_centre(kind)
+    tt = np.concatenate([t - 2 * np.pi, t, t + 2 * np.pi])
+    return np.interp(th, tt, np.tile(z, 3))
+
+
+def theta_at_px(kind, xpx):
+    """Belt angle (front side) where the centre line is at reference x."""
+    t, z, P = belt_centre(kind)
+    front = P[:, 1] < -0.02
+    x = (xpx - PX0) * S
+    i = np.nonzero(front)[0]
+    j = i[np.argmin(np.abs(P[i, 0] - x))]
+    return t[j]
+
+
+def belt_region(kind, loops_av, level, t, t0=0.0, h=0.003, kz=1.0):
+    """Lift a region given in (a = theta*R0, v = height across the belt)."""
+    ch = G.TorsoChart(hips_fn(), _TORSO, R0=0.12)
+    Q, F = G.tri_region(loops_av, h)
+
+    def to_param(Q):
+        th = Q[:, 0] / ch.R0
+        return np.stack([Q[:, 0], zc_of(kind, th) + Q[:, 1] * kz], axis=1)
+    return G.lift_region(ch, Q, F, level, t, t0, to_param)
+
+
+def belt_loop(kind, th0, th1, w, level, t, holes=(), h=0.003, ends=('flat', 'flat'), tip=0.02):
+    R0 = 0.12
+    a0, a1 = th0 * R0, th1 * R0
+    hw = w / 2
+    loop = []
+    if ends[0] == 'point':
+        loop += [(a0, 0.0), (a0 + tip, -hw)]
+    else:
+        loop += [(a0, hw), (a0, -hw)]
+    if ends[1] == 'point':
+        loop += [(a1 - tip, -hw), (a1, 0.0), (a1 - tip, hw)]
+    else:
+        loop += [(a1, -hw), (a1, hw)]
+    if ends[0] == 'point':
+        loop += [(a0 + tip, hw)]
+    loops = [np.array(loop)] + [np.array(hl) for hl in holes]
+    return belt_region(kind, loops, level, t, h=h)
+
+
+def ellipse(c, rx, ry, n=14):
+    a = np.linspace(0, 2 * np.pi, n, endpoint=False)
+    return np.stack([c[0] + rx * np.cos(a), c[1] + ry * np.sin(a)], axis=1)
+
+
+def belt_dashes(kind, th0, th1, w, level, inset=0.0019, dash=0.0028, gap=0.0020,
+                width=0.0007):
+    """Stitching: short dashes along both edges of a belt piece."""
+    R0 = 0.12
+    a0, a1 = th0 * R0, th1 * R0
+    loops = []
+    a = a0 + 0.004
+    while a + dash < a1 - 0.004:
+        for v in (w / 2 - inset, -w / 2 + inset):
+            loops.append(np.array([(a, v - width / 2), (a + dash, v - width / 2),
+                                   (a + dash, v + width / 2), (a, v + width / 2)]))
+        a += dash + gap
+    parts = []
+    for lp in loops:
+        parts.append(belt_region(kind, [lp], level, 0.0003, h=0.002))
+    return parts
+
+
 def belts():
-    return {}
+    out = {}
+    R0 = 0.12
+    # ---- black base belt (closed ring at the top of the shorts)
+    ch = G.TorsoChart(hips_fn(), _TORSO, R0=R0)
+    th = np.linspace(-np.pi, np.pi, 240, endpoint=False)
+    vv = np.linspace(-BASE_BELT_W / 2, BASE_BELT_W / 2, 7)
+    T, Vv = np.meshgrid(th, vv)
+    Z = zc_of('base', T) + Vv
+    P, N = ch.lift(T * R0, Z, BASEBELT_LEV)
+    P, N = P.reshape(-1, 3), N.reshape(-1, 3)
+    Fb = G.orient(P, N, G.grid_tris(len(th), len(vv), closed_u=True))
+    out['BeltBase'] = G.solid([G.shell(P, N, Fb, BASEBELT_T)], 'black', bevel=0.0005)
+
+    # ---- white belt with a red segment towards her left hip
+    tb = np.radians(-38.0)                      # buckle (accessories)
+    tr0, tr1 = theta_at_px('white', 348), theta_at_px('white', 389)
+    holes = [ellipse((theta_at_px('white', x) * R0, 0.0), 0.0032, 0.0019)
+             for x in (323, 334)]
+    w1 = belt_loop('white', tb, tr0, WBELT_W, WBELT_LEV, WBELT_T, holes)
+    w2 = belt_loop('white', tr1, tb + 2 * np.pi, WBELT_W, WBELT_LEV, WBELT_T, h=0.004)
+    tongue = belt_loop('white', tb - np.radians(31.0), tb + np.radians(4.0), WBELT_W * 0.92,
+                       TONGUE_LEV, 0.0025, ends=('point', 'flat'), tip=0.011)
+    out['BeltWhite'] = G.solid([w1, w2, tongue], 'white', bevel=0.0005, outline_w=0.8)
+    out['BeltRed'] = G.solid([belt_loop('white', tr0, tr1, WBELT_W, WBELT_LEV, WBELT_T)],
+                             'red', bevel=0.0005, outline_w=0.8)
+    top = WBELT_LEV + WBELT_T
+    dashes = belt_dashes('white', tb + 0.02, tr0, WBELT_W, top) + \
+        belt_dashes('white', tr1, tr1 + np.radians(60), WBELT_W, top) + \
+        belt_dashes('white', tb - np.radians(28.0), tb, WBELT_W * 0.92, top + 0.0028)
+    out['BeltStitch'] = G.solid(dashes, 'gray', bevel=0.0, outline=False)
+    # small white "text" on the red segment
+    txt = []
+    rng = np.random.default_rng(3)
+    for row, v in enumerate((0.0030, -0.0005)):
+        a = tr0 * R0 + 0.010
+        while a < tr1 * R0 - 0.022 - row * 0.012:
+            ln = rng.uniform(0.0008, 0.0026)
+            txt.append(belt_region('white', [np.array([(a, v - 0.0006), (a + ln, v - 0.0006),
+                                                       (a + ln, v + 0.0006), (a, v + 0.0006)])],
+                                   top, 0.0002, h=0.0015))
+            a += ln + rng.uniform(0.0006, 0.0014)
+    out['BeltRedText'] = G.solid(txt, 'decal_white', bevel=0.0, outline=False)
+
+    # ---- white triangular flap over her right front hip
+    tA, tB, tC = np.radians(-43.0), np.radians(-97.0), np.radians(-84.0)
+    ts = np.linspace(tA, tB, 12)
+    loop = [(t * R0, zc_of('white', t) + 0.006) for t in ts]
+    loop += [(tC * R0, 0.982)]
+    Q, F = G.tri_region([np.array(loop)], 0.004)
+
+    def flap_lev(a, z):
+        th = a / R0
+        drop = np.clip((zc_of('white', th) - z) / 0.08, 0, 1)
+        return FLAP_LEV + 0.004 * drop ** 1.5
+    V, Ff = G.lift_region(ch, Q, F, flap_lev, FLAP_T)
+    out['BeltFlap'] = G.solid([(V, Ff)], 'white', bevel=0.0004, outline_w=0.8)
+
+    # ---- two loose white straps hanging from the right hip to the knee
+    out['HipStrapsWhite'] = hanging_straps()
+    return out
+
+
+def hanging_straps():
+    from hardsurf import sweep, rounded_rect
+    from meshutil import catmull
+    parts = []
+    for dx, dz, zend in ((0.0, 0.0, 0.600), (-0.013, -0.006, 0.640)):
+        ctrl = np.array([[-0.136 + dx, -0.010, 1.000 + dz],
+                         [-0.160 + dx, 0.000, 0.930 + dz],
+                         [-0.172 + dx, 0.024, 0.840],
+                         [-0.178 + dx, 0.022, 0.740],
+                         [-0.182 + dx, 0.012, zend]])
+        pts, tan = catmull(ctrl, 60)
+        up = np.tile(np.array([1.0, 0.25, 0.0]), (len(pts), 1))   # width across, faces front
+        prof = rounded_rect(0.0018, 0.0115, 0.0006, seg=1)
+        V, F = sweep(prof, pts, up)
+        parts.append((V, F))
+    return G.solid(parts, 'white', bevel=0.0003, angle=35, outline_w=0.7)
+
+
+# ------------------------------------------------------------ bikini top
+
+TOP_FN = None
+
+
+def top_fn():
+    global TOP_FN
+    if TOP_FN is None:
+        TOP_FN = G.body_subset(['torso', 'breastR', 'breastL', 'neck', 'clavR', 'deltR',
+                                'clavL', 'deltL'])
+    return TOP_FN
+
+
+CUP_L = [(350, 209), (358, 217), (366, 227), (371, 238), (374, 248), (374, 255),
+         (348, 256), (322, 257), (325, 247), (331, 236), (338, 225), (345, 214)]
+CUP_R = [(298, 213), (291, 221), (285, 231), (281, 242), (279, 251), (279, 257),
+         (300, 258), (319, 259), (315, 249), (310, 238), (305, 227), (301, 218)]
+# white lining along the upper inner edge of each cup (inner edge, inset strip)
+LINE_L = [(349, 212), (344, 216), (337, 226), (330, 237), (325, 248), (323, 255),
+          (329, 255), (332, 245), (337, 235), (343, 225), (348, 218)]
+LINE_R = [(299, 216), (303, 222), (308, 233), (313, 244), (317, 254), (319, 258),
+          (309, 258), (305, 247), (301, 238), (297, 229), (296, 222)]
+BAND_Z = ((PY0 - 268) * S, (PY0 - 252) * S)
+CUP_LEV, CUP_T = 0.0012, 0.0022
+BAND_LEV, BAND_T = 0.0010, 0.0026
+
+
+def front_patch(fn, poly_px, level, t, t0=0.0, h=0.0025):
+    """Region traced on the reference, mapped onto the torso hull through
+    the torso chart (never misses at the silhouette)."""
+    return front_patch_m(fn, np.array(P2M(poly_px)), level, t, h)
+
+
+def front_patch_m(fn, loop_m, level, t, h=0.0015):
+    ch = G.TorsoChart(fn, _TORSO, R0=0.12)
+    lev0 = level if not callable(level) else 0.0
+    loop = G.resample(np.asarray(loop_m), 0.003)
+    Q = G.torso_params_for_front(ch, loop, lev0)
+    # drop consecutive duplicates (clamped points at the silhouette)
+    keep = np.r_[True, np.linalg.norm(np.diff(Q, axis=0), axis=1) > 1e-5]
+    Q = Q[keep]
+    Q2, F = G.tri_region([Q], h)
+    return G.lift_region(ch, Q2, F, level, t)
+
+
+def stroke(p0, p1, w0, w1, n=8):
+    """Brush stroke polygon (model x, z) tapering from w0 to w1."""
+    p0, p1 = np.asarray(p0), np.asarray(p1)
+    d = p1 - p0
+    nv = np.array([-d[1], d[0]]) / np.linalg.norm(d)
+    ts = np.linspace(0, 1, n)
+    w = w0 + (w1 - w0) * ts
+    w = w * (0.75 + 0.25 * np.sin(np.pi * np.clip(ts * 1.2, 0, 1)))
+    left = [p0 + d * t + nv * wi / 2 for t, wi in zip(ts, w)]
+    right = [p0 + d * t - nv * wi / 2 for t, wi in zip(ts, w)]
+    return np.array(left + right[::-1])
+
+
+def bikini():
+    out = {}
+    fn = top_fn()
+    cups = [front_patch(fn, CUP_L, CUP_LEV, CUP_T), front_patch(fn, CUP_R, CUP_LEV, CUP_T)]
+    # halter straps up to the collar
+    straps = [front_patch(fn, [(347, 211), (353, 211), (362, 186), (356, 185)], CUP_LEV,
+                          CUP_T, h=0.002),
+              front_patch(fn, [(297, 214), (303, 215), (340, 189), (334, 186)], CUP_LEV,
+                          CUP_T, h=0.002)]
+    out['BikiniTop'] = G.solid(cups + straps, 'clothing_fabric', bevel=0.0005, outline_w=0.8)
+    lin = [front_patch(fn, LINE_L, CUP_LEV + CUP_T + 0.0001, 0.0008, h=0.0015),
+           front_patch(fn, LINE_R, CUP_LEV + CUP_T + 0.0001, 0.0008, h=0.0015)]
+    out['BikiniLining'] = G.solid(lin, 'white', bevel=0.0002, outline_w=0.35)
+    # under-bust band (black) with a white lower trim, closed ring
+    ch = G.TorsoChart(fn, _TORSO, R0=0.12)
+    z0, z1 = BAND_Z
+    zt = z0 + 0.0055
+    th = np.linspace(-np.pi, np.pi, 200, endpoint=False)
+
+    def ring(za, zb, lev, t, nv=5):
+        T, Z = np.meshgrid(th, np.linspace(za, zb, nv))
+        P, N = ch.lift(T * ch.R0, Z, lev)
+        P, N = P.reshape(-1, 3), N.reshape(-1, 3)
+        F = G.orient(P, N, G.grid_tris(len(th), nv, closed_u=True))
+        return G.shell(P, N, F, t)
+    out['BikiniBand'] = G.solid([ring(zt, z1, BAND_LEV, BAND_T, 6)], 'clothing_fabric', bevel=0.0005,
+                                outline_w=0.8)
+    out['BikiniTrim'] = G.solid([ring(z0, zt, BAND_LEV, BAND_T + 0.0003, 3)], 'white',
+                                bevel=0.0004, outline_w=0.6)
+    # painted red X on her right cup
+    c = np.array(P2M([(294, 241)])[0])
+    a = 0.0105
+    xs = [stroke(c + (-a, a * 0.9), c + (a * 0.8, -a), 0.0042, 0.0016),
+          stroke(c + (a * 0.85, a * 0.8), c + (-a * 0.7, -a * 0.95), 0.0036, 0.0014)]
+    red = [front_patch_m(fn, x, CUP_LEV + CUP_T + 0.00008 + 0.0001 * i, 0.0003)
+           for i, x in enumerate(xs)]
+    out['BikiniMarkX'] = G.solid(red, 'red', bevel=0.0, outline=False)
+    return out
+
+
+# ------------------------------------------------------------ sleeves and forearm wraps
+
+ARM_R0 = 0.025
+SK_R = float(np.linalg.norm(J['shoulder_R'] - J['elbow_R']))
+L_R = float(np.linalg.norm(J['shoulder_R'] - J['wrist_R']))
+SK_L = float(np.linalg.norm(J['shoulder_L'] - J['elbow_L']))
+L_L = float(np.linalg.norm(J['shoulder_L'] - J['wrist_L']))
+SLEEVE_T = 0.0018
+
+
+def _ring(ch, s0, s1, level, t, n=96, nv=None):
+    th = np.linspace(0, 2 * np.pi, n, endpoint=False)
+    nv = nv or max(2, int(np.ceil((s1 - s0) / 0.004)) + 1)
+    return G.band_shell(ch, th, np.linspace(s0, s1, nv), level, t)
+
+
+def _patch(ch, th0, th1, s0, s1, level, t, corner=0.0, h=0.0025):
+    """Rectangle in (angle, s) on a limb, optional chamfered corners."""
+    a0, a1 = th0 * ch.R0, th1 * ch.R0
+    c = corner
+    if c > 0:
+        loop = [(a0 + c, s0), (a1 - c, s0), (a1, s0 + c), (a1, s1 - c), (a1 - c, s1),
+                (a0 + c, s1), (a0, s1 - c), (a0, s0 + c)]
+    else:
+        loop = [(a0, s0), (a1, s0), (a1, s1), (a0, s1)]
+    Q, F = G.tri_region([np.array(loop)], h)
+    return G.lift_region(ch, Q, F, level, t)
+
+
+def _text_bars(ch, a0, s0, rows, level, rng, length, h=0.0009, step=0.0018, vertical=False):
+    """Pseudo printed text: rows of short bars starting at (a0, s0)."""
+    out = []
+    for r in range(rows):
+        a = 0.0
+        while a < length * (1.0 - 0.25 * r):
+            ln = rng.uniform(0.0007, 0.0024)
+            if vertical:
+                loop = [(a0 + r * step, s0 + a), (a0 + r * step + h, s0 + a),
+                        (a0 + r * step + h, s0 + a + ln), (a0 + r * step, s0 + a + ln)]
+            else:
+                loop = [(a0 + a, s0 + r * step), (a0 + a + ln, s0 + r * step),
+                        (a0 + a + ln, s0 + r * step + h), (a0 + a, s0 + r * step + h)]
+            Q, F = G.tri_region([np.array(loop)], 0.0008)
+            out.append(G.lift_region(ch, Q, F, level, 0.00015))
+            a += ln + rng.uniform(0.0004, 0.0010)
+    return out
+
+
+def sleeves():
+    out = {}
+    rng = np.random.default_rng(7)
+    # ================= right arm: full sleeve
+    arm = B.arm('R')
+    ch = G.LimbChart(arm, G.body_subset(['deltR', 'armR']), R0=ARM_R0)
+    sl_lev = lambda T, Sv: 0.0030 + 0.0015 * np.exp(-((Sv - 0.10) / 0.08) ** 2)
+    top = 0.0030 + SLEEVE_T
+    th = np.linspace(0, 2 * np.pi, 96, endpoint=False)
+    ss = G.rows(-0.050, L_R - 0.012, 0.005)
+    out['SleeveR'] = G.solid([G.band_shell(ch, th, ss, sl_lev, SLEEVE_T)], 'coat',
+                             bevel=0.0005, outline_w=0.9)
+    lvl = lambda add: (lambda T, Sv: sl_lev(T, Sv) + SLEEVE_T + add)
+    bands = [_ring(ch, 0.060, 0.072, lvl(0.0002), 0.0020),
+             _ring(ch, 0.085, 0.121, lvl(0.0002), 0.0026),
+             _ring(ch, 0.140, 0.158, lvl(0.0002), 0.0022)]
+    # striped panel around the elbow (front-outer side)
+    thc = np.radians(-25.0)
+    hw = np.radians(58.0)
+    PAN0, PAN1 = 0.168, 0.296
+    panel = _patch(ch, thc - hw, thc + hw, PAN0, PAN1, lvl(0.0002), 0.0010, corner=0.002)
+    stripes = []
+    for k in (-1, 0, 1):
+        c = thc + k * np.radians(27.0)
+        stripes.append(_patch(ch, c - np.radians(5.5), c + np.radians(5.5), PAN0 + 0.004,
+                              PAN1 - 0.004, lvl(0.0013), 0.0004, h=0.002))
+    bands += [_ring(ch, 0.233, 0.247, lvl(0.0014), 0.0020),
+              _ring(ch, 0.296, 0.310, lvl(0.0002), 0.0024)]
+    # white gauntlet plate on the lower forearm, black strap, wristband
+    gaunt = _patch(ch, thc - np.radians(62), thc + np.radians(62), 0.316, 0.432, lvl(0.0002),
+                   0.0020, corner=0.004)
+    label = _patch(ch, thc - np.radians(14), thc + np.radians(14), 0.322, 0.336,
+                   lvl(0.0023), 0.0004, h=0.0015)
+    bands += [_ring(ch, 0.404, 0.416, lvl(0.0024), 0.0020),
+              _ring(ch, 0.440, L_R - 0.008, lvl(0.0002), 0.0034)]
+    out['SleeveRPanels'] = G.solid([panel, gaunt], 'coat', bevel=0.0005, outline_w=0.6)
+    out['SleeveRStripes'] = G.solid(stripes, 'glow_red', bevel=0.0, outline=False)
+    out['SleeveRBands'] = G.solid(bands, 'black', bevel=0.0005, outline_w=0.7)
+    out['SleeveRLabel'] = G.solid([label], 'gray', bevel=0.0, outline=False)
+
+    # ================= left arm: sleeve cut above the elbow
+    arm = B.arm('L')
+    ch = G.LimbChart(arm, G.body_subset(['deltL', 'armL']), R0=ARM_R0)
+    sl_lev = lambda T, Sv: 0.0030 + 0.0060 * sstep(Sv, 0.0, 0.13)
+    lvl = lambda add: (lambda T, Sv: sl_lev(T, Sv) + SLEEVE_T + add)
+    END = SK_L - 0.036
+    ss = G.rows(-0.050, END, 0.005)
+    out['SleeveL'] = G.solid([G.band_shell(ch, th, ss, sl_lev, SLEEVE_T)], 'coat',
+                             bevel=0.0005, outline_w=0.9)
+    bl = [_ring(ch, 0.036, 0.048, lvl(0.0002), 0.0020),
+          _ring(ch, 0.054, 0.097, lvl(0.0002), 0.0030)]
+    out['SleeveLBand'] = G.solid(bl, 'black', bevel=0.0005, outline_w=0.7)
+    out['SleeveLHem'] = G.solid([_ring(ch, END - 0.013, END, lvl(0.0002), 0.0016)],
+                                'coat_trim', bevel=0.0004, outline_w=0.6)
+    # silver label on the front-outer face of the white segment
+    lc = np.radians(35.0)
+    lab = _patch(ch, lc - np.radians(26), lc + np.radians(26), 0.104, 0.128, lvl(0.0002),
+                 0.0010, corner=0.0015, h=0.0015)
+    out['SleeveLLabel'] = G.solid([lab], 'metal', bevel=0.0003, outline_w=0.4)
+    txt = _text_bars(ch, (lc - np.radians(20)) * ARM_R0, 0.110, 3, lvl(0.0013), rng, 0.016)
+    out['SleeveLLabelText'] = G.solid(txt, 'black', bevel=0.0, outline=False)
+
+    # forearm: red base wrapped by flat black straps crossing in an X pattern
+    W0, W1 = END - 0.010, L_L - 0.006
+    red_lev = 0.0012
+    RED_T = 0.0024
+    out['ArmWrapRed'] = G.solid([_ring(ch, W0, W1, red_lev, RED_T, n=96)], 'red',
+                                bevel=0.0004, outline_w=0.8)
+    pitch, width = 0.046, 0.012
+    straps = []
+    sa, sb = W0 + 0.004, W1 - 0.004
+    for fam, (hand, ph, add) in enumerate(((1, 0.0, 0.0002), (-1, 1.3, 0.0015))):
+        k = hand * 2 * np.pi * ARM_R0 / pitch           # da/ds along the helix
+        # parallelogram: centre line a = ph*R0 + k*(s - sa); half width measured
+        # perpendicular to the strap
+        ang = np.arctan(abs(k))
+        hs = width / 2 / np.sin(ang)                    # half extent along s
+        a_start = ph * ARM_R0
+        loop = [(a_start, sa), (a_start + k * (sb - sa), sb),
+                (a_start + k * (sb - sa) + 2 * hs * abs(k) * 0 + 0.0, sb),
+                ]
+        A0 = a_start
+        A1 = a_start + k * (sb - sa)
+        loop = [(A0 - hs * k, sa), (A1 - hs * k, sb), (A1 + hs * k, sb), (A0 + hs * k, sa)]
+        loop = np.array(loop)
+        if G.polygon_area(loop) if hasattr(G, 'polygon_area') else 0:
+            pass
+        Q, F = G.tri_region([loop], 0.003)
+        lev = red_lev + RED_T + add
+        straps.append(G.lift_region(ch, Q, F, lev, 0.0012))
+    out['ArmWrapBlack'] = G.solid(straps, 'black', bevel=0.0004, outline_w=0.6, angle=50)
+    return out
