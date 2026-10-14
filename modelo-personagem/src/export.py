@@ -44,6 +44,9 @@ def character_objects():
 
 def to_pbr():
     """Strip outline modifiers / slots and swap toon materials for PBR ones."""
+    for ob in list(bpy.data.objects):
+        if ob.name.endswith('_Outline'):
+            bpy.data.objects.remove(ob)
     toon_names = set(materials.PALETTE)
     for m in list(bpy.data.materials):
         if m.name in toon_names:
@@ -92,7 +95,8 @@ def export_gltf(path, draco=False):
     kw = dict(filepath=path, export_format='GLB', use_selection=True,
               export_apply=True, export_yup=True, export_texcoords=True,
               export_normals=True, export_materials='EXPORT',
-              export_cameras=False, export_lights=False, export_extras=False)
+              export_cameras=False, export_lights=False, export_extras=False,
+              export_attributes=True, export_vertex_color='NONE')
     if draco:
         kw.update(export_draco_mesh_compression_enable=True,
                   export_draco_mesh_compression_level=7,
@@ -113,9 +117,16 @@ def export_fbx(path):
 
 
 def palette_json(path):
-    data = {k: dict(lit=v[0], shadow=v[1], outline=v[2], **{kk: vv for kk, vv in v[3].items()
-                                                         if kk != 'tex'})
-            for k, v in materials.PALETTE.items()}
+    """Palette for the web viewer, in the same terms as toon2 (shade 2 and
+    the scaled thresholds included)."""
+    import toon2
+    data = {}
+    for k, (lit, shadow, outline, ex) in materials.PALETTE.items():
+        data[k] = dict(lit=lit, shadow=shadow, outline=outline,
+                       shade2=ex.get('shade2', toon2.shade2_of(shadow)),
+                       thr=round(ex.get('thr', 0.4) * 0.7, 4), spec=ex.get('spec', 0.0),
+                       gloss=ex.get('gloss', 0.3), spec_col=ex.get('spec_col', '#FFFFFF'),
+                       rim=ex.get('rim', 0.0), emit=1 if ex.get('emit') else 0)
     with open(path, 'w') as f:
         json.dump(data, f, indent=1)
 

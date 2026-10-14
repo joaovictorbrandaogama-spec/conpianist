@@ -163,15 +163,32 @@ def coat_weights(P, bones, names):
     return W * (1 - low[:, None]) + hang * low[:, None]
 
 
-RIGID = {
-    'SwordR_Red': 'Hand.R', 'SwordR_Black': 'Hand.R', 'SwordR_White': 'Hand.R',
-    'SwordR_Gold': 'Hand.R', 'HandR': 'Hand.R', 'HandL': 'Hand.L', 'FingersL': 'Hand.L',
-    'SwordA_Red': 'Hips', 'SwordA_Black': 'Hips', 'SwordB_Black': 'Hips',
-    'SwordB_White': 'Hips', 'SwordB_Red': 'Hips', 'HangingStraps': 'Hips',
-    'Goggles': 'UpperChest', 'GogglesLens': 'UpperChest', 'GogglesStrap': 'UpperChest',
-    'Head': 'Head', 'HairCap': 'Head', 'HairBangs': 'Head', 'HairCrown': 'Head',
-    'HairOrnament': 'Head', 'HairRibbons': 'Head', 'Collar': 'Neck', 'CollarRed': 'Neck',
-}
+HEAD_RIGID = ('Head', 'HairCap', 'HairBangs', 'HairCrown', 'HairOrnament', 'HairRibbons',
+              'HairClips')
+
+
+def rule(name):
+    """How an object is skinned, from its name: ('rigid', bone) or a mode."""
+    base = name[:-len('_Outline')] if name.endswith('_Outline') else name
+    if base in HEAD_RIGID:
+        return ('rigid', 'Head')
+    if base.startswith('Hair'):
+        return ('hair', None)
+    if base.startswith('Coat') and 'Collar' not in base:
+        return ('coat', None)
+    if base.startswith('Hand') or base.startswith('Fingers'):
+        return ('rigid', 'Hand.' + ('R' if base.endswith('R') else 'L'))
+    if base.startswith('Sword'):
+        # the long scabbard rests in her right hand, the others ride on the hip
+        return ('rigid', 'Hand.R' if base.startswith(('SwordR', 'SwordBig', 'SwordNightblaze', 'Sword1'))
+                else 'Hips')
+    if 'Goggle' in base:
+        return ('rigid', 'UpperChest')
+    if 'Collar' in base and not base.startswith('Coat'):
+        return ('rigid', 'Neck')
+    if 'HangingStrap' in base or 'Pouch' in base:
+        return ('rigid', 'Hips')
+    return ('body', None)
 
 
 def assign(ob, W, names, top=4):
@@ -210,13 +227,14 @@ def rig_character(objects):
         P = np.zeros(len(me.vertices) * 3)
         me.vertices.foreach_get('co', P)
         P = P.reshape(-1, 3) @ np.asarray(ob.matrix_world)[:3, :3].T + np.asarray(ob.matrix_world)[:3, 3]
-        if ob.name in RIGID:
-            vg = ob.vertex_groups.new(name=RIGID[ob.name])
+        mode, bone = rule(ob.name)
+        if mode == 'rigid':
+            vg = ob.vertex_groups.new(name=bone)
             vg.add(list(range(len(me.vertices))), 1.0, 'REPLACE')
         else:
-            if ob.name.startswith('Hair'):
+            if mode == 'hair':
                 W = hair_weights(P, names)
-            elif ob.name.startswith('Coat') and 'Collar' not in ob.name:
+            elif mode == 'coat':
                 W = coat_weights(P, bones, names)
             else:
                 W = body_weights(P, bones, names)

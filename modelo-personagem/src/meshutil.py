@@ -20,6 +20,7 @@ class MeshData:
         self.decimate = decimate      # target face count (0 = keep)
         self.outline_w = outline_w    # outline width multiplier
         self.props = props or {}      # free-form flags for the Blender side
+        self.normals = None           # optional (V,3) shading normals
 
     @property
     def nf(self):

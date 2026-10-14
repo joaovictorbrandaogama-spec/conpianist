@@ -1,12 +1,15 @@
-"""Paint the hair texture: root-to-tip gradient, strand streaks, a soft
-highlight ring near the crown.  u runs around the lock section (outer arc
-0..0.5), v is the distance from the root in metres (0..1)."""
+"""Paint the hair textures.  u runs around the lock section (outer arc
+0..0.5, inner arc 0.5..1), v from root (0) to tip (1).
+
+* hair.png       bangs, side locks, crown: light silver, mauve-grey tips
+* hair_tail.png  ponytail: the lower third fades to pink and red tips
+"""
 
 import os
 import numpy as np
 from PIL import Image
 
-W, H = 512, 1024
+W, H = 256, 1024
 
 
 def lerp_stops(v, stops):
@@ -15,40 +18,44 @@ def lerp_stops(v, stops):
     return np.stack([np.interp(v, xs, cs[:, i]) for i in range(3)], axis=-1)
 
 
-def main(out):
-    rng = np.random.default_rng(7)
+def paint(stops, seed, out):
+    rng = np.random.default_rng(seed)
     u = (np.arange(W) + 0.5) / W
-    v = 1.0 - (np.arange(H) + 0.5) / H          # image top = v 1
-    U, Vv = np.meshgrid(u, v)
-    stops = [(0.0, (196, 190, 214)), (0.025, (232, 230, 240)), (0.06, (247, 246, 251)),
-             (0.35, (246, 245, 250)), (0.70, (236, 233, 243)), (1.0, (222, 212, 228))]
-    col = lerp_stops(Vv, stops)
-    # inner side of the lock a touch darker / cooler
+    v = 1.0 - (np.arange(H) + 0.5) / H          # image top = v 1 (tip)
+    U, V = np.meshgrid(u, v)
+    col = lerp_stops(V, stops)
+    # inner arc (faces the head) cooler and darker
     inner = (U > 0.5).astype(float)[..., None]
-    col = col * (1 - 0.06 * inner) + np.array([-4, -4, 2]) * inner
+    col = col * (1 - 0.10 * inner) + np.array([-6, -6, 4]) * inner
+    # darker towards the sharp side edges of the outer arc
+    edge = np.clip(1 - np.abs(U - 0.25) / 0.25, 0, 1)
+    col = col * (0.965 + 0.035 * edge[..., None] ** 0.5)
     # strand streaks
     shade = np.ones((H, W))
-    for _ in range(140):
-        u0 = rng.uniform(0, 1)
-        wpx = rng.uniform(0.8, 2.6)
-        v0 = rng.uniform(-0.2, 0.9)
-        v1 = v0 + rng.uniform(0.15, 0.9)
-        k = rng.uniform(0.88, 0.95) if rng.random() < 0.75 else rng.uniform(1.02, 1.05)
-        wob = rng.uniform(0, 6.28)
-        uu = u0 + 0.01 * np.sin(Vv * 9 + wob)
-        d = np.abs((U - uu) * W)
-        m = np.clip(1 - d / wpx, 0, 1) * ((Vv > v0) & (Vv < v1))
-        fade = np.clip(np.minimum(Vv - v0, v1 - Vv) / 0.05, 0, 1)
+    for _ in range(90):
+        u0 = rng.uniform(0.02, 0.48)
+        wpx = rng.uniform(0.8, 2.2)
+        v0 = rng.uniform(-0.1, 0.85)
+        v1 = v0 + rng.uniform(0.2, 0.8)
+        k = rng.uniform(0.93, 0.97) if rng.random() < 0.8 else rng.uniform(1.02, 1.04)
+        d = np.abs((U - u0) * W)
+        m = np.clip(1 - d / wpx, 0, 1) * ((V > v0) & (V < v1))
+        fade = np.clip(np.minimum(V - v0, v1 - V) / 0.06, 0, 1)
         shade *= 1 - (1 - k) * m * fade
     col = col * shade[..., None]
-    # highlight ring near the crown (zig-zag lower edge), outer side only
-    edge = 0.115 + 0.012 * np.abs(((U * 18) % 2) - 1)
-    ring = ((Vv > 0.075) & (Vv < edge) & (U < 0.5)).astype(float)
-    col = col * (1 - 0.6 * ring[..., None]) + 255 * 0.6 * ring[..., None]
-    img = Image.fromarray(np.clip(col, 0, 255).astype(np.uint8), 'RGB')
-    img.save(out)
+    Image.fromarray(np.clip(col, 0, 255).astype(np.uint8), 'RGB').save(out)
+
+
+def main(root):
+    tex = os.path.join(root, 'textures')
+    paint([(0.0, (200, 197, 214)), (0.05, (236, 235, 242)), (0.20, (248, 247, 251)),
+           (0.60, (245, 244, 249)), (0.85, (232, 227, 236)), (1.0, (216, 204, 218))],
+          3, os.path.join(tex, 'hair.png'))
+    paint([(0.0, (200, 197, 214)), (0.05, (236, 235, 242)), (0.25, (248, 247, 251)),
+           (0.55, (244, 241, 247)), (0.70, (238, 212, 222)), (0.85, (222, 148, 164)),
+           (1.0, (188, 70, 86))],
+          5, os.path.join(tex, 'hair_tail.png'))
 
 
 if __name__ == '__main__':
-    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    main(os.path.join(root, 'textures', 'hair.png'))
+    main(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

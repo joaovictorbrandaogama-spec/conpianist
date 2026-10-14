@@ -184,7 +184,8 @@ const LIGHT_VIEW = new THREE.Vector3(-0.42, 0.62, 0.66).normalize();
 const VERT = /* glsl */`
 #include <common>
 #include <skinning_pars_vertex>
-varying vec3 vN; varying vec3 vViewPos; varying vec2 vUv;
+attribute vec4 _ctrl;
+varying vec3 vN; varying vec3 vViewPos; varying vec2 vUv; varying vec4 vCtrl;
 void main() {
   #include <beginnormal_vertex>
   #include <skinbase_vertex>
@@ -196,37 +197,52 @@ void main() {
   vN = normalize(transformedNormal);
   vViewPos = -mvPosition.xyz;
   vUv = uv;
+  vCtrl = _ctrl;
 }`;
+// Same model as the Blender material (src/toon2.py): camera-relative light,
+// lit / shade 1 / shade 2, contact occlusion from the _CTRL attribute (red),
+// a hard specular band and a thin lit-side rim.
 const FRAG = /* glsl */`
-uniform vec3 uLit; uniform vec3 uShade; uniform vec3 uSpecCol; uniform vec3 uLight;
+uniform vec3 uLit; uniform vec3 uShade; uniform vec3 uShade2; uniform vec3 uSpecCol; uniform vec3 uLight;
 uniform float uThr; uniform float uSpec; uniform float uGloss; uniform float uRim; uniform float uEmit;
 uniform float uUseMap; uniform sampler2D uMap;
-varying vec3 vN; varying vec3 vViewPos; varying vec2 vUv;
+varying vec3 vN; varying vec3 vViewPos; varying vec2 vUv; varying vec4 vCtrl;
 void main() {
   vec3 n = normalize(vN);
   if (!gl_FrontFacing) n = -n;
   vec3 l = normalize(uLight);
-  float d = max(dot(n, l), 0.0) * 0.955;
-  float f = smoothstep(uThr - 0.02, uThr + 0.02, d);
-  vec3 lit = uLit; vec3 sh = uShade;
-  if (uUseMap > 0.5) { vec3 t = texture2D(uMap, vUv).rgb; lit = t; sh = t * (uShade / max(uLit, vec3(1e-3))); }
-  vec3 col = mix(sh, lit, f);
+  float d = dot(n, l) * 0.955;
+  float aa = max(fwidth(d) * 0.75, 0.002);
+  float lit = smoothstep(uThr - aa, uThr + aa, d);
+  float occ = vCtrl.r;
+  float litc = lit * (1.0 - smoothstep(0.42, 0.52, occ));
+  float deep = smoothstep(0.66, 0.78, occ);
+  vec3 L = uLit; vec3 S1 = uShade; vec3 S2 = uShade2;
+  if (uUseMap > 0.5) {
+    vec3 t = texture2D(uMap, vUv).rgb; vec3 base = max(uLit, vec3(1e-3));
+    L = t; S1 = t * (uShade / base); S2 = t * (uShade2 / base);
+  }
+  vec3 col = mix(S1, L, litc);
+  col = mix(col, S2, deep);
   vec3 v = normalize(vViewPos);
   vec3 h = normalize(l + v);
-  float sp = pow(max(dot(n, h), 0.0), mix(160.0, 12.0, clamp(uGloss * 2.5, 0.0, 1.0)));
-  float s = smoothstep(0.45, 0.6, sp) * uSpec;
-  float rim = smoothstep(0.55, 0.68, 1.0 - max(dot(n, v), 0.0)) * uRim * f;
+  float sp = pow(max(dot(n, h), 0.0), 160.0 - 148.0 * clamp(uGloss * 2.5, 0.0, 1.0));
+  float s = smoothstep(0.45, 0.6, sp) * uSpec * litc;
+  float rim = smoothstep(0.58, 0.68, 1.0 - abs(dot(n, v))) * uRim * litc;
   col = mix(col, uSpecCol, clamp(s + rim, 0.0, 1.0));
   if (uEmit > 0.5) col = uLit;
   gl_FragColor = vec4(col, 1.0);
   #include <colorspace_fragment>
 }`;
+// Inverted hull pushed along position-welded smooth normals (onrm), so hard
+// edges and seams do not tear the outline.
 const OVERT = /* glsl */`
 #include <common>
 #include <skinning_pars_vertex>
+attribute vec3 onrm;
 uniform float uWidth;
 void main() {
-  #include <beginnormal_vertex>
+  vec3 objectNormal = onrm;
   #include <skinbase_vertex>
   #include <skinnormal_vertex>
   #include <begin_vertex>
@@ -241,6 +257,24 @@ void main() { gl_FragColor = vec4(uColor, 1.0);
   #include <colorspace_fragment>
 }`;
 
+function smoothOutlineNormals(geo) {
+  const pos = geo.attributes.position, nor = geo.attributes.normal;
+  const n = pos.count, acc = new Map(), key = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const k = Math.round(pos.getX(i) * 2e4) + ',' + Math.round(pos.getY(i) * 2e4) + ',' + Math.round(pos.getZ(i) * 2e4);
+    key[i] = k;
+    const a = acc.get(k) || [0, 0, 0];
+    a[0] += nor.getX(i); a[1] += nor.getY(i); a[2] += nor.getZ(i);
+    acc.set(k, a);
+  }
+  const out = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const a = acc.get(key[i]); const l = Math.hypot(a[0], a[1], a[2]) || 1;
+    out[i * 3] = a[0] / l; out[i * 3 + 1] = a[1] / l; out[i * 3 + 2] = a[2] / l;
+  }
+  geo.setAttribute('onrm', new THREE.BufferAttribute(out, 3));
+}
+
 const lin = (hex) => new THREE.Color(hex);   // setStyle converts sRGB -> linear
 const toonCache = new Map();
 const outlineCache = new Map();
@@ -253,14 +287,15 @@ function baseName(name) {
 
 function toonMaterial(src) {
   const key = baseName(src.name);
-  const hasMap = key === 'face' && src.map;
+  const hasMap = !!src.map;
   const ck = key + (hasMap ? ':map' : '');
   if (toonCache.has(ck)) return toonCache.get(ck);
   const p = PALETTE[key];
   const m = new THREE.ShaderMaterial({
     vertexShader: VERT, fragmentShader: FRAG,
     uniforms: {
-      uLit: { value: lin(p[0]) }, uShade: { value: lin(p[1]) }, uSpecCol: { value: lin(p[6]) },
+      uLit: { value: lin(p[0]) }, uShade: { value: lin(p[1]) }, uShade2: { value: lin(p[9] || p[1]) },
+      uSpecCol: { value: lin(p[6]) },
       uLight: { value: LIGHT_VIEW.clone() }, uThr: { value: p[3] }, uSpec: { value: p[4] },
       uGloss: { value: p[5] }, uRim: { value: p[7] }, uEmit: { value: p[8] },
       uUseMap: { value: hasMap ? 1 : 0 }, uMap: { value: hasMap ? src.map : null },
@@ -329,6 +364,7 @@ function onModel(gltf) {
     if (/^Sword/.test(nm)) swords.push(o);
     const w = /^Hair/.test(nm) ? 0.0011 : /Glow/.test(nm) ? 0 : 0.0016;
     if (w > 0) {
+      smoothOutlineNormals(o.geometry);
       const ol = o.clone();
       ol.material = outlineMaterial(key, w);
       ol.renderOrder = -1;

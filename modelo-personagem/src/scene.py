@@ -36,7 +36,25 @@ def args():
     ap.add_argument('--no-outline', action='store_true')
     ap.add_argument('--samples', type=int, default=8)
     ap.add_argument('--hide', default='')
+    ap.add_argument('--cam', default='',
+                    help='custom close-up: x,y,z,tx,ty,tz,span (metres); render with --views custom')
     return ap.parse_args(argv)
+
+
+def custom_camera(spec):
+    x, y, z, tx, ty, tz, span = (float(v) for v in spec.split(','))
+    from mathutils import Vector
+    cam = bpy.data.cameras.new('Custom')
+    ob = bpy.data.objects.new('Custom', cam)
+    bpy.context.scene.collection.objects.link(ob)
+    ob.location = (x, y, z)
+    d = Vector((tx, ty, tz)) - Vector((x, y, z))
+    ob.rotation_euler = d.to_track_quat('-Z', 'Y').to_euler()
+    cam.sensor_fit = 'VERTICAL'
+    cam.sensor_height = 24.0
+    cam.lens = d.length * 24.0 / span
+    cam.clip_start = 0.01
+    return ob
 
 
 def clear():
@@ -181,8 +199,43 @@ FACE_PROXY = (np.array([0.011, 0.024, 1.552]), np.array([0.070, 0.092, 0.098]),
               * (1 - _sstep(P[:, 2], 1.615, 1.645)))
 
 
+def hull_object(ob, width):
+    """Separate inverted-hull outline object: a copy of the mesh with
+    reversed faces pushed out along its (geometric) normals, drawn with
+    back-face-culled outline materials.  Used for meshes with custom
+    normals, which a Solidify outline would disturb."""
+    import bmesh
+    me = ob.data.copy()
+    me.name = ob.name + '_Outline'
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bmesh.ops.reverse_faces(bm, faces=bm.faces)
+    bm.to_mesh(me)
+    bm.free()
+    names = [m.name for m in ob.data.materials]
+    me.materials.clear()
+    for n in names:
+        me.materials.append(materials.make_outline(n))
+    hull = bpy.data.objects.new(ob.name + '_Outline', me)
+    for c in ob.users_collection:
+        c.objects.link(hull)
+    mod = hull.modifiers.new('Push', 'DISPLACE')
+    mod.direction = 'NORMAL'
+    mod.mid_level = 0.0
+    mod.strength = -width
+    hull['outline_of'] = ob.name
+    return hull
+
+
 def finish_object(ob, d, outline=True):
     props = d['props']
+    nrm = d.get('normals')
+    custom = (nrm is not None and len(nrm) == len(ob.data.vertices)) or props.get('normals')
+    if outline and d['outline'] and custom:
+        hull_object(ob, 0.0016 * d['outline_w'])
+        outline = False
+    if nrm is not None and len(nrm) == len(ob.data.vertices):
+        ob.data.normals_split_custom_set_from_vertices([tuple(x) for x in nrm])
     if props.get('normals'):
         import normals
         normals.apply(ob, props['normals'], iters=props.get('normal_iters', 8),
@@ -212,6 +265,8 @@ def finish_object(ob, d, outline=True):
             off = names.index(shell)
         mod = ob.modifiers.new('Thickness', 'SOLIDIFY')
         mod.thickness = props['solidify']
+        so = props.get('solid_offset', 1.0)
+        ob['ao_lift'] = props['solidify'] * (0.5 + 0.5 * so)
         mod.offset = props.get('solid_offset', 1.0)
         mod.use_rim = True
         mod.use_even_offset = False
@@ -347,7 +402,7 @@ COLLECTIONS = {
     'body': 'Corpo', 'head': 'Corpo', 'hands': 'Corpo',
     'hair': 'Cabelo',
     'top': 'Roupa', 'hips': 'Roupa', 'coat': 'Roupa', 'arms': 'Roupa', 'legs': 'Roupa',
-    'props': 'Acessorios', 'swords': 'Espadas',
+    'acc': 'Acessorios', 'boots': 'Roupa', 'swords': 'Espadas',
 }
 
 
@@ -367,6 +422,10 @@ def build(names=None, hide=(), outline=True):
                 bpy.data.objects.remove(ob)
                 continue
             finish_object(ob, d, outline=outline)
+    if os.environ.get('CHAR_TOON') == '2':
+        import toon2
+        obs = [o for o in bpy.data.objects if o.type == 'MESH' and not o.name.endswith('_Outline')]
+        toon2.bake_ao(obs)
     lights()
     cams = {'ref': ref_camera()}
     cams['front'] = view_camera('Front', 0)
@@ -388,7 +447,10 @@ def render_views(cams, views, out, res):
         if not v:
             continue
         sc.camera = cams[v]
-        if v.startswith('face'):
+        if os.environ.get('CHAR_TOON') == '2':
+            import toon2
+            toon2.set_light(cams[v])
+        if v.startswith('face') or v == 'custom':
             sc.render.resolution_x = sc.render.resolution_y = int(800 * res)
         else:
             sc.render.resolution_x = int(735 * res)
@@ -402,6 +464,8 @@ def main():
     names = a.parts.split(',') if a.parts else None
     hide = set(a.hide.split(',')) if a.hide else set()
     cams = build(names, hide, outline=not a.no_outline)
+    if a.cam:
+        cams['custom'] = custom_camera(a.cam)
     setup_render(a.engine, a.res, a.samples)
     render_views(cams, a.views.split(','), a.out, a.res)
     if a.save:

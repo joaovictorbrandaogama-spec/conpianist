@@ -31,6 +31,8 @@ def save(name, objects):
         arrays[oname + '__m'] = np.array([idx[n] for n in m.mats], dtype=np.int16)
         if m.uv is not None:
             arrays[oname + '__uv'] = np.asarray(m.uv, dtype=np.float32)
+        if getattr(m, 'normals', None) is not None:
+            arrays[oname + '__n'] = np.asarray(m.normals, dtype=np.float32)
         meta[oname] = dict(mats=names, smooth=m.smooth, subsurf=m.subsurf,
                            outline=m.outline, decimate=m.decimate,
                            outline_w=m.outline_w, props=m.props)
@@ -48,7 +50,8 @@ def load(name):
         starts = np.concatenate([[0], np.cumsum(counts)[:-1]])
         mi = z[oname + '__m']
         uv = z[oname + '__uv'] if (oname + '__uv') in z else None
-        out[oname] = dict(verts=z[oname + '__v'], counts=counts, flat=flat,
+        nrm = z[oname + '__n'] if (oname + '__n') in z else None
+        out[oname] = dict(verts=z[oname + '__v'], counts=counts, flat=flat, normals=nrm,
                           starts=starts, mat_index=mi, mats=md['mats'], uv=uv,
                           smooth=md['smooth'], subsurf=md['subsurf'],
                           outline=md['outline'], decimate=md.get('decimate', 0),

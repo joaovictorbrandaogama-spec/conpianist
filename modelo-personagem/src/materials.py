@@ -1,14 +1,18 @@
 """Toon (anime) materials for EEVEE plus plain PBR versions for glTF export."""
 
+import os
+
 import bpy
 
 # name: (lit sRGB, shadow sRGB, outline sRGB, extra)
 PALETTE = {
-    'skin':        ('#FCE9E3', '#EDB9B2', '#9C5A55', dict(thr=0.30)),
-    'face':        ('#FCE9E3', '#EDB9B2', '#9C5A55', dict(thr=0.06, tex='face.png')),
-    'hair':        ('#F3F2F6', '#C8C5D6', '#77738E', dict(thr=0.30, spec=0.30, gloss=0.35,
+    'skin':        ('#FCE9E3', '#EDBAB4', '#9C5A55', dict(thr=0.30, shade2='#DFA3A2')),
+    'face':        ('#FCE9E3', '#EDBAB4', '#9C5A55', dict(thr=0.06, tex='face.png', shade2='#E2A9A7')),
+    'hair':        ('#F2F1F6', '#BDB8CF', '#6E6A86', dict(thr=0.38, spec=0.25, gloss=0.35,
                                                          tex='hair.png')),
-    'hair_dark':   ('#C9C6D6', '#9D99B2', '#5E5A74', dict(thr=0.42)),
+    'hair_tail':   ('#F2F1F6', '#BDB8CF', '#6E6A86', dict(thr=0.38, spec=0.25, gloss=0.35,
+                                                         tex='hair_tail.png')),
+    'hair_dark':   ('#BDB8CC', '#948FAA', '#5E5A74', dict(thr=0.42)),
     'coat':        ('#F2F2F4', '#C3C5D0', '#6C6E7C', dict(thr=0.40)),
     'coat_trim':   ('#D9DBE3', '#A9ACBA', '#5D606E', dict(thr=0.40)),
     'lining':      ('#A3181E', '#6E0F14', '#3A0508', dict(thr=0.40)),
@@ -28,10 +32,27 @@ PALETTE = {
                                                          spec_col='#FFD0D0')),
     'gold':        ('#D8B45A', '#9A7A2E', '#4A3A12', dict(thr=0.45, spec=0.8, gloss=0.2,
                                                          spec_col='#FFF2C0', metallic=1.0)),
+    'chrome':      ('#EEF0F4', '#9A9FAB', '#3A3D45', dict(thr=0.50, spec=1.0, gloss=0.08,
+                                                         spec_col='#FFFFFF', metallic=1.0)),
+    'gunmetal':    ('#4A4F5A', '#262A32', '#0B0C0F', dict(thr=0.45, spec=0.8, gloss=0.15,
+                                                         spec_col='#AEB6C6', metallic=1.0)),
+    'rubber':      ('#26292F', '#15171B', '#050607', dict(thr=0.40, spec=0.15, gloss=0.4)),
+    'brass':       ('#C9A04A', '#8A6A26', '#3E2F0E', dict(thr=0.45, spec=0.9, gloss=0.15,
+                                                         spec_col='#FFF0C8', metallic=1.0)),
+    'red_dark':    ('#8E1A1F', '#5C0F13', '#2A0507', dict(thr=0.40, spec=0.2, gloss=0.3)),
+    'glow_pink':   ('#FF6F86', '#E04A63', '#7A1424', dict(emit=1.0)),
+    'decal_white': ('#F4F4F6', '#C9CAD3', '#5E606C', dict(thr=0.40)),
     'gray':        ('#8D919C', '#5F636C', '#25272C', dict(thr=0.40, spec=0.3)),
     'blade':       ('#E9EDF3', '#9DA4B2', '#3E4450', dict(thr=0.45, spec=1.0, gloss=0.1,
                                                          spec_col='#FFFFFF', metallic=1.0)),
 }
+
+
+try:  # optional additions by part authors: {name: (lit, shadow, outline, extras)}
+    from materials_extra import EXTRA as _EXTRA
+    PALETTE.update(_EXTRA)
+except ImportError:
+    pass
 
 
 def srgb_to_lin(c):
@@ -122,6 +143,10 @@ def _toon_group():
 
 
 def make_toon(name):
+    import os as _os
+    if _os.environ.get('CHAR_TOON') == '2':
+        import toon2
+        return toon2.make_toon(name)
     if name in bpy.data.materials:
         return bpy.data.materials[name]
     lit, shadow, outline, ex = PALETTE[name]

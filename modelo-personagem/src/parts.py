@@ -67,8 +67,6 @@ def top():
     import outfit as O
     d = {}
     d.update(O.bikini())
-    d.update(O.collar())
-    d.update(O.coat_collar())
     return d
 
 
@@ -83,26 +81,32 @@ def hips():
 
 @builder
 def coat():
-    import outfit as O
-    return O.coat()
+    import coat as C
+    return C.build()
 
 
 @builder
 def arms():
     import outfit as O
-    d = {}
-    d.update(O.sleeves())
-    d.update(O.rings())
-    return d
+    return O.sleeves()
 
 
 @builder
 def legs():
     import outfit as O
-    d = {}
-    d.update(O.leg_armor())
-    d.update(O.boots())
-    return d
+    return O.leg_armor()
+
+
+@builder
+def boots():
+    import boots as Bt
+    return Bt.build()
+
+
+@builder
+def acc():
+    import accessories as A
+    return A.build()
 
 
 @builder
@@ -112,12 +116,6 @@ def hands():
 
 
 @builder
-def props():
-    import props as Pr
-    return Pr.build()
-
-
-@builder
 def swords():
-    import props as Pr
-    return Pr.build_swords()
+    import swords as Sw
+    return Sw.build()

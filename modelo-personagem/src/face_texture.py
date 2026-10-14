@@ -77,10 +77,10 @@ def eye(img, cx, cz, side, iris_cols):
     layer = Image.new('RGBA', img.size, (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
 
-    upper = spline([(-1.08, 0.10), (-0.70, 0.30), (-0.15, 0.38), (0.40, 0.34),
-                    (0.80, 0.21), (1.00, 0.06)])
-    lower = spline([(-1.02, 0.02), (-0.75, -0.22), (-0.20, -0.32), (0.40, -0.30),
-                    (0.85, -0.13), (1.00, 0.04)])
+    upper = spline([(-1.10, 0.12), (-0.70, 0.26), (-0.15, 0.31), (0.40, 0.28),
+                    (0.80, 0.17), (1.00, 0.05)])
+    lower = spline([(-1.04, 0.04), (-0.75, -0.17), (-0.20, -0.25), (0.40, -0.24),
+                    (0.85, -0.11), (1.00, 0.03)])
     # eye opening (sclera)
     opening = np.concatenate([upper, lower[::-1]])
     op_px = [Q(*p) for p in opening]
@@ -95,7 +95,7 @@ def eye(img, cx, cz, side, iris_cols):
     db.polygon([Q(*p) for p in sh], fill=(198, 188, 210, 255))
 
     # iris rendered per pixel for smooth gradients
-    icx, icy, irx, iry = 0.0, -0.03, 0.42, 0.54
+    icx, icy, irx, iry = 0.0, -0.02, 0.40, 0.50
     top, mid, bot, ring = (np.array(c, dtype=float) for c in iris_cols)
     x0, y0 = Q(icx - irx * 1.1, icy + iry * 1.1)
     x1, y1 = Q(icx + irx * 1.1, icy - iry * 1.1)
@@ -148,21 +148,24 @@ def eye(img, cx, cz, side, iris_cols):
     d = ImageDraw.Draw(layer)
     lash = (38, 26, 34, 255)
     # upper lash line, thick at the outer corner
-    up_line = spline([(-1.16, 0.02), (-1.0, 0.13), (-0.70, 0.32), (-0.15, 0.40),
-                      (0.40, 0.36), (0.80, 0.23), (1.02, 0.07)], 120)
-    stroke(d, [Q(*p) for p in up_line], unit * 0.20, unit * 0.06, lash, 0.08, 0.10)
+    up_line = spline([(-1.20, 0.04), (-1.02, 0.15), (-0.70, 0.28), (-0.15, 0.33),
+                      (0.40, 0.30), (0.80, 0.19), (1.02, 0.06)], 120)
+    stroke(d, [Q(*p) for p in up_line], unit * 0.27, unit * 0.07, lash, 0.06, 0.10)
     # outer flick
-    flick = spline([(-0.85, 0.24), (-1.10, 0.18), (-1.30, 0.06)], 30)
-    stroke(d, [Q(*p) for p in flick], unit * 0.12, unit * 0.02, lash, 0.05, 0.9)
+    flick = spline([(-0.85, 0.22), (-1.15, 0.17), (-1.40, 0.07)], 30)
+    stroke(d, [Q(*p) for p in flick], unit * 0.17, unit * 0.02, lash, 0.05, 0.9)
+    # small red liner wing at the lower outer corner
+    wing = spline([(-0.96, -0.02), (-1.12, -0.07), (-1.28, -0.05)], 30)
+    stroke(d, [Q(*p) for p in wing], unit * 0.07, unit * 0.02, (196, 52, 62, 255), 0.1, 0.8)
     # lower lash line (outer half only)
-    lo_line = spline([(-1.02, 0.02), (-0.80, -0.22), (-0.35, -0.35), (0.10, -0.36)], 60)
+    lo_line = spline([(-1.04, 0.04), (-0.85, -0.15), (-0.45, -0.25)], 60)
     stroke(d, [Q(*p) for p in lo_line], unit * 0.07, unit * 0.02, (90, 60, 70, 255), 0.1, 0.5)
     # double eyelid crease
-    crease = spline([(-0.75, 0.52), (-0.20, 0.64), (0.35, 0.60), (0.70, 0.48)], 50)
+    crease = spline([(-0.75, 0.44), (-0.20, 0.53), (0.35, 0.50), (0.70, 0.40)], 50)
     stroke(d, [Q(*p) for p in crease], unit * 0.035, unit * 0.02, (196, 140, 140, 255), 0.3, 0.3)
     # eyebrow (light, slightly frowning)
-    brow = spline([(-0.95, 1.02), (-0.40, 1.12), (0.20, 1.10), (0.75, 0.98)], 60)
-    stroke(d, [Q(*p) for p in brow], unit * 0.10, unit * 0.07, (150, 140, 160, 255), 0.25, 0.15)
+    brow = spline([(-0.95, 0.88), (-0.40, 0.92), (0.20, 0.84), (0.75, 0.70)], 60)
+    stroke(d, [Q(*p) for p in brow], unit * 0.09, unit * 0.06, (128, 118, 140, 255), 0.25, 0.15)
     img.alpha_composite(layer)
 
 
@@ -178,14 +181,15 @@ def main(out):
     # nose: tiny shadow
     nx, ny = to_px(HX + 0.0015, 1.5255)
     u = 0.0185 / 0.15 * N
-    d.ellipse([nx - 0.06 * u, ny - 0.03 * u, nx + 0.06 * u, ny + 0.03 * u], fill=(226, 170, 165, 255))
+    d.polygon([(nx + 0.01 * u, ny - 0.07 * u), (nx + 0.09 * u, ny + 0.03 * u),
+               (nx - 0.02 * u, ny + 0.03 * u)], fill=(222, 166, 162, 255))
     # mouth
     mz = (PY0 - 144) * S
     mx = HX - 0.0015
-    pts = spline([(mx - 0.0085, mz + 0.0006), (mx - 0.003, mz + 0.0002),
-                  (mx + 0.003, mz + 0.0002), (mx + 0.0085, mz + 0.0008)], 60)
+    pts = spline([(mx - 0.0060, mz - 0.0002), (mx - 0.002, mz + 0.0003),
+                  (mx + 0.002, mz + 0.0003), (mx + 0.0060, mz - 0.0001)], 60)
     stroke(d, [to_px(*p) for p in pts], u * 0.07, u * 0.07, (170, 96, 98, 255), 0.25, 0.25)
-    lip = spline([(mx - 0.003, mz - 0.0022), (mx + 0.003, mz - 0.0022)], 20)
+    lip = spline([(mx - 0.002, mz - 0.0020), (mx + 0.002, mz - 0.0020)], 20)
     stroke(d, [to_px(*p) for p in lip], u * 0.05, u * 0.05, (236, 190, 186, 255), 0.4, 0.4)
     img = img.resize((SIZE, SIZE), Image.LANCZOS).convert('RGB')
     img.save(out)
