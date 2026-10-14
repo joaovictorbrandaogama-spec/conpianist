@@ -623,8 +623,9 @@ HEM_KN = np.array([
 # front edges: (z, theta, r) from the hip down to the hem
 EDGE_R = np.array([[0.300, -105.0, 0.250], [0.500, -103.0, 0.226],
                    [0.700, -100.0, 0.204], [0.860, -97.0, 0.186]])
-EDGE_L = np.array([[0.394, 100.0, 0.390], [0.520, 92.0, 0.318],
-                   [0.640, 85.0, 0.268], [0.800, 75.0, 0.212], [0.920, 63.0, 0.175]])
+EDGE_L = np.array([[0.394, 100.0, 0.390], [0.520, 97.0, 0.318],
+                   [0.640, 94.0, 0.268], [0.800, 89.0, 0.212], [0.920, 80.0, 0.175]])
+EDGE_L[:, 1] -= 360.0      # same continuous angle range as the u parameter
 
 
 def pelvis_xy(theta_deg, r):
@@ -792,6 +793,51 @@ def back_graphic(U, Vv, Z):
     return np.minimum(chev, trim)
 
 
+# ------------------------------------------------------------ left tail
+
+TAIL_TIP_PX = (591.0, 801.0)
+TAIL_W = (0.034, 0.028)    # width at the hip / at the skirt hem point
+
+
+def tail():
+    """Long narrow white tail on her left: lies along the front edge of the
+    left skirt panel (outside facing the viewer, lining behind) and runs
+    on past the panel to a slightly curved blade point at ankle level."""
+    U, Vv, P = skirt_surface()
+    edge = P[-1]                                  # u = 1, top -> hem
+    edge = edge[edge[:, 2] < 1.075]
+    end = edge[-1]
+    tip = unproject(TAIL_TIP_PX[0], TAIL_TIP_PX[1], end[1] - 0.01)
+    mid = end + (tip - end) * 0.5 + np.array([0.012, 0.0, 0.004])
+    pts = np.concatenate([edge[::4], [end, mid, tip]])
+    path, tan = catmull(pts, 90)
+    s = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(path, axis=0), axis=1))])
+    s_end = s[np.argmin(np.linalg.norm(path - end, axis=1))]
+    view = np.array([0.0, 1.0, 0.0])
+    side = np.cross(view, tan)
+    side /= np.linalg.norm(side, axis=1, keepdims=True)
+    side *= np.sign(side[:, :1] + 1e-9)            # towards +X (outwards)
+    tilt = np.radians(28.0)
+    side = side * np.cos(tilt) + view * np.sin(tilt)
+    t = s / s_end
+    w = np.interp(t, [0, 1], TAIL_W)
+    # blade: taper beyond the panel, the outer edge curving into the point
+    q = np.clip((s - s_end) / (s[-1] - s_end), 0, 1)
+    w = w * np.sqrt(np.clip(1 - q, 0, 1)) * (1 - 0.25 * q)
+    inner = path - side * 0.004 + np.array([0, -0.006, 0])
+    inner = inner + side * (0.006 * q)[:, None] * np.sin(np.pi * q)[:, None]
+    nw = 7
+    k = np.linspace(0, 1, nw)
+    V = inner[:, None, :] + side[:, None, :] * (w[:, None] * k[None, :])[..., None]
+    # gentle cross curvature (cloth rolls a little at the edges)
+    V = V + np.array([0, 1.0, 0]) * (0.003 * (2 * k - 1) ** 2)[None, :, None]
+    V = V.reshape(-1, 3)
+    F = grid_tris(len(path), nw)
+    F = orient_outward(V, F, lambda Qp: Qp + np.array([0, 0.05, 0]))
+    V, F = clean_mesh(V, F)
+    return {'CoatTail': cloth(V, F, ['coat'] * len(F), 0.0036)}
+
+
 # ------------------------------------------------------------ build
 
 def build():
@@ -801,4 +847,5 @@ def build():
     d.update(collar())
     d.update(snaps_and_tab())
     d.update(skirt())
+    d.update(tail())
     return d

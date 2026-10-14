@@ -317,28 +317,6 @@ def path_map(path, closed=False):
     return fn, L[-1]
 
 
-def strip_outline(length, width, h, end0='flat', end1='flat', tip=None):
-    """Outline of a strip in (along, across) coordinates."""
-    w = width / 2
-    tip = tip if tip is not None else width * 0.6
-    pts = []
-    if end0 == 'point':
-        pts += [(tip, -w), ]
-        pts_start = [(0.0, 0.0)]
-    else:
-        pts_start = [(0.0, w), (0.0, -w)]
-    if end1 == 'point':
-        end = [(length - tip, -w), (length, 0.0), (length - tip, w)]
-    else:
-        end = [(length, -w), (length, w)]
-    if end0 == 'point':
-        loop = [(0.0, 0.0), (tip, -w)] + end[1:] if False else \
-            [(0.0, 0.0), (tip, -w)] + [e for e in end] + [(tip, w)]
-    else:
-        loop = [(0.0, w), (0.0, -w)] + end
-    return np.array(loop, dtype=np.float64)
-
-
 # ------------------------------------------------------------------ body subsets
 
 _PART_NAMES = ['torso', 'breastR', 'breastL', 'neck', 'clavR', 'deltR', 'clavL', 'deltL',
