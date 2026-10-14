@@ -63,47 +63,22 @@ def unproject(xp, yp, depth):
     return np.array([x, depth, z])
 
 
-def poly_mask(poly_px):
-    """Signed distance (metres, <0 inside) of the camera projection of P to
-    a polygon traced on the reference image."""
-    poly = np.asarray(poly_px, dtype=np.float64)
-
-    def m(P):
-        q = project(P)
-        return polygon_sd(q[..., 0], q[..., 1], poly) * S
-    return m
-
-
-# ------------------------------------------------------------ mesh helpers
-
-def split_mesh(V, F, s):
-    """Cut a triangle mesh along s = 0; return (V, F, side) with side True
-    where s < 0.  Both halves share the cut vertices (welded)."""
-    Va, Fa = clip_mesh(V, F, s)
-    Vb, Fb = clip_mesh(V, F, -np.asarray(s))
-    Vm = np.concatenate([Va, Vb])
-    Fm = np.concatenate([Fa, Fb + len(Va)])
-    side = np.concatenate([np.ones(len(Fa), bool), np.zeros(len(Fb), bool)])
-    key = np.round(Vm / 2e-5).astype(np.int64)
-    _, first, inv = np.unique(key, axis=0, return_index=True, return_inverse=True)
-    inv = inv.ravel()
-    return Vm[first], inv[Fm], side
-
-
 def tri_normals(V, F):
     n = np.cross(V[F[:, 1]] - V[F[:, 0]], V[F[:, 2]] - V[F[:, 0]])
     return n / np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-12)
 
 
 def orient_outward(V, F, centre_fn):
-    """Flip triangles so that their normals point away from centre_fn(P)."""
+    """Orient a consistently wound sheet so that, on the whole, its normals
+    point away from centre_fn(P) (flips all triangles or none: per-face
+    flips break the winding where the surface turns sideways)."""
     F = np.asarray(F)
     n = tri_normals(V, F)
     c = V[F].mean(axis=1)
     out = c - centre_fn(c)
-    flip = np.sum(n * out, axis=1) < 0
-    F = F.copy()
-    F[flip] = F[flip][:, ::-1]
+    a = np.linalg.norm(np.cross(V[F[:, 1]] - V[F[:, 0]], V[F[:, 2]] - V[F[:, 0]]), axis=1)
+    if np.sum(np.sum(n * out, axis=1) * a) < 0:
+        F = F[:, ::-1].copy()
     return F
 
 
@@ -123,12 +98,6 @@ def cloth(V, F, mats, t=0.004, shell='lining', decimate=0, **kw):
     props.update(kw.pop('props', {}))
     return MeshData(V, np.asarray(F), mats=list(mats), decimate=decimate,
                     props=props, **kw)
-
-
-def angle_about(P, cx, cy):
-    """Angle around a vertical axis, degrees, 0 = front (-Y), +90 = her
-    left (+X), +-180 = back."""
-    return np.degrees(np.arctan2(P[..., 0] - cx, -(P[..., 1] - cy)))
 
 
 # ------------------------------------------------------------ jacket
@@ -195,8 +164,9 @@ def arm_cut(side, s0, r_hole=0.056, r_side=0.037):
         q = P - p0
         t = q @ ax
         r = np.linalg.norm(q - t[..., None] * ax, axis=-1)
-        rad = r_hole - (r_hole - r_side) * sstep(t, 0.015, 0.06)
-        return np.minimum(t, rad - r)
+        # armhole: a clean ring cut between two planes; further down the
+        # jacket side simply tucks under the sleeve (no grazing cut)
+        return np.minimum.reduce([t, r_hole - r, 0.065 - t])
     return m
 
 
@@ -314,6 +284,7 @@ def jacket():
     v, f = g.mesh(0.0)
     v, f = clip_mesh(v, f, jacket_keep(v))
     v, f = largest_components(v, f, min_frac=0.02)
+    v = relax(v, f, 6)
     f = orient_outward(v, f, jacket_centre)
     # turned-out red facing along the front opening: its own object that
     # tucks under the white edge (the white part gets decimated)
@@ -324,10 +295,31 @@ def jacket():
     front = np.abs(th) < 100
     vw, fw = clip_mesh(v, f, np.where(front, FACING_W - dist, -1.0))
     vr, fr = clip_mesh(v, f, np.where(front, dist - FACING_W - 0.002, 1.0))
-    dr = np.where(vr[:, 0] > 0, 0, 0)
-    vr = vr - vertex_normals(vr, fr) * 0.0006
-    return {'Coat': cloth(vw, fw, ['coat'] * len(fw), COAT_T, decimate=26000),
+    vr = vr - vertex_normals(vr, fr) * 0.0010
+    return {'Coat': cloth(vw, fw, ['coat'] * len(fw), COAT_T, decimate=22000),
             'CoatFacing': cloth(vr, fr, ['lining'] * len(fr), COAT_T, outline_w=0.6)}
+
+
+def relax(V, F, iters=6, lam=0.5):
+    """Taubin smoothing of interior vertices (removes marching-cubes creases
+    that make the Solidify inner shell poke through); boundary vertices
+    stay where the masks cut them."""
+    from scipy.sparse import coo_matrix
+    n = len(V)
+    e = np.concatenate([F[:, [0, 1]], F[:, [1, 2]], F[:, [2, 0]]])
+    es = np.sort(e, axis=1)
+    ue, cnt = np.unique(es, axis=0, return_counts=True)
+    bnd = np.zeros(n, bool)
+    bnd[ue[cnt == 1].ravel()] = True
+    A = coo_matrix((np.ones(len(ue) * 2), (np.r_[ue[:, 0], ue[:, 1]], np.r_[ue[:, 1], ue[:, 0]])),
+                   shape=(n, n)).tocsr()
+    deg = np.asarray(A.sum(axis=1)).ravel()
+    V = V.copy()
+    for _ in range(iters):
+        for f in (lam, -0.53):
+            L = A @ V / np.maximum(deg, 1)[:, None] - V
+            V[~bnd] += f * L[~bnd]
+    return V
 
 
 def vertex_normals(V, F):
@@ -373,7 +365,7 @@ LAPEL_L = [(371, 249), (362, 232), (355, 217), (347.5, 203.5), (370, 191.5),
            (377, 198), (388, 194.5), (394, 206), (392, 221), (383, 236)]
 LAPEL_L_FOLD = 4           # number of fold-edge points at the start
 LAPEL_R = [(289.5, 241.5), (294, 225), (304, 210.5), (316, 198.5), (322, 191.5),
-           (305, 186), (298, 192.5), (287, 190), (281, 203), (281, 218), (284, 232)]
+           (311, 188), (306, 193.5), (298, 191.5), (293, 201), (290.5, 214), (290.5, 229)]
 LAPEL_R_FOLD = 5
 
 
@@ -417,7 +409,7 @@ def dist_to_polyline(x, y, line):
     return d
 
 
-def px_sheet(g, poly, level, step=0.5, pad=2.0):
+def px_sheet(g, poly, level, step=0.8, pad=2.0):
     """Sheet over a polygon traced on the reference, laid on the iso-surface
     `level` of grid g (as seen by the reference camera).  Returns (V, F,
     xy) clipped exactly along the polygon."""
@@ -431,6 +423,8 @@ def px_sheet(g, poly, level, step=0.5, pad=2.0):
     P, ok = ray_hits(g, xy, level)
     F = grid_tris(len(xs), len(ys))
     F = F[ok[F].all(axis=1)]
+    e = np.max([np.linalg.norm(P[F[:, i]] - P[F[:, (i + 1) % 3]], axis=1) for i in range(3)], axis=0)
+    F = F[e < 0.012]
     sd = polygon_sd(xy[:, 0], xy[:, 1], poly)
     # clip in pixel space, carrying the 3D positions along
     V5 = np.concatenate([P, xy], axis=1)
@@ -516,8 +510,8 @@ def collar():
     nb, nt = J['neck_base'], J['neck_top']
     ax = (nt - nb) / np.linalg.norm(nt - nb)
     c0 = nb + np.array([0.0, 0.006, 0.0])
-    th = np.radians(np.linspace(-180, 180, 241))
-    zs = np.linspace(1.355, 1.49, 55)
+    th = np.radians(np.linspace(-180, 180, 145))
+    zs = np.linspace(1.355, 1.49, 34)
     T, Z = np.meshgrid(th, zs, indexing='ij')
     R = 0.0535 + np.maximum(Z - 1.40, 0) * 0.10
     t = (Z - c0[2]) / ax[2]
@@ -601,9 +595,9 @@ def jacket_normal(g, p, eps=0.0015):
 
 # ------------------------------------------------------------ skirt
 
-SK_NU, SK_NV = 220, 80
+SK_NU, SK_NV = 200, 76
 SK_T = 0.0038
-TOP_R = (-62.0, 52.0)      # belt-line angles of the front edges (her R, L)
+TOP_R = (-80.0, 52.0)      # belt-line angles of the front edges (her R, L)
 VENT_U = 0.5               # centre back vent (theta ~ 177 deg)
 
 # hem knots over u (0 = her right front edge, 0.5 = vent, 1 = her left
@@ -658,10 +652,12 @@ def skirt_params():
     v = np.linspace(0, 1, SK_NV)
     # top (belt line)
     th_t = TOP_R[0] - u * (360.0 - (TOP_R[1] - TOP_R[0]))
-    rb = np.max([body_extent(th_t, z) for z in (0.95, 0.99, 1.02, 1.05)], axis=0)
-    r_t = rb + 0.017
-    x_t, _ = pelvis_xy(th_t, r_t)
     from outfit import belt_z
+    x0, _ = pelvis_xy(th_t, 0.13)
+    z_t = belt_z(x0) + 0.006
+    rb = np.array([body_extent(t, z - 0.015)[0] for t, z in zip(th_t, z_t)])
+    r_t = rb + 0.016                  # snug at the belt, push_out clears the hips
+    x_t, _ = pelvis_xy(th_t, r_t)
     z_t = belt_z(x_t) + 0.006
     th_h, r_h, z_h = interp_u(u, 1), interp_u(u, 2), interp_u(u, 3)
     U, Vv = np.meshgrid(u, v, indexing='ij')
@@ -729,7 +725,7 @@ def push_out(P, iters=6):
 
 def vent_half(Vv, Z):
     """Half width of the centre back vent in u units."""
-    w = 0.016 + 0.040 * sstep(0.83 - Z, 0.0, 0.26)
+    w = 0.018 + 0.074 * sstep(0.835 - Z, 0.0, 0.21)
     return np.where(Z < 0.835, w, -1.0)
 
 
@@ -759,19 +755,14 @@ def skirt():
     V5, F5 = clip_vec(np.concatenate([V, UV], 1), F, s)
     V, UV = V5[:, :3], V5[:, 3:]
     F5 = orient_outward(V, F5, lambda Q: np.stack([np.full(len(Q), PCX), np.full(len(Q), PCY), Q[:, 2]], 1))
-    # black back graphic: chevron (black V with a white line in it) and
-    # trims along the vent edges down to the hem
+    # black back graphic (chevron with a white line in it, trims along the
+    # vent): a thin appliqué layer laid over the white cloth
     g = back_graphic(UV[:, 0], UV[:, 1], V[:, 2])
-    V5, F5, black = split_vec(np.concatenate([V, UV], 1), F5, g)
-    V = V5[:, :3]
-
-    def sub(mask, mat):
-        F = F5[mask]
-        used = np.unique(F)
-        rm = np.full(len(V), -1)
-        rm[used] = np.arange(len(used))
-        return cloth(V[used], rm[F], [mat] * len(F), SK_T)
-    return {'CoatSkirt': sub(~black, 'coat'), 'CoatSkirtBlack': sub(black, 'black')}
+    n = vertex_normals(V, F5)
+    Vb, Fb = clip_mesh(V + n * (SK_T / 2 + 0.0009), F5, g)
+    return {'CoatSkirt': cloth(V, F5, ['coat'] * len(F5), SK_T),
+            'CoatSkirtBlack': cloth(Vb, Fb, ['black'] * len(Fb), 0.0012, shell='black',
+                                    outline_w=0.5)}
 
 
 def back_graphic(U, Vv, Z):
@@ -782,8 +773,8 @@ def back_graphic(U, Vv, Z):
     def arm(off, half):
         line_v = 0.50 - (du - 0.06) * (0.20 / 0.20) + off
         return np.abs(Vv - line_v) - half
-    band = arm(0.0, 0.040)
-    white = arm(0.0, 0.010)
+    band = arm(0.0, 0.048)
+    white = arm(0.0, 0.011)
     chev = np.maximum(band, -white)
     chev = np.maximum(chev, du - 0.27)
     chev = np.maximum(chev, 0.03 - du)
@@ -808,8 +799,7 @@ def tail():
     edge = edge[edge[:, 2] < 1.075]
     end = edge[-1]
     tip = unproject(TAIL_TIP_PX[0], TAIL_TIP_PX[1], end[1] - 0.01)
-    mid = end + (tip - end) * 0.5 + np.array([0.012, 0.0, 0.004])
-    pts = np.concatenate([edge[::4], [end, mid, tip]])
+    pts = np.concatenate([edge[:-1:4], [end, tip]])
     path, tan = catmull(pts, 90)
     s = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(path, axis=0), axis=1))])
     s_end = s[np.argmin(np.linalg.norm(path - end, axis=1))]
@@ -824,8 +814,7 @@ def tail():
     # blade: taper beyond the panel, the outer edge curving into the point
     q = np.clip((s - s_end) / (s[-1] - s_end), 0, 1)
     w = w * np.sqrt(np.clip(1 - q, 0, 1)) * (1 - 0.25 * q)
-    inner = path - side * 0.004 + np.array([0, -0.006, 0])
-    inner = inner + side * (0.006 * q)[:, None] * np.sin(np.pi * q)[:, None]
+    inner = path - side * (0.004 + 0.45 * w * (1 - q))[:, None] + np.array([0, -0.006, 0])
     nw = 7
     k = np.linspace(0, 1, nw)
     V = inner[:, None, :] + side[:, None, :] * (w[:, None] * k[None, :])[..., None]
@@ -869,6 +858,14 @@ def radial(p):
     return d / np.linalg.norm(d)
 
 
+def strap_along(u, z0, z1, off, width, thick, n=14):
+    """Strap lying on the skirt surface from z0 down to z1 at parameter u."""
+    path = np.array([surf_at(u, z, off) for z in np.linspace(z0, z1, n)])
+    up = np.array([radial(p) for p in path])
+    prof = HS.rounded_rect(width, thick, thick * 0.45, seg=2)
+    return HS.sweep(prof, path, up)
+
+
 def strap_between(a, b, width, thick, sag=0.0, n=24):
     mid = (a + b) / 2 + np.array([0, 0, -sag])
     path, _ = catmull([a, mid, b], n)
@@ -881,23 +878,16 @@ def straps():
     """Red X lattice across the vent (inside the back panel) and red tags
     on her right near the belt."""
     items = []
-    off = -0.007                       # just inside the lining
-    A = (surf_at(0.405, 0.785, off), surf_at(0.615, 0.640, off))
-    Bb = (surf_at(0.640, 0.775, off), surf_at(0.395, 0.650, off))
+    off = -0.009                       # just inside the lining
+    A = (surf_at(0.400, 0.800, off), surf_at(0.625, 0.625, off))
+    Bb = (surf_at(0.650, 0.790, off), surf_at(0.385, 0.635, off))
     for a, b in (A, Bb):
-        items.append(strap_between(a, b, 0.026, 0.0032, sag=0.006))
-    # small loop pieces where the straps are sewn to the panels
-    for p in (A[0], A[1], Bb[0], Bb[1]):
-        n = radial(p)
-        R = HS.frame_from(z=-n, x=np.cross([0, 0, 1.0], -n))
-        items.append(HS.prism(HS.rounded_rect(0.032, 0.014, 0.003), 0.004, p, R))
+        items.append(strap_between(a, b, 0.032, 0.0034, sag=0.006))
     out = {'CoatStraps': HS.hard_mesh(items, 'red_dark', bevel=0.0005, angle=35,
                                       outline_w=0.7)}
     tags = []
     for u, z, h in ((0.30, 1.005, 0.050), (0.335, 1.000, 0.040)):
-        top = surf_at(u, z, 0.004)
-        bot = surf_at(u, z - h, 0.004)
-        tags.append(strap_between(top, bot, 0.022, 0.003, n=8))
+        tags.append(strap_along(u, z, z - h, 0.0045, 0.022, 0.003, n=6))
     out['CoatTags'] = HS.hard_mesh(tags, 'red', bevel=0.0005, angle=35, outline_w=0.6)
     return out
 
@@ -905,31 +895,19 @@ def straps():
 def harness():
     """Black harness block on the back of the belt with a ladder of short
     vertical straps hanging below it."""
-    items = []
     from outfit import belt_z
-    zc = belt_z(PCX) - 0.012
-    # block: a curved plate following the skirt, 11 cm wide, 4.4 cm tall
-    us = np.linspace(0.5 - 0.075, 0.5 + 0.075, 13)
-    rows = [np.array([surf_at(u, z, 0.0045) for u in us]) for z in (zc - 0.022, zc + 0.022)]
-    path = (rows[0] + rows[1]) / 2
-    up = np.array([radial(p) for p in path])
-    prof = HS.chamfer_rect(0.044, 0.007, 0.002)
-    prof = np.stack([prof[:, 1], prof[:, 0]], 1)      # tall side along z
-    V, F = HS.sweep(np.array([[p[0], p[1]] for p in prof]), path, up)
-    # sweep's local x is side (along the path), y is up: rebuild properly
-    blk = []
-    for p0, p1 in zip(path[:-1], path[1:]):
-        pass
-    t = path[-1] - path[0]
-    items.append(_curved_plate(path, up, 0.044, 0.0065))
-    # ladder: 4 straps
-    for u in (0.5 - 0.045, 0.5 - 0.015, 0.5 + 0.015, 0.5 + 0.045):
-        top = surf_at(u, zc - 0.015, 0.006)
-        bot = surf_at(u, zc - 0.135, 0.006)
-        items.append(strap_between(top, bot, 0.013, 0.003, n=10))
-        # metal-less keeper bar at the bottom of each strap
-    bar = [surf_at(u, zc - 0.10, 0.0085) for u in np.linspace(0.5 - 0.06, 0.5 + 0.06, 9)]
-    items.append(_curved_plate(np.array(bar), np.array([radial(p) for p in bar]), 0.010, 0.003))
+    zc = belt_z(PCX) - 0.010
+    items = []
+    # block: plate following the skirt, 15 cm wide, 4.4 cm tall
+    us = np.linspace(0.5 - 0.115, 0.5 + 0.115, 19)
+    path = np.array([surf_at(u, zc, 0.0075) for u in us])
+    items.append(_curved_plate(path, np.array([radial(p) for p in path]), 0.044, 0.007))
+    # ladder: 4 short straps
+    for u in (0.5 - 0.078, 0.5 - 0.026, 0.5 + 0.026, 0.5 + 0.078):
+        items.append(strap_along(u, zc - 0.012, zc - 0.150, 0.0055, 0.016, 0.003))
+    # cross bar holding the ladder
+    bar = np.array([surf_at(u, zc - 0.100, 0.0085) for u in np.linspace(0.5 - 0.095, 0.5 + 0.095, 15)])
+    items.append(_curved_plate(bar, np.array([radial(p) for p in bar]), 0.011, 0.003))
     return {'CoatHarness': HS.hard_mesh(items, 'black', bevel=0.0006, angle=35,
                                         outline_w=0.7)}
 
