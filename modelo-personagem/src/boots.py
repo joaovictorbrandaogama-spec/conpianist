@@ -154,7 +154,7 @@ class Boot:
         self.ztop = Z_TOP[s]
         # the reference draws the left foot a little further out than the rig's
         # ankle: slide the foot (not the shaft) outwards
-        self.foot_dx = -0.004 if s == 'R' else 0.008
+        self.foot_dx = -0.004 if s == 'R' else 0.014
         self.leg = Bd.leg(s)
         # clearance of the shaft over the skin (the left leg wears the armour)
         self.clr = 0.0045 if s == 'R' else 0.0085
@@ -776,14 +776,15 @@ def details(b):
     out['BootWraps'] = wr
     # --- white inverted-U panel on the shin and the black tongue strip
     zt0, zt1, zb = 0.1885, 0.1745, 0.112
-    U = [(-0.0255, vz(zt0)), (0.0255, vz(zt0)), (0.0270, vz(zt1)), (0.0330, vz(zb)),
-         (0.0115, vz(zb)), (0.0100, vz(zt1)), (-0.0100, vz(zt1)), (-0.0115, vz(zb)),
-         (-0.0330, vz(zb)), (-0.0270, vz(zt1))]
+    U = [(-0.0330, vz(zt0)), (0.0330, vz(zt0)), (0.0345, vz(zt1)), (0.0400, vz(zb)),
+         (0.0130, vz(zb)), (0.0120, vz(zt1)), (-0.0120, vz(zt1)), (-0.0130, vz(zb)),
+         (-0.0400, vz(zb)), (-0.0345, vz(zt1))]
     out['BootPanel'] = [patch(b, U, 0.0002, 0.0014, h=0.0018)]
     vt = vz(0.1855)
-    strip = [(0.0068, vz(0.105)), (0.0068, vt + 0.0068)] + \
-        [tuple(p) for p in arc_poly(0.0, vt + 0.0068, 0.0068, 0, -180, 12)[1:-1]] + \
-        [(-0.0068, vt + 0.0068), (-0.0068, vz(0.105))]
+    rs = 0.0080
+    strip = [(rs, vz(0.105)), (rs, vt + rs)] + \
+        [tuple(p) for p in arc_poly(0.0, vt + rs, rs, 0, -180, 12)[1:-1]] + \
+        [(-rs, vt + rs), (-rs, vz(0.105))]
     out['BootTongue'] = [patch(b, strip, 0.0002, 0.0026)]
     # tiny dark print on the top bar of the U
     vq = vz(0.1835)
@@ -833,11 +834,18 @@ def details(b):
     cap = [(-0.095, vc0 + 0.010), (-0.030, vc0 + 0.001), (0.0, vc0), (0.030, vc0 + 0.001),
            (0.095, vc0 + 0.010), (0.095, vend), (-0.095, vend)]
     out['BootToe'] = [patch(b, cap, 0.0002, 0.0018, h=0.0030)]
-    trim = [(-0.036, vc0 + 0.0052), (-0.018, vc0 + 0.0034), (0.0, vc0 + 0.0030),
-            (0.018, vc0 + 0.0034), (0.036, vc0 + 0.0052), (0.036, vc0 + 0.0084),
-            (0.018, vc0 + 0.0066), (0.0, vc0 + 0.0062), (-0.018, vc0 + 0.0066),
-            (-0.036, vc0 + 0.0084)]
-    out['BootToeTrim'] = [patch(b, trim, 0.0019, 0.0004, h=0.0010)]
+    # light grey bracket-shaped trim along the top edge of the toe cap
+    tr = [(-0.050, 0.0150), (-0.040, 0.0062), (-0.020, 0.0034), (0.0, 0.0030),
+          (0.020, 0.0034), (0.040, 0.0062), (0.050, 0.0150)]
+    top = [(a, vc0 + d) for a, d in tr]
+    bot = [(a + (0.004 if a < 0 else -0.004 if a > 0 else 0.0), vc0 + d + 0.0036)
+           for a, d in tr[::-1]]
+    out['BootToeTrim'] = [patch(b, top + bot, 0.0019, 0.0004, h=0.0010)]
+    # perforations on the vamp between the instep strap and the toe cap
+    vh = 0.5 * (vB1 + vc0 + 0.003)
+    out['BootHoles'] = [patch(b, arc_poly(ax, vh + 0.0008 * abs(ax) / 0.012, 0.0011, 0, 360, 9)[:-1],
+                              0.0002, 0.0003, h=0.0006)
+                        for ax in (-0.018, -0.006, 0.006, 0.018)]
     return out
 
 
@@ -845,7 +853,7 @@ MATS = {'BootCollar': 'leather', 'BootRed': 'red', 'BootPlate': 'chrome',
         'BootPlateText': 'gunmetal', 'BootWraps': 'black', 'BootPanel': 'white',
         'BootTongue': 'black', 'BootPrint': 'gunmetal', 'BootAnkleStrap': 'black',
         'BootInstep': 'black', 'BootPrintW': 'decal_white', 'BootToe': 'black',
-        'BootToeTrim': 'boots_rubber'}
+        'BootToeTrim': 'boots_rubber', 'BootHoles': 'rubber'}
 
 
 def build_side(s):
@@ -856,9 +864,9 @@ def build_side(s):
                                         outline_w=0.8)
     sp, P = sole_parts(b, V, F)
     out['SoleBase' + s] = HS.hard_mesh(sp['SoleBase'], 'boots_rubber', bevel=0.0006, angle=35)
-    out['Sole' + s] = solid([sp['Sole'], sp['SoleWrap']], 'sole', bevel=0.0006, angle=35)
+    out['Sole' + s] = solid([sp['Sole'], sp['SoleWrap']], 'boots_sole', bevel=0.0006, angle=35)
     for name, parts in details(b).items():
-        small = name in ('BootPlateText', 'BootPrint', 'BootPrintW')
+        small = name in ('BootPlateText', 'BootPrint', 'BootPrintW', 'BootHoles')
         out[name + s] = solid(parts, MATS[name], bevel=0.0 if small else 0.0004, angle=35,
                               outline=not small, outline_w=0.5)
     return out, b

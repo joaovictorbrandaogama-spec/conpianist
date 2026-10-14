@@ -320,8 +320,8 @@ def collar():
         mats += M
     # label plate across the front of the third segment
     za, zb = SEG_Z[2]
-    hw = 0.0175 / 0.036
-    ph = np.linspace(FRONT - hw, FRONT + hw, 13)
+    hw = 0.0215 / 0.036
+    ph = np.linspace(FRONT - hw, FRONT + hw, 15)
     d = COL_T + COL_LIP + 0.0012
     prof = [(d - 0.0008, za + 0.0006, 'acc_matte'), (d, za + 0.0014, 'acc_matte'),
             (d, zb - 0.0014, 'acc_edge'), (d - 0.0008, zb - 0.0006, 'acc_matte'),
@@ -330,11 +330,22 @@ def collar():
     parts.append((V, F))
     mats += M
     Vc, Fc = merge_vf(parts)
+    # small round bolts near the bottom of the posts
+    bolts = []
+    for sgn in (-1, 1):
+        pc = FRONT + sgn * np.radians(40.0)
+        zb_ = 0.5 * (SEG_Z[0][0] + SEG_Z[0][1]) + 0.0010
+        cx, cy = neck_centre(zb_)
+        r0 = rb(pc, zb_) + COL_T + COL_LIP + 0.0012
+        nn = np.array([np.cos(pc), np.sin(pc), 0.0])
+        org = np.array([cx, cy, zb_]) + nn * (r0 - 0.0003)
+        bolts.append(rivet(0.0017, 0.0012, 12, origin=org, R=frame_from(x=np.array([0, 0, 1.0]), z=nn)))
+    out['AccCollarBolts'] = hard_mesh(bolts, 'metal', bevel=0.0002, angle=35, outline_w=0.35)
     out['AccCollar'] = hard_mesh((Vc, Fc), 'acc_matte', bevel=0.0005, angle=35, outline_w=0.8)
     out['AccCollar'].mats = mats
 
     # red stripe down the front centre (over the plates, under the label)
-    hw = 0.0032 / 0.036
+    hw = 0.0046 / 0.036
     ph = np.linspace(FRONT - hw, FRONT + hw, 3)
     pts = []
     for k in range(len(SEG_Z)):
@@ -349,7 +360,7 @@ def collar():
     bars = []
     zc = 0.5 * (za + zb)
     rr = rb(FRONT, zc) + d
-    for row, (z0, h, length) in enumerate(((zc + 0.0002, 0.0017, 0.024), (zc - 0.0024, 0.0012, 0.016))):
+    for row, (z0, h, length) in enumerate(((zc + 0.0002, 0.0017, 0.030), (zc - 0.0024, 0.0012, 0.020))):
         u = -length / 2
         while u < length / 2:
             ln = rng.uniform(0.0008, 0.0026) if row == 0 else rng.uniform(0.0006, 0.0018)
@@ -374,33 +385,64 @@ def collar():
 
 # ====================================================================== goggles
 
-LENS_W, LENS_H, LENS_R = 0.030, 0.020, 0.0070
-FRAME_W = 0.0050
+LENS_W, LENS_H, LENS_R = 0.034, 0.021, 0.0075
+FRAME_W = 0.0055
+
+
+def domed_lens(w, h, r, t, dome, seg=4, rings=5):
+    """Rounded-rectangle lens, flat back at z=0, front domed up to t + dome
+    (a curved glossy surface gives a small specular spot instead of a flat
+    sheet that lights up all at once)."""
+    base = rounded_rect(w, h, r, seg)
+    n = len(base)
+    V = [np.c_[base, np.zeros(n)], np.c_[base, np.full(n, t)]]
+    for k in range(1, rings):
+        f = 1.0 - k / rings
+        z = t + dome * (1.0 - f ** 2)
+        V.append(np.c_[base * f, np.full(n, z)])
+    V.append(np.array([[0.0, 0.0, t + dome]]))
+    V = np.concatenate(V)
+    F = [list(range(n))[::-1]]
+    for i in range(n):                     # side wall
+        j = (i + 1) % n
+        F.append([i, j, n + j, n + i])
+    for k in range(1, rings):              # dome rings
+        a0, a1 = k * n, (k + 1) * n
+        for i in range(n):
+            j = (i + 1) % n
+            F.append([a0 + i, a0 + j, a1 + j, a1 + i])
+    c = len(V) - 1
+    a0 = rings * n
+    for i in range(n):
+        F.append([a0 + i, a0 + (i + 1) % n, c])
+    return V, F
 
 
 def lens_frame_parts(sgn):
     """One goggle eye-piece in its local frame (z = lens normal, x towards
-    the outer side for sgn=+1 ... mirrored by the caller)."""
+    her left; sgn = -1 for the piece on her right)."""
     seg = 4
     inner = rounded_rect(LENS_W, LENS_H, LENS_R, seg)
     cup_o = rounded_rect(LENS_W + 2 * FRAME_W + 0.0016, LENS_H + 2 * FRAME_W + 0.0016,
                          LENS_R + FRAME_W + 0.0008, seg)
     bez_o = rounded_rect(LENS_W + 2 * FRAME_W, LENS_H + 2 * FRAME_W, LENS_R + FRAME_W, seg)
     bez_i = rounded_rect(LENS_W + 0.0012, LENS_H + 0.0012, LENS_R + 0.0006, seg)
-    rubber = [frame_prism(cup_o, inner, 0.0060, origin=(0, 0, -0.0042)),     # back cup
-              frame_prism(bez_o, bez_i, 0.0030, origin=(0, 0, 0.0021))]      # front bezel
+    rubber = [frame_prism(cup_o, inner, 0.0062, origin=(0, 0, -0.0044)),     # back cup
+              frame_prism(bez_o, bez_i, 0.0034, origin=(0, 0, 0.0021))]      # front bezel
     # strap lug on the outer side
     lx = sgn * (LENS_W / 2 + FRAME_W + 0.0035)
     lug = chamfer_rect(0.0085, 0.0125, 0.002)
     rubber.append(prism(lug + np.array([lx, 0.0]), 0.0052, z0=-0.0068))
-    lens = [prism(rounded_rect(LENS_W - 0.0004, LENS_H - 0.0004, LENS_R - 0.0002, seg), 0.0026,
-                  z0=-0.0018)]
-    # highlight streaks: a fat diagonal and a thin one
+    lens = [domed_lens(LENS_W + 0.0006, LENS_H + 0.0006, LENS_R + 0.0003, 0.0016, 0.0016)]
+    lens = [(lens[0][0] + np.array([0.0, 0.0, -0.0022]), lens[0][1])]
+    # highlight: one slanted streak and a small dot, upper inner corner
     shine = []
-    for (cx, w, h, sl) in ((-0.0055, 0.0050, 0.0150, 0.0060), (0.0010, 0.0016, 0.0120, 0.0050)):
-        poly = [(cx - w / 2 - sl / 2, -h / 2), (cx + w / 2 - sl / 2, -h / 2),
-                (cx + w / 2 + sl / 2, h / 2), (cx - w / 2 + sl / 2, h / 2)]
-        shine.append(prism(np.array(poly) * [sgn, 1], 0.0003, z0=0.0008))
+    cx0 = -sgn * 0.0060
+    for (cx, cy, w, h, sl) in ((cx0, 0.0010, 0.0030, 0.0110, 0.0045),
+                               (cx0 + 0.0048, 0.0030, 0.0012, 0.0060, 0.0025)):
+        poly = [(cx - w / 2 - sl / 2, cy - h / 2), (cx + w / 2 - sl / 2, cy - h / 2),
+                (cx + w / 2 + sl / 2, cy + h / 2), (cx - w / 2 + sl / 2, cy + h / 2)]
+        shine.append(prism(np.array(poly), 0.0003, z0=0.0002))
     metal = [rivet(0.0016, 0.0012, 10, origin=(lx, 0.0, -0.0016))]
     return rubber, lens, shine, metal
 
@@ -431,13 +473,24 @@ def goggles(collar_front_y):
         met += [(place(v, c, Ri), f) for v, f in m]
         lugs.append(place(np.array([[sgn * (LENS_W / 2 + FRAME_W + 0.0060), 0.0, -0.0042]]),
                           c, Ri)[0])
-    # rubber nose bridge between the two cups
-    rub.append(box((2 * half - LENS_W - 2 * FRAME_W + 0.006, 0.0080, 0.0050),
-                   origin=M + y_g * 0.0045 - n_g * 0.0030, R=Rg))
-    # silver triangular bridge clasp pointing down
-    tri = [(-0.0075, 0.0085), (0.0075, 0.0085), (0.0, -0.0050)]
-    met.append(prism(tri, 0.0018, origin=M + y_g * 0.0020 - n_g * 0.0002, R=Rg))
-    met.append(rivet(0.0012, 0.0010, 10, origin=M + y_g * 0.0055 + n_g * 0.0016, R=Rg))
+    # rubber nose piece: a U hanging between the cups, plus a top bar
+    gap = 2 * half - LENS_W - 2 * FRAME_W           # clear gap between bezels
+    xi = gap / 2 + 0.0030                           # reach into the bezels
+    yb = -(LENS_H / 2 + FRAME_W) + 0.0010
+    path2 = [(-xi, 0.0040), (-gap / 2 + 0.0005, -0.0030), (-0.0040, yb + 0.0015),
+             (0.0, yb), (0.0040, yb + 0.0015), (gap / 2 - 0.0005, -0.0030), (xi, 0.0040)]
+    P2, _ = catmull(np.array([(x, y, 0.0) for x, y in path2]), 40)
+    from hardsurf import sweep
+    Vn, Fn = sweep(chamfer_rect(0.0050, 0.0050, 0.0008), P2, np.array([0.0, 0.0, 1.0]))
+    dz = 0.0035                                     # cups wrap forward at the inner side
+    rub.append((place(Vn + np.array([0.0, 0.0, dz - 0.0003]), M, Rg), Fn))
+    ytop = LENS_H / 2 + FRAME_W - 0.0030
+    rub.append(box((gap + 0.0050, 0.0050, 0.0042), origin=M + y_g * ytop + n_g * (dz - 0.0004), R=Rg))
+    # silver triangular bridge clasp on the top bar, pointing down
+    tri = [(-0.0078, ytop + 0.0034), (0.0078, ytop + 0.0034), (0.0, ytop - 0.0085)]
+    met.append(tapered_prism(tri, 0.0020, 0.80, z0=dz + 0.0016))
+    met[-1] = (place(met[-1][0], M, Rg), met[-1][1])
+    met.append(rivet(0.0011, 0.0009, 10, origin=M + y_g * (ytop + 0.0005) + n_g * (dz + 0.0034), R=Rg))
     out['AccGoggles'] = hard_mesh(rub, 'acc_matte', bevel=0.0005, angle=35, outline_w=0.7)
     out['AccGogglesLens'] = hard_mesh(lns, 'lens', bevel=0.0004, angle=35, outline_w=0.4)
     out['AccGogglesShine'] = hard_mesh(shn, 'white', bevel=0.0, outline=False)
@@ -467,7 +520,6 @@ def goggles(collar_front_y):
     ctrl = [lugs[0]] + pts + [lugs[1]]
     P, T = catmull(np.array(ctrl), 90)
     up = np.tile(np.array([0.0, 0.0, 1.0]), (len(P), 1))
-    from hardsurf import sweep
     V, F = sweep(rounded_rect(0.0018, 0.0090, 0.0006, seg=1), P, up)
     out['AccGogglesStrap'] = hard_mesh((V, F), 'acc_matte', bevel=0.0003, angle=40,
                                        outline_w=0.5)
@@ -599,38 +651,48 @@ def _dir_sign(st, fn, zfun_or_s, level, th_c, torso=False, loft=None):
     return 1.0 if np.dot(R[:, 0], P[1] - P[0]) > 0 else -1.0
 
 
+THIGH_TH = np.radians(36.0)
+
+
 def thigh_buckles():
+    """Big chrome buckles on the two left-thigh straps.  The frame is rigid
+    (flat, placed on the tangent plane at the strap); the tail and keeper are
+    bent onto the strap so they follow the thigh."""
     fn = G.body_subset(['gluteL', 'legL'])
-    th_c = np.radians(48.0)
-    metal, tails, upper = [], [], []
+    th_c = THIGH_TH
+    metal, tails, dark = [], [], []
+    Lx, Wy, bar, dep = 0.030, 0.040, 0.0056, 0.0052
     for sc in O.STRAP_S:
         lv0 = O.strap_level(sc)
         lev = lambda T, Sv, lv0=lv0: lv0(T, Sv) + O.STRAP_T
         st = limb_strip(O.LEG_L, fn, sc, lev, th_c)
-        sx = _dir_sign(st, fn, sc, lev, th_c, loft=O.LEG_L)
+        sx = _dir_sign(st, fn, sc, lev, th_c, loft=O.LEG_L)     # +x*sx = outwards
+        C, R = st.frame(0.0)
         tail_t = 0.0022
-        # big chrome frame + centre bar; prong over the tail
-        m = buckle_parts(0.023, 0.038, 0.0040, 0.0046, -0.0012, prong=False, rnd=0.0030)
-        x1 = -sx * (0.023 / 2 - 0.0010)
-        poly = [(0.0, -0.0014), (x1 + sx * 0.003, -0.0014), (x1, 0.0), (x1 + sx * 0.003, 0.0014),
-                (0.0, 0.0014)]
-        m.append(prism(poly, 0.0014, z0=tail_t - 0.0001))
-        # strap tail: from under the centre bar towards the front, round end
-        L = 0.040
-        V, F = strap_mesh(L, O.STRAP_W - 0.004, tail_t, end='round', tip=0.008, du=0.004)
-        if sx < 0:
-            pass
-        V[:, 0] = -sx * V[:, 0] + sx * 0.003
-        # mirroring x flips the orientation; normals are recalculated anyway
-        tails.append((V, F))
-        # eyelets (holes) along the tail
+        # rigid frame + centre bar, prong lying on the tail pointing outwards
+        m = buckle_parts(Lx, Wy, bar, dep, -0.0013, prong=False, rnd=0.0032)
+        x1 = sx * (Lx / 2 - 0.0012)
+        poly = [(0.0, -0.0015), (x1 - sx * 0.0035, -0.0015), (x1, 0.0),
+                (x1 - sx * 0.0035, 0.0015), (0.0, 0.0015)]
+        m.append(prism(poly, 0.0015, z0=tail_t))
+        metal += [(place(v, C, R), f) for v, f in m]
+        # strap tail: from under the centre bar outwards, round end, eyelets
+        L = 0.046
+        V, F = strap_mesh(L, O.STRAP_W - 0.003, tail_t, end='round', tip=0.010, du=0.004)
+        V[:, 0] = sx * (V[:, 0] - 0.002)
+        V[:, 2] -= 0.0002
+        tails.append((st(V), F))
+        ey = []
         for k in range(3):
-            u = -sx * (0.020 + 0.0075 * k)
-            m.append(rivet(0.0013, 0.0007, 10, origin=(u, 0.0, tail_t - 0.0001)))
-        metal += st.bend(m)
-        tails[-1] = (st(tails[-1][0]), tails[-1][1])
+            u = sx * (Lx / 2 + 0.0105 + 0.0075 * k)
+            ey.append(rivet(0.0014, 0.0007, 10, origin=(u, 0.0, tail_t - 0.0002)))
+        metal += st.bend(ey)
+        # leather keeper loop just past the buckle
+        kx = sx * (Lx / 2 + 0.0042)
+        dark += st.bend([box((0.0055, O.STRAP_W + 0.0024, 0.0016),
+                             origin=(kx, 0.0, tail_t + 0.0006))])
     return {'AccThighBuckles': hard_mesh(metal, 'chrome', bevel=0.0005, angle=35, outline_w=0.7),
-            'AccThighStrapTails': hard_mesh(tails, 'acc_matte', bevel=0.0004, angle=40,
+            'AccThighStrapTails': hard_mesh(tails + dark, 'acc_matte', bevel=0.0004, angle=40,
                                             outline_w=0.6)}
 
 
@@ -714,9 +776,9 @@ def hang_path(x0, x1, ztop, zend, ymin, n=48):
 
 
 STRAPS = [  # x top, x bottom, z top, z end, width, y min
-    (-0.004, 0.000, 1.000, 0.585, 0.022, 0.095),
-    (0.013, 0.016, 0.995, 0.640, 0.016, 0.101),
-    (0.190, 0.205, 0.975, 0.590, 0.020, 0.060),
+    (-0.014, -0.012, 1.000, 0.585, 0.022, 0.095),
+    (0.003, 0.004, 0.995, 0.640, 0.016, 0.101),
+    (0.205, 0.222, 0.975, 0.590, 0.020, 0.060),
     (0.165, 0.150, 0.985, 0.640, 0.016, 0.080),
 ]
 
@@ -730,20 +792,15 @@ def hanging_straps():
         sx = 1.0 if np.dot(st.T[0], P[1] - P[0]) * (1 if st.u0 == 0 else -1) > 0 else -1.0
         L = float(st.L[-1])
         down = 1.0 if st.u0 < 1e-9 else -1.0
-        V, F = strap_mesh(L, w, 0.0022, end='point', tip=0.012, du=0.010)
+        V, F = strap_mesh(L, w, 0.0024, end='flat', du=0.010)
         V[:, 0] *= down
         black.append((st(V), F))
-        for u in (L - 0.030, L - 0.045, 0.06):
-            metal += st.bend([rivet(0.0016, 0.0009, 10, origin=(down * u, 0.0, 0.0021))])
-        # chrome end tip
-        tip = [(L - 0.022, -w / 2 - 0.0006), (L - 0.012, -w / 2 - 0.0006), (L + 0.0008, 0.0),
-               (L - 0.012, w / 2 + 0.0006), (L - 0.022, w / 2 + 0.0006)]
-        tv, tf = prism(np.array(tip) * [down, 1], 0.0034, z0=-0.0006)
-        metal.append((st(tv), tf))
+        # stitched end: a thin grey seam line a little above the cut
+        sv, sf = box((0.0010, w - 0.004, 0.0004), origin=(down * (L - 0.012), 0.0, 0.0025))
+        metal.append((st(sv), sf))
     return {'AccHangingStraps': hard_mesh(black, 'acc_matte', bevel=0.0004, angle=40,
                                           outline_w=0.7),
-            'AccHangingStrapsMetal': hard_mesh(metal, 'chrome', bevel=0.0003, angle=35,
-                                               outline_w=0.4)}
+            'AccHangingStrapsSeam': hard_mesh(metal, 'acc_edge', bevel=0.0, outline=False)}
 
 
 # ====================================================================== hip pouch

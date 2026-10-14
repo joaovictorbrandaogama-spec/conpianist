@@ -15,6 +15,8 @@ EXTRA['swords_red'] = ('#BC2C27', '#7C1614', '#3A0606', dict(thr=0.40, spec=0.35
                                                             spec_col='#FF9A90'))
 
 # boots: light grey rubber band of the sneaker sole (reference ~#ADA8A9)
+# boots: whitish-lavender midsole / toe and heel wrap (reference ~#E2E0E8, shade ~#BDB9C6)
+EXTRA['boots_sole'] = ('#E6E4EC', '#BCB9C6', '#55525E', dict(thr=0.40, spec=0.1, gloss=0.4))
 EXTRA['boots_rubber'] = ('#AEABB2', '#7E7B85', '#3C3A42', dict(thr=0.40, spec=0.15, gloss=0.4))
 
 # accessories: matte black hard plastic / rubber (tech collar, goggle frame, straps)
@@ -24,3 +26,7 @@ EXTRA['acc_matte'] = ('#2B2F38', '#16181E', '#050608', dict(thr=0.40, spec=0.12,
 EXTRA['acc_edge'] = ('#9EA3AF', '#6C707B', '#2E3036', dict(thr=0.40))
 # accessories: flat bright red (collar stripe) without a specular blob
 EXTRA['acc_red'] = ('#D2282D', '#8E1519', '#3A0508', dict(thr=0.40))
+
+# hands: matte red of the left glove's finger ends and graphic panels (reference ~#D54D4C,
+# shadow ~#971B19), no glossy highlight so the claws read as printed glove fabric
+EXTRA['hands_red'] = ('#D8484A', '#9A1F22', '#480A0C', dict(thr=0.40))
