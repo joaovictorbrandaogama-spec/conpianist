@@ -316,12 +316,12 @@ def finger_tube(name, curls, spread, claw=False, bump=1.0, blend=1.0, length=1.0
     return tb
 
 
-def thumb_tube(curls, opp=45.0, abduct=0.0, claw=False, bump=1.0, blend=1.0):
+def thumb_tube(curls, opp=45.0, abduct=0.0, claw=False, bump=1.0, blend=1.0, tlen=1.0, dz=0.0):
     """Thumb from inside the thenar pad to the tip.  The metacarpal is buried
     in the palm's thenar swell, so the free thumb starts ~40 % down the palm.
     ``opp`` turns the thumb towards the palm side (opposition)."""
     c1, c2, c3 = curls
-    base = np.array([0.0150, 0.0050, -0.016])
+    base = np.array([0.0150, 0.0050, -0.016 - dz])
     t = nrm([0.40, 0.10, -0.91])
     yp = nrm([-0.88, 0.47, -0.05])                   # pad faces the fingers
     Ro = rot([0, 0, 1.0], np.radians(opp)) @ rot([0, 1.0, 0], np.radians(abduct))
@@ -329,7 +329,7 @@ def thumb_tube(curls, opp=45.0, abduct=0.0, claw=False, bump=1.0, blend=1.0):
     yp = nrm(yp - t * np.dot(yp, t))
     xax = np.cross(yp, t)
     R = np.stack([xax, yp, t], axis=1)
-    L0, L1, L2 = 0.034, 0.026, 0.022
+    L0, L1, L2 = 0.034, 0.026 * tlen, 0.022 * tlen
     if claw:
         L2 *= 1.15
     m = lambda k: 1.0 + bump * (k - 1.0)
@@ -360,7 +360,7 @@ class Hand:
     (M, wrist) with a smooth wrist bend towards the forearm direction."""
 
     def __init__(self, side, curls, spread, thumb, M, wrist, fore_dir, scale=1.0, claw=False,
-                 length=1.0):
+                 length=1.0, thumb_len=1.0, thumb_dz=0.0):
         self.side = side
         self.scale = scale
         self.sx = 1.0 if side == 'R' else -1.0
@@ -373,8 +373,8 @@ class Hand:
             f.twin = finger_tube(n, curls[n], spread[n], claw=claw, length=length,
                                  bump=0.0, blend=2.2)
             self.fingers[n] = f
-        self.thumb = thumb_tube(*thumb, claw=claw)
-        self.thumb.twin = thumb_tube(*thumb, claw=claw, bump=0.0, blend=2.0)
+        self.thumb = thumb_tube(*thumb[:3], claw=claw, tlen=thumb_len, dz=thumb_dz)
+        self.thumb.twin = thumb_tube(*thumb[:3], claw=claw, bump=0.0, blend=2.0, tlen=thumb_len, dz=thumb_dz)
         # wrist bend: canonical +Z (towards the elbow) should become -fore_dir
         up_c = self.to_world_dir(np.array([0, 0, 1.0]))
         want = -nrm(fore_dir)
@@ -446,7 +446,7 @@ def hand_mesh(hand, mats, outline_w=0.55):
     V, F, M, N, off = [], [], [], [], 0
     for name, tube in hand.parts():
         nth = 16 if name == 'palm' else 12
-        step = 0.004 if name == 'palm' else 0.003
+        step = 0.005 if name == 'palm' else 0.004
         v, f, m, n = tube_world_mesh(hand, tube, nth, step, mats[name])
         V.append(v)
         N.append(n)
@@ -515,7 +515,7 @@ def finish_shells(items, mat, outline_w=0.4, outline=True):
     return md
 
 
-def decal_on_back(hand, tube, poly_xs, off=0.00025, thick=0.00025, h=0.0022):
+def decal_on_back(hand, tube, poly_xs, off=0.0004, thick=0.00025, h=0.0024):
     """Flat graphic panel on the back of a tube: poly_xs is a 2D polygon in
     (x, s) rest coordinates (x across the back, s along the tube).  Returns
     (V, F, N) with the normals of the glove surface underneath."""
@@ -570,10 +570,11 @@ def scabbard_frame():
 # Right hand: hangs from the wrist, palm turned to the thigh, thumb / index
 # edge towards the camera, fingers loosely curled (a relaxed fist whose
 # knuckle line runs along the scabbard's direction in the front view).
-RPOSE = dict(palm=(0.80, 0.60, 0.0), tilt=(-0.10, 0.0, 0.0), wrist_off=0.004, scale=0.92,
-             curls={'index': (38, 62, 38), 'middle': (44, 66, 40), 'ring': (50, 66, 40),
-                    'pinky': (56, 62, 38)},
-             spread={'index': 3, 'middle': 0, 'ring': -3, 'pinky': -7},
+RPOSE = dict(palm=(0.65, 0.76, 0.0), tilt=(-0.50, 0.0, 0.0), wrist_off=-0.010, scale=0.86,
+             glove=0.25,
+             curls={'index': (24, 16, 10), 'middle': (28, 18, 10), 'ring': (32, 20, 12),
+                    'pinky': (36, 22, 12)},
+             spread={'index': 5, 'middle': 1, 'ring': -4, 'pinky': -9},
              thumb=((12, 28, 30), 40.0, 0.0))
 
 
@@ -583,17 +584,19 @@ def right_hand(p=None):
     wrist = J['wrist_R'] + fore * p['wrist_off']
     hand_dir = nrm(fore + np.asarray(p['tilt'], dtype=np.float64))
     M = hand_frame(hand_dir, nrm(p['palm']))
-    return Hand('R', p['curls'], p['spread'], p['thumb'], M, wrist, fore, scale=p['scale'])
+    return Hand('R', p['curls'], p['spread'], p['thumb'], M, wrist, fore, scale=p['scale'],
+                length=p.get('length', 1.0), thumb_len=p.get('thumb_len', 1.0),
+                thumb_dz=p.get('thumb_dz', 0.0))
 
 
 # Left hand: relaxed, palm to the thigh and a little back, so the back of the
 # hand shows in 3/4 with the red thumb on the body side; the red claws hook
 # down and inwards in an uneven fan.
-LPOSE = dict(palm=(-0.88, 0.40, 0.0), tilt=(-0.05, 0.0, -0.10), wrist_off=0.008, scale=0.95,
-             curls={'index': (25, 60, 50), 'middle': (22, 58, 48), 'ring': (20, 52, 44),
-                    'pinky': (18, 46, 40)},
-             spread={'index': 15, 'middle': 2, 'ring': -10, 'pinky': -25},
-             thumb=((15, 30, 30), 35.0, 0.0))
+LPOSE = dict(palm=(-0.88, 0.40, 0.0), tilt=(0.05, 0.0, 0.0), wrist_off=0.014, scale=0.95,
+             curls={'index': (20, 35, 38), 'middle': (12, 30, 42), 'ring': (8, 26, 40),
+                    'pinky': (6, 22, 36)},
+             spread={'index': 16, 'middle': 4, 'ring': -6, 'pinky': -14},
+             thumb=((10, 15, 15), 5.0, -10.0), thumb_len=1.2, thumb_dz=0.016)
 
 
 def left_hand(p=None):
@@ -603,7 +606,8 @@ def left_hand(p=None):
     hand_dir = nrm(fore + np.asarray(p['tilt'], dtype=np.float64))
     M = hand_frame(hand_dir, nrm(p['palm']))
     return Hand('L', p['curls'], p['spread'], p['thumb'], M, wrist, fore, scale=p['scale'],
-                claw=True)
+                claw=True, length=p.get('length', 1.0), thumb_len=p.get('thumb_len', 1.0),
+                thumb_dz=p.get('thumb_dz', 0.0))
 
 
 # ------------------------------------------------------------------ clearance
@@ -626,6 +630,8 @@ def push_clear(hand, objs, min_gap=0.002):
     """Move the hand objects out of the body (along the mean SDF gradient at
     the offending vertices) until the gap is >= min_gap; returns the shift."""
     V = np.concatenate([m.verts for m in objs])
+    # only the part below the wrist counts (above it the hand is inside the sleeve)
+    V = V[V[:, 2] < hand.wrist[2] - 0.012]
     d = body_clearance(V)
     worst = d.min()
     if worst >= min_gap:
@@ -664,7 +670,7 @@ def build_right():
     figure-8 bandage that crosses in an X over the back of the hand; bare
     skin fingertips."""
     hand = right_hand()
-    GLOVE = 0.72                    # glove covers this fraction of the proximal phalanx
+    GLOVE = float(RPOSE.get("glove", 0.72))                   # glove covers this fraction of the proximal phalanx
 
     def finger_mat(tube):
         L1 = tube.seg[0]
@@ -687,18 +693,18 @@ def build_right():
     fn = _path_fn([(pi + 0.05, 0.004), (1.5 * pi, 0.036), (2 * pi - 0.05, 0.070),
                    (2.5 * pi, 0.079), (3 * pi + 0.05, 0.074),
                    (3.5 * pi, 0.040), (4 * pi - 0.05, 0.008), (4.45 * pi, 0.004)])
-    n = 120
+    n = 90
     lift = 0.0008 + 0.0007 * sstep((np.linspace(0, 1, n) - 0.55) / 0.15)
     wraps.append(strip_on_tube(hand, P, fn, 0.0068, n, lift, taper=0.03))
     # one band round the knuckles on top of everything
     fn = _path_fn([(pi * 0.6, 0.083), (pi * 2.7, 0.084)])
     wraps.append(strip_on_tube(hand, P, fn, 0.0046, 56, 0.0019))
-    # thin single turns on the finger bases (over the glove)
+    # one bandage turn on each finger base, covering the glove's edge
     for nm, f in hand.fingers.items():
         L1 = f.seg[0]
-        sc = 0.40 * L1
-        fn = _path_fn([(pi / 2, sc - 0.0015), (pi / 2 + 2 * pi, sc + 0.0015)])
-        wraps.append(strip_on_tube(hand, f, fn, 0.0026, 26, 0.0003, taper=0.12))
+        sc = GLOVE * L1
+        fn = _path_fn([(pi / 2, sc - 0.0012), (pi / 2 + 2 * pi, sc + 0.0012)])
+        wraps.append(strip_on_tube(hand, f, fn, 0.0032, 26, 0.0004, taper=0.12))
     # thumb: two narrow turns round the base of the free thumb
     t = hand.thumb
     fn = _path_fn([(pi / 2, t.seg[0] - 0.012), (pi / 2 + 4 * pi, t.seg[0] - 0.001)])
@@ -732,7 +738,7 @@ def build_left():
 
     def finger_mat(tube):
         L1 = tube.seg[0]
-        return lambda s: 'white' if s < 0.30 * L1 else 'hands_red'
+        return lambda s: 'white' if s < 0.80 * L1 else 'hands_red'
 
     mats = {'palm': lambda s: 'white'}
     for n, f in hand.fingers.items():
