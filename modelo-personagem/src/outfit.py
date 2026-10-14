@@ -563,7 +563,7 @@ STRAP_W = 0.030               # thigh strap width
 STRAP_LEVEL = 0.0080          # inner offset of the thigh straps
 STRAP_T = 0.0026
 # outer seam ladder: windows between rungs on the outer side of the leg
-WIN_TH = (np.radians(67.0), np.radians(123.0))
+WIN_TH = (np.radians(68.0), np.radians(150.0))
 WIN_TOP = 0.21                # the open slit above this is bridged only by the straps
 RUNG_PITCH, RUNG_W = 0.07, 0.022
 N_RUNGS = 7
@@ -603,8 +603,8 @@ def leg_armor():
     t0, t1 = WIN_TH
     # --- main shell with the ladder of windows on the outer side
     edges_s = [WIN_TOP, WIN_END] + [v for r in RUNGS for v in r]
-    ss = G.rows(s_top, s_bot, 0.0055, edges_s)
-    th = G.snap_cols(112, [t0, t1])
+    ss = G.rows(s_top, s_bot, 0.0070, edges_s)
+    th = G.snap_cols(92, [t0, t1])
 
     def keep(tc, sc):
         inwin = (tc > t0) & (tc < t1)
@@ -747,7 +747,7 @@ HEM_R = [(0, 0.022), (45, 0.040), (90, 0.057), (135, 0.068), (180, 0.072), (225,
          (260, 0.004), (285, -0.012), (320, 0.004)]
 HEM_L = [(0, 0.042), (45, 0.046), (90, 0.052), (135, 0.072), (180, 0.084), (225, 0.088),
          (270, 0.066), (315, 0.050)]
-SLIT_TH = (np.radians(64.0), np.radians(128.0))      # skin slit on her left hip
+SLIT_TH = (np.radians(68.0), np.radians(128.0))      # skin slit on her left hip
 
 
 def base_belt_z(P):
@@ -800,7 +800,7 @@ def shorts():
     out = {}
     fn = hips_fn()
     lev = SHORTS_LEVEL
-    V, F = G.mc_surface(fn, lev, [-0.19, -0.14, 0.86], [0.19, 0.17, 1.13], 0.0026)
+    V, F = G.mc_surface(fn, lev, [-0.19, -0.14, 0.86], [0.19, 0.17, 1.13], 0.0033)
     body, sheer = shorts_masks()
     parts = [G.clip_shell(fn, lev, V, F, lambda P: np.maximum(body(P), -sheer(P)), SHORTS_T)]
     out['Shorts'] = G.solid(parts, 'leather', bevel=0.0005, angle=50)
@@ -1174,9 +1174,9 @@ L_L = float(np.linalg.norm(J['shoulder_L'] - J['wrist_L']))
 SLEEVE_T = 0.0018
 
 
-def _ring(ch, s0, s1, level, t, n=96, nv=None):
+def _ring(ch, s0, s1, level, t, n=64, nv=None):
     th = np.linspace(0, 2 * np.pi, n, endpoint=False)
-    nv = nv or max(2, int(np.ceil((s1 - s0) / 0.004)) + 1)
+    nv = nv or max(2, int(np.ceil((s1 - s0) / 0.006)) + 1)
     return G.band_shell(ch, th, np.linspace(s0, s1, nv), level, t)
 
 
@@ -1220,8 +1220,8 @@ def sleeves():
     ch = G.LimbChart(arm, G.body_subset(['deltR', 'armR']), R0=ARM_R0)
     sl_lev = lambda T, Sv: 0.0030 + 0.0015 * np.exp(-((Sv - 0.10) / 0.08) ** 2)
     top = 0.0030 + SLEEVE_T
-    th = np.linspace(0, 2 * np.pi, 96, endpoint=False)
-    ss = G.rows(-0.050, L_R - 0.012, 0.005)
+    th = np.linspace(0, 2 * np.pi, 72, endpoint=False)
+    ss = G.rows(-0.050, L_R - 0.012, 0.007)
     out['SleeveR'] = G.solid([G.band_shell(ch, th, ss, sl_lev, SLEEVE_T)], 'coat',
                              bevel=0.0005, outline_w=0.9)
     lvl = lambda add: (lambda T, Sv: sl_lev(T, Sv) + SLEEVE_T + add)
@@ -1258,7 +1258,7 @@ def sleeves():
     sl_lev = lambda T, Sv: 0.0030 + 0.0060 * sstep(Sv, 0.0, 0.13)
     lvl = lambda add: (lambda T, Sv: sl_lev(T, Sv) + SLEEVE_T + add)
     END = SK_L - 0.036
-    ss = G.rows(-0.050, END, 0.005)
+    ss = G.rows(-0.050, END, 0.007)
     out['SleeveL'] = G.solid([G.band_shell(ch, th, ss, sl_lev, SLEEVE_T)], 'coat',
                              bevel=0.0005, outline_w=0.9)
     bl = [_ring(ch, 0.036, 0.048, lvl(0.0002), 0.0020),
@@ -1278,7 +1278,7 @@ def sleeves():
     W0, W1 = END - 0.010, L_L - 0.006
     red_lev = 0.0012
     RED_T = 0.0024
-    out['ArmWrapRed'] = G.solid([_ring(ch, W0, W1, red_lev, RED_T, n=96)], 'red',
+    out['ArmWrapRed'] = G.solid([_ring(ch, W0, W1, red_lev, RED_T, n=72)], 'red',
                                 bevel=0.0004, outline_w=0.8)
     pitch, width = 0.046, 0.012
     straps = []

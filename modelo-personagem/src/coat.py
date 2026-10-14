@@ -599,6 +599,199 @@ def jacket_normal(g, p, eps=0.0015):
     return n / np.linalg.norm(n)
 
 
+# ------------------------------------------------------------ skirt
+
+SK_NU, SK_NV = 220, 80
+SK_T = 0.0038
+TOP_R = (-62.0, 52.0)      # belt-line angles of the front edges (her R, L)
+VENT_U = 0.5               # centre back vent (theta ~ 177 deg)
+
+# hem knots over u (0 = her right front edge, 0.5 = vent, 1 = her left
+# front edge): theta (deg, continuous), radius from the pelvis axis, z
+HEM_KN = np.array([
+    # u      theta    r      z
+    [0.00, -105.0, 0.250, 0.300],
+    [0.12, -123.0, 0.236, 0.352],
+    [0.25, -143.0, 0.216, 0.410],
+    [0.38, -163.0, 0.200, 0.465],
+    [0.47, -178.0, 0.192, 0.500],
+    [0.53, -187.0, 0.192, 0.545],
+    [0.62, -201.0, 0.202, 0.545],
+    [0.75, -220.0, 0.218, 0.535],
+    [0.88, -241.0, 0.268, 0.512],
+    [1.00, -260.0, 0.390, 0.394]])
+# front edges: (z, theta, r) from the hip down to the hem
+EDGE_R = np.array([[0.300, -105.0, 0.250], [0.500, -103.0, 0.226],
+                   [0.700, -100.0, 0.204], [0.860, -97.0, 0.186]])
+EDGE_L = np.array([[0.394, 100.0, 0.390], [0.520, 92.0, 0.318],
+                   [0.640, 85.0, 0.268], [0.800, 75.0, 0.212], [0.920, 63.0, 0.175]])
+
+
+def pelvis_xy(theta_deg, r):
+    t = np.radians(theta_deg)
+    return PCX + r * np.sin(t), PCY - r * np.cos(t)
+
+
+def body_extent(theta_deg, z, clearance=0.0):
+    """Radius (from the pelvis axis) of the outermost body point (+legs)
+    along direction theta at height z."""
+    from outfit import body_fn
+    th = np.atleast_1d(theta_deg).astype(np.float64)
+    rs = np.linspace(0.40, 0.0, 401)
+    T, Rr = np.meshgrid(th, rs, indexing='ij')
+    x, y = pelvis_xy(T, Rr)
+    P = np.stack([x, y, np.full_like(x, z)], -1)
+    d = body_fn(P.reshape(-1, 3)).reshape(T.shape) - clearance
+    hit = d < 0
+    i = np.argmax(hit, axis=1)
+    r = np.where(hit.any(axis=1), rs[i], 0.0)
+    return r
+
+
+def interp_u(u, col):
+    return np.interp(u, HEM_KN[:, 0], HEM_KN[:, col])
+
+
+def skirt_params():
+    u = np.linspace(0, 1, SK_NU)
+    v = np.linspace(0, 1, SK_NV)
+    # top (belt line)
+    th_t = TOP_R[0] - u * (360.0 - (TOP_R[1] - TOP_R[0]))
+    rb = np.max([body_extent(th_t, z) for z in (0.95, 0.99, 1.02, 1.05)], axis=0)
+    r_t = rb + 0.017
+    x_t, _ = pelvis_xy(th_t, r_t)
+    from outfit import belt_z
+    z_t = belt_z(x_t) + 0.006
+    th_h, r_h, z_h = interp_u(u, 1), interp_u(u, 2), interp_u(u, 3)
+    U, Vv = np.meshgrid(u, v, indexing='ij')
+    # vertical profile: hug the hip for the first part, then flare
+    f = Vv ** 1.15
+    TH = th_t[:, None] * (1 - f) + th_h[:, None] * f
+    R = r_t[:, None] * (1 - f) + r_h[:, None] * f
+    Z = z_t[:, None] * (1 - Vv) + z_h[:, None] * Vv
+    # Coons-like correction along both front edges
+    for edge, uu, sgn in ((EDGE_R, 0, 1), (EDGE_L, -1, -1)):
+        ze = Z[uu]
+        th_e = np.interp(ze, edge[:, 0], edge[:, 1])
+        r_e = np.interp(ze, edge[:, 0], edge[:, 2])
+        top_band = sstep(ze, edge[-1, 0], z_t[uu])      # 1 above the edge knots
+        th_e = th_e * (1 - top_band) + TH[uu] * top_band
+        r_e = r_e * (1 - top_band) + R[uu] * top_band
+        dth, dr = th_e - TH[uu], r_e - R[uu]
+        w = np.clip(1 - (U if sgn > 0 else 1 - U) / 0.32, 0, 1) ** 2
+        TH = TH + w * dth[None, :]
+        R = R + w * dr[None, :]
+    return U, Vv, TH, R, Z
+
+
+def fold_field(U, Vv):
+    """Radial displacement: 4 folds on her right panel, 4 on the left,
+    rounded ridges, sharp V valleys, growing towards the hem."""
+    d = np.zeros_like(U)
+    for u0, u1, n, amp in ((0.03, 0.44, 4, 0.020), (0.56, 0.97, 4, 0.022)):
+        ph = (U - u0) / (u1 - u0)
+        inside = (ph > 0) & (ph < 1)
+        prof = np.abs(np.sin(np.pi * n * ph)) - 0.62
+        fade = np.sin(np.pi * np.clip(ph, 0, 1)) ** 0.5
+        A = amp * np.clip((Vv - 0.12) / 0.88, 0, 1) ** 1.3
+        d += np.where(inside, prof * A * fade, 0.0)
+    return d
+
+
+def skirt_surface():
+    U, Vv, TH, R, Z = skirt_params()
+    R = R + fold_field(U, Vv)
+    x, y = pelvis_xy(TH, R)
+    P = np.stack([x, y, Z], -1)
+    P = push_out(P)
+    return U, Vv, P
+
+
+def push_out(P, iters=6):
+    """Keep the skirt outside the body, legs and leg armour."""
+    from outfit import body_fn
+    sh = P.shape
+    Q = P.reshape(-1, 3).copy()
+    for _ in range(iters):
+        d = body_fn(Q)
+        clear = np.where(Q[:, 0] > 0.02, 0.022, 0.012)       # armour on her left leg
+        bad = d < clear
+        if not bad.any():
+            break
+        dx, dy = Q[:, 0] - PCX, Q[:, 1] - PCY
+        n = np.hypot(dx, dy) + 1e-9
+        step = np.where(bad, clear - d, 0.0) * 1.1
+        Q[:, 0] += dx / n * step
+        Q[:, 1] += dy / n * step
+    return Q.reshape(sh)
+
+
+def vent_half(Vv, Z):
+    """Half width of the centre back vent in u units."""
+    w = 0.016 + 0.040 * sstep(0.83 - Z, 0.0, 0.26)
+    return np.where(Z < 0.835, w, -1.0)
+
+
+NOTCHES = [(0.085, 0.022, 0.06), (0.20, 0.018, 0.05), (0.33, 0.02, 0.06),
+           (0.66, 0.02, 0.06), (0.80, 0.018, 0.05), (0.93, 0.02, 0.05)]
+
+
+def skirt_keep(U, Vv, Z):
+    """< 0 where the skirt exists (param space, u units)."""
+    vent = vent_half(Vv, Z) - np.abs(U - VENT_U)
+    # ragged hem: V notches cut up from the hem
+    hem = Vv - 1.0
+    for u0, hw, depth in NOTCHES:
+        tri = depth * np.clip(1 - np.abs(U - u0) / hw, 0, 1)
+        hem = np.maximum(hem, Vv - (1.0 - tri))
+    # pointed vent edges: the hem rises towards the vent
+    hem = np.maximum(hem, Vv - (1.0 - 0.10 * sstep(0.06 - np.abs(U - VENT_U) + 0.0, -0.02, 0.06)))
+    return np.maximum(vent * 4.0, hem)
+
+
+def skirt():
+    U, Vv, P = skirt_surface()
+    V = P.reshape(-1, 3)
+    UV = np.stack([U.ravel(), Vv.ravel()], 1)
+    F = grid_tris(SK_NU, SK_NV)
+    s = skirt_keep(UV[:, 0], UV[:, 1], V[:, 2])
+    V5, F5 = clip_vec(np.concatenate([V, UV], 1), F, s)
+    V, UV = V5[:, :3], V5[:, 3:]
+    F5 = orient_outward(V, F5, lambda Q: np.stack([np.full(len(Q), PCX), np.full(len(Q), PCY), Q[:, 2]], 1))
+    # black back graphic: chevron (black V with a white line in it) and
+    # trims along the vent edges down to the hem
+    g = back_graphic(UV[:, 0], UV[:, 1], V[:, 2])
+    V5, F5, black = split_vec(np.concatenate([V, UV], 1), F5, g)
+    V = V5[:, :3]
+
+    def sub(mask, mat):
+        F = F5[mask]
+        used = np.unique(F)
+        rm = np.full(len(V), -1)
+        rm[used] = np.arange(len(used))
+        return cloth(V[used], rm[F], [mat] * len(F), SK_T)
+    return {'CoatSkirt': sub(~black, 'coat'), 'CoatSkirtBlack': sub(black, 'black')}
+
+
+def back_graphic(U, Vv, Z):
+    """< 0 on the black graphic (u units)."""
+    du = np.abs(U - VENT_U)
+    vh = np.maximum(vent_half(Vv, Z), 0.0)
+    # chevron arms: from the vent edge at v=0.50 rising outwards to v=0.30
+    def arm(off, half):
+        line_v = 0.50 - (du - 0.06) * (0.20 / 0.20) + off
+        return np.abs(Vv - line_v) - half
+    band = arm(0.0, 0.040)
+    white = arm(0.0, 0.010)
+    chev = np.maximum(band, -white)
+    chev = np.maximum(chev, du - 0.27)
+    chev = np.maximum(chev, 0.03 - du)
+    # trims along the vent edges below the chevron
+    trim = np.maximum(du - (vh + 0.030), Vv - 1.5)
+    trim = np.maximum(trim, 0.40 - Vv)
+    return np.minimum(chev, trim)
+
+
 # ------------------------------------------------------------ build
 
 def build():
@@ -607,4 +800,5 @@ def build():
     d.update(lapels())
     d.update(collar())
     d.update(snaps_and_tab())
+    d.update(skirt())
     return d
