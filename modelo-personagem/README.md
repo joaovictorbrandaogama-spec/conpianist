@@ -16,9 +16,9 @@ bandagens vermelhas e pretas, luvas e as três espadas.
 | Arquivo | Para quê |
 | --- | --- |
 | `export/personagem.blend` | Cena editável do Blender 4.5: modelo com rig, materiais toon (sombra em degrau + contorno), luz e câmeras. A câmera `RefCam` reproduz o enquadramento da imagem de referência. |
-| `export/personagem.glb` | glTF 2.0 completo (885 mil triângulos), com esqueleto e pesos. Abre em Blender, Unity (glTFast/UniVRM), Godot, three.js, visualizadores online. |
+| `export/personagem.glb` | glTF 2.0 completo (1,23 milhão de triângulos), com esqueleto e pesos. Abre em Blender, Unity (glTFast/UniVRM), Godot, three.js, visualizadores online. |
 | `export/personagem.fbx` | FBX com esqueleto e textura embutida, para Unity/Unreal/Maya. |
-| `export/personagem_web.glb` | Versão leve (609 mil triângulos, compressão Draco, 2,7 MB) usada pelo visualizador web. |
+| `export/personagem_web.glb` | Versão mais leve (926 mil triângulos, compressão Draco, 5,1 MB) usada pelo visualizador web. |
 | `viewer/` | Visualizador three.js com sombreamento toon, contorno, vistas e poses. Para abrir localmente: `python3 -m http.server` dentro da pasta e acesse `http://localhost:8000`. |
 | `renders/` | Renders do Blender (EEVEE) usados na comparação. |
 | `src/` | Todo o código que gera o modelo (ver abaixo). |
