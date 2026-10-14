@@ -63,19 +63,53 @@ def smooth_curve(pts, iters=3, keep=1):
     return p
 
 
-def lens(ph):
-    # flattened lens: sharp edges at the sides, slightly fuller on top
-    c, s = np.cos(ph), np.sin(ph)
-    return c, s * (1.0 if s > 0 else 0.7)
+def crescent_mesh(pts, tan, outs, w, h_out, h_in, n_ring=12, v_len=None):
+    """Lock with a crescent cross section: a convex outer arc and a flatter
+    inner arc meeting in sharp side edges.  Returns (V, F, UV).
+
+    UV: u runs around the section (outer arc 0..0.5, inner 0.5..1),
+    v is the arc length from the root in metres (texture tiles per metre)."""
+    n = len(pts)
+    phis = np.linspace(0, 2 * np.pi, n_ring + 1)
+    V, UV = [], []
+    if v_len is None:
+        seg = np.linalg.norm(np.diff(pts, axis=0), axis=1)
+        v_len = np.concatenate([[0], np.cumsum(seg)])
+    for i in range(n):
+        T = tan[i]
+        N = outs[i] - T * np.dot(outs[i], T)
+        N /= max(np.linalg.norm(N), 1e-9)
+        B = np.cross(T, N)
+        for k, ph in enumerate(phis):
+            c, sn = np.cos(ph), np.sin(ph)
+            y = sn * h_out[i] if sn >= 0 else -sn * h_in[i]
+            V.append(pts[i] + B * w[i] * c + N * y)
+            UV.append((k / n_ring, v_len[i]))
+    R = n_ring + 1
+    F = []
+    for i in range(n - 1):
+        for k in range(n_ring):
+            a = i * R + k
+            b = i * R + k + 1
+            c = (i + 1) * R + k + 1
+            d = (i + 1) * R + k
+            F.append([a, d, c, b])
+    # root cap
+    V.append(pts[0] - tan[0] * 0.0005)
+    UV.append((0.25, 0.0))
+    ci = len(V) - 1
+    for k in range(n_ring):
+        F.append([ci, k, k + 1])
+    return np.array(V), F, np.array(UV)
 
 
-def lock(ctrl, w0, th0, n=28, coll=collider, margin_extra=0.002,
-         wprof=None, tprof=None, rings=8, out_dir=None, push=True):
-    """Build one lock.
+def lock(ctrl, w0, th0, n=28, coll=collider, margin_extra=0.0015,
+         wprof=None, tprof=None, rings=12, out_dir=None, push=True, cup=0.55):
+    """Build one lock -> (V, F, UV).
 
     ctrl  : control points from root to tip
-    w0    : half width at the root, th0 : half thickness
-    wprof : function t -> width factor (default: taper to a point)
+    w0    : half width at the root, th0 : outer bulge (thickness at centre)
+    cup   : inner arc bulge as a fraction of the outer one (crescent depth)
     """
     pts, tan = catmull(ctrl, n)
     t = np.linspace(0, 1, n)
@@ -86,26 +120,21 @@ def lock(ctrl, w0, th0, n=28, coll=collider, margin_extra=0.002,
     w = w0 * wprof(t)
     th = th0 * tprof(t)
     if push:
-        pts = push_out(pts, coll, th + margin_extra)
+        pts = push_out(pts, coll, th * 0.4 + margin_extra)
         pts = smooth_curve(pts, 2)
-        pts = push_out(pts, coll, th + margin_extra, iters=3)
-    # recompute tangents
+        pts = push_out(pts, coll, th * 0.4 + margin_extra, iters=3)
     tan = np.gradient(pts, axis=0)
     tan /= np.maximum(np.linalg.norm(tan, axis=1, keepdims=True), 1e-9)
     if out_dir is None:
         outs = sdf.gradient(coll, pts, 2e-4)
     else:
         outs = np.tile(np.asarray(out_dir, dtype=float), (n, 1))
-    # smooth the out vectors along the lock to avoid twisting
     for _ in range(4):
         outs[1:-1] = 0.25 * outs[:-2] + 0.5 * outs[1:-1] + 0.25 * outs[2:]
         outs /= np.linalg.norm(outs, axis=1, keepdims=True)
-    w[-1] = 0.0004
-    th[-1] = 0.0003
-    V, F = loft_tube(pts, tan, outs, w, th, n_ring=rings, cap_start=True,
-                     cap_end=False, shape=lens)
-    # close the tip: collapse last ring
-    return V, F
+    w[-1] = 0.0003
+    th[-1] = 0.0002
+    return crescent_mesh(pts, tan, outs, w, th * 2.0, th * 2.0 * cup, n_ring=rings)
 
 
 # ------------------------------------------------------------- the cap
@@ -130,7 +159,7 @@ def hair_cap():
         return np.maximum(sh, mask)
     g.map(shell)
     v, f = g.mesh()
-    return MeshData(v, f, mat='hair', decimate=26000, outline_w=0.8)
+    return MeshData(v, f, mat='hair_dark', decimate=26000, outline_w=0.8)
 
 
 # ------------------------------------------------------------- lock specs
@@ -287,10 +316,10 @@ def ornament():
     """Red crescent hair ornament standing on top of the head."""
     ctrl = [P(334, 52, 0.016), P(333, 42, 0.016), P(338, 33, 0.016),
             P(347, 27, 0.016), P(358, 24, 0.016)]
-    V, F = lock(ctrl, 0.0075, 0.0028, n=20, push=False,
+    V, F, UV = lock(ctrl, 0.0075, 0.0028, n=20, push=False, cup=0.0,
                 wprof=lambda t: np.sin(np.pi * np.clip(t * 0.85 + 0.15, 0, 1)) ** 0.8 + 0.02,
                 out_dir=(0, -1, 0))
-    return V, F
+    return V, F, UV
 
 
 def ribbons():
@@ -301,16 +330,20 @@ def ribbons():
         bot = P(xs[1], 156, 0.0)
         top[1] = bot[1] = -0.010
         mid = (top + bot) / 2 + np.array([s * 0.004, 0, 0])
-        V, F = lock([top, mid, bot], 0.0055, 0.0020, n=10, push=True,
+        V, F, UV = lock([top, mid, bot], 0.0055, 0.0020, n=10, push=True, cup=0.2,
                     wprof=lambda t: np.ones_like(t) * 0.9, margin_extra=0.006)
-        out.append((V, F))
+        out.append((V, F, UV))
     return out
 
 
 def as_mesh(vf_list, mat, subsurf=1, **kw):
-    ms = [MeshData(V, F, mat=mat, subsurf=subsurf, **kw) for V, F in vf_list]
+    ms, uvs = [], []
+    for item in vf_list:
+        V, F = item[0], item[1]
+        ms.append(MeshData(V, F, mat=mat, subsurf=subsurf, **kw))
+        uvs.append(item[2] if len(item) > 2 else np.zeros((len(V), 2)))
     m = merge(ms)
-    m.props = {'recalc': True}
+    m.uv = np.concatenate(uvs)
     return m
 
 

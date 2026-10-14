@@ -171,8 +171,36 @@ def smooth_by_angle_group(angle_deg=40.0):
     return ng
 
 
+def _sstep(v, a, b):
+    q = np.clip((v - a) / (b - a), 0, 1)
+    return q * q * (3 - 2 * q)
+
+
+FACE_PROXY = (np.array([0.011, 0.024, 1.552]), np.array([0.070, 0.092, 0.098]),
+              lambda P: _sstep(-P[:, 1], -0.005, 0.035) * _sstep(P[:, 2], 1.478, 1.505)
+              * (1 - _sstep(P[:, 2], 1.615, 1.645)))
+
+
 def finish_object(ob, d, outline=True):
     props = d['props']
+    if props.get('normals'):
+        import normals
+        normals.apply(ob, props['normals'], iters=props.get('normal_iters', 8),
+                      face=FACE_PROXY if props['normals'] == 'face' else None)
+    if props.get('hard'):
+        me = ob.data
+        me.polygons.foreach_set('use_smooth', np.ones(len(me.polygons), dtype=bool))
+        me.set_sharp_from_angle(angle=math.radians(props.get('sharp_angle', 30.0)))
+        if props.get('bevel', 0) > 0:
+            bv = ob.modifiers.new('Bevel', 'BEVEL')
+            bv.width = props['bevel']
+            bv.segments = props.get('bevel_seg', 2)
+            bv.limit_method = 'ANGLE'
+            bv.angle_limit = math.radians(props.get('sharp_angle', 30.0))
+            bv.profile = 0.7
+            bv.harden_normals = True
+            bv.use_clamp_overlap = True
+            bv.miter_outer = 'MITER_ARC'
     if props.get('solidify'):
         shell = props.get('shell_mat')
         off = 0

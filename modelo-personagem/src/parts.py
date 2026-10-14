@@ -42,7 +42,7 @@ def body_grid(h=0.002):
 @builder
 def body():
     g = body_grid()
-    return {'Body': mesh_grid(g, 'skin', decimate=90000)}
+    return {'Body': mesh_grid(g, 'skin', decimate=90000, props={'normals': 'smooth'})}
 
 
 @builder
@@ -53,7 +53,7 @@ def head():
     v, f = g.mesh()
     # UVs: planar front projection, assigned in Blender after decimation
     return {'Head': MeshData(v, f, mat='face', decimate=45000,
-                             props={'uv': 'face_proj'})}
+                             props={'uv': 'face_proj', 'normals': 'face'})}
 
 
 @builder

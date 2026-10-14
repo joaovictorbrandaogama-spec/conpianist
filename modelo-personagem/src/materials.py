@@ -6,7 +6,8 @@ import bpy
 PALETTE = {
     'skin':        ('#FCE9E3', '#EDB9B2', '#9C5A55', dict(thr=0.30)),
     'face':        ('#FCE9E3', '#EDB9B2', '#9C5A55', dict(thr=0.06, tex='face.png')),
-    'hair':        ('#F3F2F6', '#C8C5D6', '#77738E', dict(thr=0.30, spec=0.30, gloss=0.35)),
+    'hair':        ('#F3F2F6', '#C8C5D6', '#77738E', dict(thr=0.30, spec=0.30, gloss=0.35,
+                                                         tex='hair.png')),
     'hair_dark':   ('#C9C6D6', '#9D99B2', '#5E5A74', dict(thr=0.42)),
     'coat':        ('#F2F2F4', '#C3C5D0', '#6C6E7C', dict(thr=0.40)),
     'coat_trim':   ('#D9DBE3', '#A9ACBA', '#5D606E', dict(thr=0.40)),
