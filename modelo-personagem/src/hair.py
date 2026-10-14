@@ -221,20 +221,23 @@ def pulled_locks():
     """Hair pulled from the hairline (temples, sides, nape) up to the tie."""
     out = []
     starts = []
-    for a in np.linspace(-150, 150, 17):          # around the head, 0 = front
+    for a in np.linspace(-180, 180, 29)[:-1]:     # around the head, 0 = front
         if abs(a) < 30:
             continue
         r = np.radians(a)
-        # hairline height: high at the temples, low at the nape
-        z = 1.600 - 0.050 * min(abs(a) - 30, 80) / 80 - 0.050 * max(abs(a) - 110, 0) / 40
+        aa = abs(a)
+        # hairline height: high at the temples, lower at the sides, nape at the back
+        z = 1.600 - 0.050 * min(aa - 30, 80) / 80 - 0.060 * max(aa - 110, 0) / 70
         starts.append((r, z))
+        if aa > 70:                                   # second, higher row for density
+            starts.append((r + np.radians(6), z + 0.045))
     for r, z in starts:
         sx, sy = np.sin(r), -np.cos(r)
         p0 = on_cap(HX + 0.08 * sx, HY + 0.09 * sy, z, lift=0.0005)
         mid = (p0 + TIE) / 2 + np.array([0, 0, 0.012])
         mid = on_cap(*mid, lift=0.0015)
         end = TIE + (p0 - TIE) * 0.08
-        out.append(lock([p0, mid, end], 0.024, 0.0034, n=20, cup=0.3, mass=0.75,
+        out.append(lock([p0, mid, end], 0.026, 0.0034, n=20, cup=0.3, mass=0.75,
                         wprof=lambda t: 0.75 + 0.35 * np.sin(np.pi * np.clip(t, 0, 1)) * (1 - t) + 0.1,
                         tprof=lambda t: 0.7 + 0.3 * np.sin(np.pi * t)))
     return out

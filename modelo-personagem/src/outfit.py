@@ -183,8 +183,7 @@ def bikini():
     # little clasp under the right cup
     c = surface_point(body_fn, (318 - PX0) * S, (PY0 - 259) * S, offset=0.004)
     clasp = oriented_box(c, (0.012, 0.008, 0.004), (0, -1, 0), (0, 0, 1), 0.001)
-    out['BikiniClasp'] = sdf_mesh([clasp], c - 0.02, c + 0.02, 0.0006, 'metal',
-                                  decimate=1500, outline_w=0.5)
+    pass  # moved to accessories.py
     return out
 
 
@@ -208,7 +207,7 @@ SHEER = [(289, 393), (330, 388), (366, 384), (363, 402), (350, 414), (330, 420),
          (305, 418), (292, 408)]
 
 
-def shorts():
+def shorts_old():
     g = region_grid([-0.17, -0.12, 0.84], [0.17, 0.15, 1.16], 0.0012)
     top = lambda P: P[..., 2] - belt_z(P[..., 0])
     hem = lambda P: hem_z(P[..., 0]) - P[..., 2]
@@ -237,12 +236,11 @@ def shorts():
     def cut(g2):
         g2.subtract(inner)
         g2.union(prong)
-    out['BeltBuckle'] = sdf_mesh([outer], c - 0.03, c + 0.03, 0.0006, 'metal',
-                                 ops=[cut], decimate=3000, outline_w=0.5)
+    pass  # moved to accessories.py
     return out
 
 
-def thigh_strap():
+def thigh_strap_old():
     g = region_grid([-0.17, -0.10, 0.80], [0.02, 0.10, 0.88], 0.001,
                     [(B.leg('R'), 0.0)])
     zb = zrange((PY0 - 512) * S, (PY0 - 498) * S)
@@ -269,139 +267,8 @@ def collar():
     return out
 
 
-# ------------------------------------------------------------ coat
-
-COAT_OFF = 0.011
-COAT_OPEN = [(338, 185), (325, 198), (312, 212), (298, 225), (288, 240), (285, 262),
-             (287, 300), (289, 340), (291, 370), (289, 420), (277, 480), (265, 560),
-             (257, 640), (250, 1000), (640, 1000), (585, 800), (522, 680), (472, 560),
-             (442, 480), (426, 440), (411, 400), (401, 370), (393, 340), (385, 300),
-             (376, 262), (372, 240), (369, 215), (366, 200), (360, 185), (350, 178)]
-PCX, PCY = -0.009, 0.016          # pelvis centre for the hanging part
-
-
-def wrap_interp(theta_deg, knots):
-    k = sorted(knots)
-    xs = np.array([a for a, _ in k])
-    ys = np.array([b for _, b in k])
-    xs = np.concatenate([xs - 360, xs, xs + 360])
-    ys = np.concatenate([ys, ys, ys])
-    return np.interp(theta_deg, xs, ys)
-
-
-HEM = [(-40, 0.60), (-70, 0.60), (-95, 0.57), (-118, 0.31), (-150, 0.29),
-       (-160, 0.33), (-168, 0.75), (180, 0.73), (168, 0.70), (158, 0.66),
-       (150, 0.30), (100, 0.28), (60, 0.29), (30, 0.30), (0, 0.45)]
-FLARE = [(-40, 0.06), (-80, 0.065), (-110, 0.085), (-150, 0.09), (180, 0.08),
-         (150, 0.14), (115, 0.25), (80, 0.31), (50, 0.30), (20, 0.15), (0, 0.10)]
-
-
-def lower_field(P):
-    """rho - r(theta, z) around the pelvis axis (hanging part of the coat)."""
-    x, y, z = P[..., 0], P[..., 1], P[..., 2]
-    dx, dy = x - PCX, y - PCY
-    rho = np.sqrt(dx * dx + dy * dy)
-    th = np.arctan2(dx, -dy)
-    return rho - coat_radius(th, z)
-
-
-def coat_radius(th, z):
-    zc = np.maximum(z, 0.975)
-    base = loft_radius(_TORSO, th, zc) + COAT_OFF
-    f = np.clip((0.985 - z) / 0.70, 0, None) ** 1.25
-    return base + wrap_interp(np.degrees(th), FLARE) * f
-
-
-def coat_masks(P):
-    x, y, z = P[..., 0], P[..., 1], P[..., 2]
-    th = np.degrees(np.arctan2(x - PCX, -(y - PCY)))
-    hem = wrap_interp(th, HEM) - z
-    nb = J['neck_base']
-    neck = 0.050 - np.sqrt((x - nb[0]) ** 2 + (y - nb[1]) ** 2)
-    neck = np.where(z > 1.37, neck, -1.0)
-    zc = np.clip(z, 0.93, 1.40)
-    cx = _TORSO.prof('cx', zc)
-    cy = _TORSO.prof('cy', zc)
-    r = np.radians(_TORSO.prof('rot', zc))
-    yl = -(x - cx) * np.sin(r) + (y - cy) * np.cos(r)
-    op = polygon_sd(x, z, P2M(COAT_OPEN))
-    opening = np.maximum(op, yl)
-    return np.maximum(np.maximum(hem, neck), -opening)
-
-
-Z_SEAM = 0.986
-
-
-COAT_T = 0.0045
-Z_JOIN = 0.95
-
-
-def coat():
-    """Coat mid-surface: MC of the blended field above Z_JOIN, explicit
-    parametric surface below; clipped by the masks; lining inside (red),
-    white outside via Solidify."""
-    upper = [(B.torso(), 0.0)] + [(b, 0.02) for b in B.breasts()] + \
-            [(p, 0.03) for p in B.shoulders()] + [(gl, 0.03) for gl in B.glutes()]
-    g = Grid([-0.21, -0.18, Z_JOIN - 0.03], [0.25, 0.17, 1.47], 0.0016)
-    for prim, k in upper:
-        g.union(prim, k)
-
-    def blend(d, P):
-        s = sstep(P[..., 2], 0.97, 1.08)
-        return ((d - COAT_OFF) * s + lower_field(P) * (1 - s)).astype(np.float32)
-    g.map(blend)
-    v, f = g.mesh(level=0.0)
-    v, f = clip_mesh(v, f, np.maximum(coat_masks(v), Z_JOIN - v[:, 2]))
-    v2, f2 = coat_lower_surface()
-    V = np.concatenate([v, v2])
-    F = np.concatenate([f, f2 + len(v)])
-    return {'Coat': MeshData(V, F, mat='coat', decimate=70000,
-                             props={'solidify': COAT_T, 'shell_mat': 'lining',
-                                    'solid_offset': 0.0})}
-
-
-def coat_lower_surface():
-    """Hanging part: explicit grid in (theta, z), clipped by the masks."""
-    th = np.radians(np.linspace(0.0, 360.0, 721))
-    th = np.where(th > np.pi, th - 2 * np.pi, th)
-    zs = np.linspace(0.20, Z_JOIN, 301)
-    T, Z = np.meshgrid(np.unwrap(th), zs, indexing='ij')
-    R = coat_radius(T, Z)
-    P = np.stack([PCX + R * np.sin(T), PCY - R * np.cos(T), Z], axis=-1)
-    V, F = grid_surface(P)
-    F = np.asarray(F)
-    # quads -> triangles, oriented outwards (away from the axis)
-    tri = np.concatenate([F[:, [0, 1, 2]], F[:, [0, 2, 3]]])
-    n = np.cross(V[tri[:, 1]] - V[tri[:, 0]], V[tri[:, 2]] - V[tri[:, 0]])
-    c = V[tri].mean(axis=1)
-    radial = c[:, :2] - np.array([PCX, PCY])
-    if np.sum(n[:, 0] * radial[:, 0] + n[:, 1] * radial[:, 1]) < 0:
-        tri = tri[:, ::-1]
-    m = np.maximum(coat_masks(V), V[:, 2] - Z_JOIN - 1e-6)
-    return clip_mesh(V, tri, m)
-
-
-def coat_collar():
-    nb = J['neck_base']
-    th = np.radians(np.linspace(-180, 180, 241))
-    zs = np.linspace(1.375, 1.47, 49)
-    T, Z = np.meshgrid(th, zs, indexing='ij')
-    R = 0.047 + (Z - 1.40) * 0.20
-    P = np.stack([nb[0] + R * np.sin(T), nb[1] + 0.010 - R * np.cos(T), Z], axis=-1)
-    V, F = grid_surface(P)
-    F = np.asarray(F)
-    tri = np.concatenate([F[:, [0, 1, 2]], F[:, [0, 2, 3]]])
-    n = np.cross(V[tri[:, 1]] - V[tri[:, 0]], V[tri[:, 2]] - V[tri[:, 0]])
-    radial = V[tri].mean(axis=1)[:, :2] - np.array([nb[0], nb[1]])
-    if np.sum(n[:, 0] * radial[:, 0] + n[:, 1] * radial[:, 1]) < 0:
-        tri = tri[:, ::-1]
-    thd = np.degrees(np.arctan2(V[:, 0] - nb[0], -(V[:, 1] - nb[1] - 0.010)))
-    top = 1.448 - 0.022 * np.cos(np.radians(thd))
-    m = np.maximum(np.maximum(1.385 - V[:, 2], V[:, 2] - top), 92 - np.abs(thd))
-    V, F = clip_mesh(V, tri, m)
-    return {'CoatCollar': MeshData(V, F, mat='coat', outline_w=0.8,
-                                   props={'solidify': 0.004, 'shell_mat': 'lining',
-                                          'solid_offset': 0.0})}
+# coat: see coat.py
+PCX, PCY = -0.009, 0.016          # pelvis centre for the hanging coat part
 
 
 # ------------------------------------------------------------ sleeves & arms
@@ -502,7 +369,7 @@ def rings():
 
 # ------------------------------------------------------------ legs
 
-def leg_armor():
+def leg_armor_old():
     out = {}
     leg = B.leg('L')
     lo, hi = leg.bounds()
@@ -540,8 +407,7 @@ def leg_armor():
     def holes(g2):
         for b in buckles:
             g2.subtract(Box(b.c, b.hs * np.array([0.62, 0.55, 3.0]), b.R, 0.0006))
-    out['LegBuckles'] = sdf_mesh(buckles, lo, hi, 0.0006, 'metal', ops=[holes],
-                                 decimate=3000, outline_w=0.5)
+    pass  # moved to accessories.py
     # side clips
     clips = []
     for ypx in (540, 600, 700, 735):
@@ -562,7 +428,7 @@ def leg_armor():
         clips.append(oriented_box(best, (0.010, 0.022, 0.008), side, leg.R[:, 2], 0.0015))
     lo = np.min([b.bounds()[0] for b in clips], axis=0)
     hi = np.max([b.bounds()[1] for b in clips], axis=0)
-    out['LegClips'] = sdf_mesh(clips, lo, hi, 0.0008, 'black', decimate=2000, outline_w=0.6)
+    pass  # moved to accessories.py
     return out
 
 
@@ -677,3 +543,333 @@ def boots():
     out.update(boot('R'))
     out.update(boot('L'))
     return out
+
+
+# =====================================================================
+# Clothing rebuilt as explicit shells (see clothing_geo.py)
+# =====================================================================
+
+import clothing_geo as G     # noqa: E402
+
+LEG_L = B.leg('L')
+LEG_R = B.leg('R')
+LK_L = float(np.linalg.norm(J['hip_L'] - J['knee_L']))
+LL_L = float(np.linalg.norm(J['hip_L'] - J['ankle_L']))
+
+# left leg armour layers (offsets from the skin)
+ARMOR_T = 0.0025              # armour shell thickness
+STRAP_S = (0.045, 0.105)      # thigh strap centres (s down the left leg)
+STRAP_W = 0.030               # thigh strap width
+STRAP_LEVEL = 0.0080          # inner offset of the thigh straps
+STRAP_T = 0.0026
+# outer seam ladder: windows between rungs on the outer side of the leg
+WIN_TH = (np.radians(67.0), np.radians(123.0))
+WIN_TOP = 0.21                # the open slit above this is bridged only by the straps
+RUNG_PITCH, RUNG_W = 0.07, 0.022
+N_RUNGS = 7
+RUNGS = [(WIN_TOP + k * RUNG_PITCH, WIN_TOP + k * RUNG_PITCH + RUNG_W) for k in range(N_RUNGS)]
+WIN_END = RUNGS[-1][0]
+LEG_BAND_S = 0.670            # white band at mid calf (centre, on the front)
+LEG_BAND_W = 0.021
+
+
+def armor_level(th, s):
+    """Offset of the armour from the skin: thin where it tucks under the
+    shorts, knee bulge in front, calf swell at the back, ankle pinch."""
+    lev = 0.0012 + 0.0009 * sstep(s, 0.05, 0.12)
+    knee = 0.0065 * np.exp(-((s - (LK_L - 0.012)) / 0.048) ** 2) * \
+        np.clip(np.cos(th), 0, None) ** 1.5
+    calf = 0.0040 * np.exp(-((s - (LK_L + 0.15)) / 0.075) ** 2) * \
+        np.clip(-np.cos(th - 0.35), 0, None) ** 1.2
+    shin = 0.0012 * np.exp(-((s - (LK_L + 0.13)) / 0.09) ** 2) * \
+        np.clip(np.cos(th), 0, None)
+    ankle = -0.0008 * sstep(s, 0.70, 0.76)
+    return lev + knee + calf + shin + ankle
+
+
+def holster_level(th, s):
+    return armor_level(th, s) + ARMOR_T + 0.0002
+
+
+HOLSTER_TH = np.radians(-37.0)    # front-inner side of the thigh
+HOLSTER_W = 0.032
+
+
+def leg_armor():
+    out = {}
+    fn = G.body_subset(['gluteL', 'legL'])
+    ch = G.LimbChart(LEG_L, fn, R0=0.05)
+    s_top, s_bot = 0.035, 0.775
+    t0, t1 = WIN_TH
+    # --- main shell with the ladder of windows on the outer side
+    edges_s = [WIN_TOP, WIN_END] + [v for r in RUNGS for v in r]
+    ss = G.rows(s_top, s_bot, 0.0055, edges_s)
+    th = G.snap_cols(112, [t0, t1])
+
+    def keep(tc, sc):
+        inwin = (tc > t0) & (tc < t1)
+        rung = np.zeros_like(sc, dtype=bool)
+        for a, b in RUNGS:
+            rung |= (sc > a) & (sc < b)
+        hole = inwin & (sc < WIN_END) & ~rung
+        return ~hole
+    V, F = G.band_shell(ch, th, ss, armor_level, ARMOR_T, keep)
+    out['LegArmor'] = G.solid([(V, F)], 'leather', bevel=0.0005, angle=45)
+
+    # --- white trim framing every window
+    trims = []
+    wins = [(s_top - 0.01, RUNGS[0][0])] + \
+        [(RUNGS[k][1], RUNGS[k + 1][0]) for k in range(N_RUNGS - 1)]
+    tw = 0.0028
+    for (a, b) in wins[1:]:
+        r = 0.5 * (LEG_L.prof('a', -(a + b) / 2) + LEG_L.prof('bb', -(a + b) / 2))
+        dth = tw / max(r, 0.03)
+        lev = lambda T, S: armor_level(T, S) + ARMOR_T + 0.0001
+        ss2 = G.rows(a - tw, b + tw, 0.004, [a, b])
+        th2 = np.linspace(t0 - dth, t1 + dth, 24)
+        th2 = np.sort(np.concatenate([th2, [t0, t1]]))
+
+        def kp(tc, sc, a=a, b=b):
+            inside = (tc > t0) & (tc < t1) & (sc > a) & (sc < b)
+            return ~inside
+        P, N, Ft = G.tube(ch, th2, ss2, lev, kp, closed=False)
+        trims.append(G.shell(P, N, Ft, 0.0011))
+    # the long slit above the first rung: trim along its two edges only
+    a, b = s_top + 0.005, RUNGS[0][0]
+    for e0, e1 in ((t0 - 0.05, t0), (t1, t1 + 0.05)):
+        lev = lambda T, S: armor_level(T, S) + ARMOR_T + 0.0001
+        P, N, Ft = G.tube(ch, np.linspace(e0, e1, 3), G.rows(a, b, 0.006), lev,
+                          closed=False)
+        trims.append(G.shell(P, N, Ft, 0.0011))
+    out['LegWindowTrim'] = G.solid(trims, 'white', bevel=0.0003, outline_w=0.4)
+
+    # --- knee plate (shield) with a small white emblem
+    sk0 = LK_L - 0.080
+    shield = np.array([(-0.031, sk0), (0.031, sk0), (0.033, sk0 + 0.020),
+                       (0.029, LK_L + 0.005), (0.012, LK_L + 0.036), (0.0, LK_L + 0.045),
+                       (-0.012, LK_L + 0.036), (-0.029, LK_L + 0.005), (-0.033, sk0 + 0.020)])
+    Q, Ft = G.tri_region([shield], 0.004)
+    plate_lev = lambda a, s: armor_level(a / ch.R0, s) + ARMOR_T + 0.0002
+    V, F = G.lift_region(ch, Q, Ft, plate_lev, 0.0030)
+    out['KneePlate'] = G.solid([(V, F)], 'leather', bevel=0.0007, angle=40)
+    crown = np.array([(-0.0085, sk0 + 0.020), (0.0085, sk0 + 0.020), (0.0095, sk0 + 0.011),
+                      (0.0045, sk0 + 0.015), (0.0, sk0 + 0.010), (-0.0045, sk0 + 0.015),
+                      (-0.0095, sk0 + 0.011)])
+    Q, Ft = G.tri_region([crown], 0.0015)
+    em_lev = lambda a, s: armor_level(a / ch.R0, s) + ARMOR_T + 0.0002 + 0.0030
+    V, F = G.lift_region(ch, Q, Ft, em_lev, 0.0005)
+    out['KneeEmblem'] = G.solid([(V, F)], 'white', bevel=0.0, outline=False)
+
+    # --- white band at mid calf (slightly higher on the outer side)
+    def band_s(T, v):
+        return LEG_BAND_S - 0.010 * np.sin(T) + (v - 0.5) * LEG_BAND_W
+    thb = np.linspace(0, 2 * np.pi, 120, endpoint=False)
+    vv = np.linspace(0, 1, 6)
+    T, Vv = np.meshgrid(thb, vv)
+    Sb = band_s(T, Vv)
+    lev = armor_level(T, Sb) + ARMOR_T + 0.0001
+    P, N = ch.lift(T * ch.R0, Sb, lev)
+    P, N = P.reshape(-1, 3), N.reshape(-1, 3)
+    Fb = G.orient(P, N, G.grid_tris(len(thb), len(vv), closed_u=True))
+    out['LegBand'] = G.solid([G.shell(P, N, Fb, 0.0018)], 'white', bevel=0.0004,
+                             outline_w=0.7)
+
+    # --- vertical holster strip on the front-inner thigh (under the straps)
+    r_th = 0.068
+    da = HOLSTER_W / 2 * ch.R0 / r_th
+    ac = HOLSTER_TH * ch.R0
+    strip = np.array([(ac - da, 0.010), (ac + da, 0.010), (ac + da, 0.168),
+                      (ac + da * 0.7, 0.176), (ac - da * 0.7, 0.176), (ac - da, 0.168)])
+    Q, Ft = G.tri_region([strip], 0.004)
+    hl = lambda a, s: holster_level(a / ch.R0, s)
+    V, F = G.lift_region(ch, Q, Ft, hl, 0.0030)
+    # small flap at the bottom of the holster
+    flap = np.array([(ac - da * 0.8, 0.140), (ac + da * 0.8, 0.140),
+                     (ac + da * 0.8, 0.170), (ac - da * 0.8, 0.170)])
+    Q2, F2 = G.tri_region([flap], 0.003)
+    V2, F2b = G.lift_region(ch, Q2, F2, lambda a, s: holster_level(a / ch.R0, s) + 0.0030,
+                            0.0012)
+    out['LegHolster'] = G.solid([(V, F), (V2, F2b)], 'black', bevel=0.0005)
+
+    # --- the two thigh straps (buckles: accessories)
+    straps = []
+    for sc in STRAP_S:
+        ss2 = np.linspace(sc - STRAP_W / 2, sc + STRAP_W / 2, 7)
+        th2 = np.linspace(0, 2 * np.pi, 128, endpoint=False)
+        straps.append(G.band_shell(ch, th2, ss2, STRAP_LEVEL, STRAP_T))
+    out['LegStraps'] = G.solid(straps, 'black', bevel=0.0005)
+    return out
+
+
+# ------------------------------------------------------------ right thigh garter
+
+GARTER_S, GARTER_W = 0.148, 0.030
+
+
+def thigh_strap():
+    fn = G.body_subset(['gluteR', 'legR'])
+    ch = G.LimbChart(LEG_R, fn, R0=0.05)
+    th = np.linspace(0, 2 * np.pi, 120, endpoint=False)
+    ss = np.linspace(GARTER_S - GARTER_W / 2, GARTER_S + GARTER_W / 2, 9)
+    lev = 0.0004
+    T = 0.0024
+    out = {'ThighStrap': G.solid([G.band_shell(ch, th, ss, lev, T)], 'white', bevel=0.0005,
+                                 outline_w=0.7)}
+    # segment seams and edge piping (thin grey lines on the band)
+    lines = []
+    lv2 = lev + T + 0.00005
+    for e in (GARTER_S - GARTER_W / 2 + 0.0035, GARTER_S + GARTER_W / 2 - 0.0035):
+        lines.append(G.band_shell(ch, th, np.array([e - 0.0006, e + 0.0006]), lv2, 0.0003))
+    for a in np.radians([-150, -95, -40, 15, 70, 125]):
+        th2 = np.array([a - 0.012, a + 0.012])
+        ss2 = np.linspace(GARTER_S - GARTER_W / 2 + 0.0045, GARTER_S + GARTER_W / 2 - 0.0045, 4)
+        P, N, F = G.tube(ch, th2, ss2, lv2, closed=False)
+        lines.append(G.shell(P, N, F, 0.0003))
+    out['ThighStrapSeams'] = G.solid(lines, 'gray', bevel=0.0, outline=False)
+    return out
+
+
+# ------------------------------------------------------------ hips: shorts, belts
+
+HIPS_FN = None
+
+
+def hips_fn():
+    global HIPS_FN
+    if HIPS_FN is None:
+        HIPS_FN = G.body_subset(['torso', 'gluteR', 'gluteL', 'legR', 'legL'])
+    return HIPS_FN
+
+
+SHORTS_LEVEL, SHORTS_T = 0.0030, 0.0022
+# hem of the leg openings: s down each leg as a function of the leg angle
+HEM_R = [(0, 0.022), (45, 0.040), (90, 0.057), (135, 0.068), (180, 0.072), (225, 0.056),
+         (260, 0.004), (285, -0.012), (320, 0.004)]
+HEM_L = [(0, 0.042), (45, 0.046), (90, 0.052), (135, 0.070), (180, 0.076), (225, 0.070),
+         (270, 0.058), (315, 0.048)]
+SLIT_TH = (np.radians(64.0), np.radians(128.0))      # skin slit on her left hip
+
+
+def base_belt_z(P):
+    """Centre height of the black base belt (tilted: low at the front)."""
+    return 1.074 - 0.12 * P[..., 0] + 0.35 * P[..., 1]
+
+
+BASE_BELT_W = 0.024
+SCOOP = [(284, 330), (287, 398), (293, 407), (303, 415), (316, 419), (330, 421), (343, 419),
+         (353, 414), (361, 405), (366, 396), (370, 330)]
+
+
+def leg_side_mask(P, hem_r, hem_l, off_r=0.0, off_l=0.0):
+    """< 0 above the hem lines (inside the shorts)."""
+    thR, sR = G.limb_coords(LEG_R, P)
+    thL, sL = G.limb_coords(LEG_L, P)
+    mr = sR - (G.periodic(thR, hem_r) + off_r)
+    ml = sL - (G.periodic(thL, hem_l) + off_l)
+    return np.where(P[..., 0] < PCX, mr, ml)
+
+
+def slit_mask(P, grow=0.0):
+    """> 0 inside the skin slit on the outer left hip (from the belt down)."""
+    thL, sL = G.limb_coords(LEG_L, P)
+    t0, t1 = SLIT_TH
+    c, h = 0.5 * (t0 + t1), 0.5 * (t1 - t0) + grow
+    d = h - np.abs(G.wrap_angle(thL, c))
+    return np.where(P[..., 0] > 0.02, d, -1.0)
+
+
+def front_mask(poly_px, ymax=0.0):
+    poly = P2M(poly_px)
+
+    def m(P):
+        d = polygon_sd(P[..., 0], P[..., 2], poly)
+        return np.maximum(d, P[..., 1] - ymax)
+    return m
+
+
+def shorts_masks():
+    top = lambda P: P[..., 2] - base_belt_z(P)
+    legs = lambda P: leg_side_mask(P, HEM_R, HEM_L)
+    slit = lambda P: slit_mask(P)
+    body = lambda P: np.maximum(np.maximum(top(P), legs(P)), slit(P))
+    sheer = front_mask(SCOOP, 0.0)
+    return body, sheer
+
+
+def shorts():
+    out = {}
+    fn = hips_fn()
+    lev = SHORTS_LEVEL
+    V, F = G.mc_surface(fn, lev, [-0.19, -0.14, 0.86], [0.19, 0.17, 1.13], 0.0026)
+    body, sheer = shorts_masks()
+    parts = [G.clip_shell(fn, lev, V, F, lambda P: np.maximum(body(P), -sheer(P)), SHORTS_T)]
+    out['Shorts'] = G.solid(parts, 'leather', bevel=0.0005, angle=50)
+    out['ShortsSheer'] = G.solid([G.clip_shell(fn, lev, V, F,
+                                               lambda P: np.maximum(body(P), sheer(P)),
+                                               0.0012)],
+                                 'sheer', bevel=0.0, outline_w=0.4)
+    # thin black trim along the scoop edge of the mesh panel
+    trim = lambda P: np.maximum(np.maximum(body(P), np.abs(sheer(P) - 0.0018) - 0.0018),
+                                P[..., 2] - base_belt_z(P) + 0.004)
+    out['ShortsTrim'] = G.solid([G.clip_shell(fn, lev, V, F, trim, 0.0009, SHORTS_T)],
+                                'black', bevel=0.0003, outline_w=0.4)
+    # hem bands on the leg openings and seams
+    hem = lambda P: np.maximum(np.maximum(body(P), -leg_side_mask(P, HEM_R, HEM_L, -0.011,
+                                                                  -0.011)), -sheer(P))
+    out['ShortsHem'] = G.solid([G.clip_shell(fn, lev, V, F, hem, 0.0008, SHORTS_T)],
+                               'leather', bevel=0.0003, outline_w=0.5)
+    seams = []
+    # centre front (double) seam and centre back seam
+    for xo in (-0.0035, 0.0035):
+        cf = lambda P, xo=xo: np.maximum(np.maximum(body(P), np.abs(P[..., 0] - (PCX + xo + 0.004 * (P[..., 2] - 0.95) / 0.05)) - 0.0006),
+                                         np.maximum(P[..., 1] + 0.0, sheer(P) * -1 - 0.0))
+        seams.append(G.clip_shell(fn, lev, V, F, lambda P, cf=cf: np.maximum(cf(P), -sheer(P) * 1.0 - 0.0), 0.0005, SHORTS_T))
+    cb = lambda P: np.maximum(np.maximum(body(P), np.abs(P[..., 0] - PCX) - 0.0006), -P[..., 1])
+    seams.append(G.clip_shell(fn, lev, V, F, cb, 0.0005, SHORTS_T))
+    # side seams running from the slit / outer hip to the hem
+    out['ShortsSeams'] = G.solid(seams, 'black', bevel=0.0, outline_w=0.25)
+    out.update(zippers(fn))
+    out.update(belts())
+    return out
+
+
+ZIPPERS = [((403, 406), (364, 430)), ((405, 425), (383, 442))]
+
+
+def zippers(fn):
+    """Two diagonal silver zips on her left front hip: dark tape + teeth."""
+    from hardsurf import box, frame_from
+    fc = G.FrontChart(fn)
+    tapes, teeth = [], []
+    base = SHORTS_LEVEL + SHORTS_T
+    for a, b in ZIPPERS:
+        A = np.array(P2M([a])[0])
+        Bp = np.array(P2M([b])[0])
+        d = Bp - A
+        L = np.linalg.norm(d)
+        u = d / L
+        nv = np.array([-u[1], u[0]])
+        w = 0.0036
+        poly = [A + nv * w - u * 0.002, Bp + nv * w + u * 0.002, Bp - nv * w + u * 0.002,
+                A - nv * w - u * 0.002]
+        Q, Ft = G.tri_region([np.array(poly)], 0.0025)
+        P, N = fc.lift(Q[:, 0], Q[:, 1], base + 0.0001)
+        Ft = G.orient(P, N, Ft)
+        tapes.append(G.shell(P, N, Ft, 0.0007))
+        n = int(L / 0.0021)
+        for k in range(n):
+            q = A + u * (k + 0.5) * L / n
+            P1, N1 = fc.lift(np.array([q[0]]), np.array([q[1]]), base + 0.0008)
+            tan3 = np.array([u[0], 0.0, u[1]])
+            off = (0.0011 if k % 2 else -0.0011)
+            side = np.cross(N1[0], tan3)
+            side /= np.linalg.norm(side)
+            R = frame_from(x=tan3 - N1[0] * np.dot(tan3, N1[0]), z=N1[0])
+            teeth.append(box((0.0015, 0.0034, 0.0011), P1[0] + side * off * 0.35, R))
+    out = {'ShortsZipTape': G.solid(tapes, 'black', bevel=0.0002, outline_w=0.3)}
+    out['ShortsZipTeeth'] = G.solid(teeth, 'chrome', bevel=0.0002, outline=False, angle=30)
+    return out
+
+
+def belts():
+    return {}
