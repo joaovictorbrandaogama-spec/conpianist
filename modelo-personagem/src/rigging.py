@@ -188,6 +188,10 @@ def rule(name):
         return ('rigid', 'Neck')
     if 'HangingStrap' in base or 'Pouch' in base:
         return ('rigid', 'Hips')
+    if base.startswith('Acc'):
+        # rigid props (buckles, rings, tabs): follow the bone that dominates
+        # the skin weights around them, so metal never bends
+        return ('rigid_auto', None)
     return ('body', None)
 
 
@@ -228,6 +232,8 @@ def rig_character(objects):
         me.vertices.foreach_get('co', P)
         P = P.reshape(-1, 3) @ np.asarray(ob.matrix_world)[:3, :3].T + np.asarray(ob.matrix_world)[:3, 3]
         mode, bone = rule(ob.name)
+        if mode == 'rigid_auto':
+            mode, bone = 'rigid', names[int(np.argmax(body_weights(P, bones, names).sum(axis=0)))]
         if mode == 'rigid':
             vg = ob.vertex_groups.new(name=bone)
             vg.add(list(range(len(me.vertices))), 1.0, 'REPLACE')
