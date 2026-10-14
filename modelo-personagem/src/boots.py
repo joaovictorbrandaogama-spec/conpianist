@@ -1,5 +1,5 @@
-"""Boots: a pair of mid-calf high-top sneaker boots built as explicit
-polygon meshes (no marching cubes).
+"""Boots: a pair of mid-calf heeled boots built as explicit polygon meshes
+(no marching cubes).
 
 Construction
 ------------
@@ -7,6 +7,9 @@ Construction
   ankle joint, local y = foot direction, z = up, x = towards the OUTSIDE of
   that foot (mirrored for the left boot).  Above the ankle a smooth shear
   makes the shaft follow the lower-leg axis (rig.J ankle -> knee).
+* The last is heeled: the sole slab (``sole_bot``) sits on a tapered heel
+  block under the raised heel seat, runs down an S-shaped shank to the ball
+  and lifts slightly at the toe.
 * The upper is one lofted shell.  Its cross sections lie on a family of
   section lines in the sagittal (y, z) plane: horizontal lines up the shaft,
   a fan of lines through a pivot ``P`` in front of the instep (ankle, heel),
@@ -18,12 +21,14 @@ Construction
   2 start of forefoot, 3 toe).  The shaft is pushed out where needed so it
   clears the leg (body.B.leg) or the left-leg armour.
 * Everything on the upper (collar, red bands, name plate, wrap straps,
-  white U panel, tongue strip, ankle and instep straps, toe cap, sole wrap
-  and heel counter) is a separate hard shell lifted from S(u, t): either a
-  2D polygon in the metric chart (a = around, v = down the front line) or a
-  region of the upper clipped by a smooth field.
-* The sole is an extruded footprint: grey rubber outsole + white midsole
-  with a flat bottom; the wrap-up at toe and heel hugs the upper.
+  white U panel, centre strip, ankle and instep straps, edge lines, toe
+  cap, perforations, heel counter) is a separate hard shell lifted from
+  S(u, t) over a 2D polygon of a chart (a = around, v = down the front line,
+  or (u, t) directly).
+* Sole pieces: thin dark sole slab (plan outline of the upper, concentric
+  caps following the shank), heel block, and an angular toe guard swept along
+  a circumscribed polyline of the toe (miter offsets keep the facets sharp)
+  with a grey lip, a screw head and a slot.
 """
 
 import numpy as np
@@ -38,31 +43,54 @@ import body as Bd
 # ------------------------------------------------------------------ design constants
 
 Z_TOP = {'R': (PY0 - 797) * PXS, 'L': (PY0 - 805) * PXS}
-FOOT_YAW = {'R': 0.0, 'L': 0.0}     # extra outward turn of the foot (deg)
+FOOT_YAW = {'R': 4.0, 'L': -6.0}   # extra outward turn of the foot (deg, < 0 = inwards)
 Z_TOP_DESIGN = 0.298            # heights above Z_LOW are scaled to the real top
 Z_LOW = 0.19
 
-PIV = np.array([0.074, 0.148])  # fan pivot (y, z), outside the boot in front of the instep
-Y_END = 0.1900                  # last section of the forefoot
-Y_TIP = 0.1955                  # toe tip
+PIV = np.array([0.074, 0.150])  # fan pivot (y, z), outside the boot in front of the instep
+Y_TIP = 0.1770                  # toe tip
+Y_END = Y_TIP - 0.005           # last section of the forefoot
+
+
+def fy(y):
+    """Forefoot y of the design outlines (drawn for a 0.185 tip) -> this last."""
+    return y if y <= 0.06 else 0.06 + (y - 0.06) * (Y_TIP - 0.06) / (0.185 - 0.06)
+
+# heeled last: the heel block lifts the heel seat, the forefoot sole is a thin slab
+HEEL_H = 0.050                  # bottom of the sole slab under the heel seat
+SOLE_T = 0.0060                 # thickness of the sole slab
+Y_SHANK0, Y_BALL = -0.004, 0.096
+Y_SPRING = 0.142
+
+
+def sole_bot(y):
+    """Bottom of the sole slab (local z) along the foot: raised heel seat,
+    S-shaped shank, flat ball, toe spring."""
+    y = np.asarray(y, dtype=np.float64)
+    q = np.clip((y - Y_SHANK0) / (Y_BALL - Y_SHANK0), 0, 1)
+    z = HEEL_H * 0.5 * (1 + np.cos(np.pi * q))
+    r = np.clip((y - Y_SPRING) / (Y_TIP + 0.004 - Y_SPRING), 0, 1)
+    return z + 0.008 * r ** 2
 
 
 def z_floor(y):
-    """Top of the midsole (a plane): ~3 cm under the heel, ~2 cm at the toe."""
-    return 0.0295 - 0.042 * (np.asarray(y) + 0.05)
+    """Top of the sole slab = bottom of the upper."""
+    return sole_bot(y) + SOLE_T
 
 
 # sagittal outline of the upper (y forward, z up), before the shaft shear
-F_PTS = [(0.037, 0.330), (0.036, 0.290), (0.034, 0.240), (0.032, 0.195),
-         (0.032, 0.165), (0.035, 0.140), (0.043, 0.122), (0.058, 0.108),
-         (0.080, 0.097), (0.105, 0.088), (0.130, 0.081), (0.150, 0.077),
-         (0.166, 0.073), (0.178, 0.067), (0.187, 0.059), (0.1925, 0.047),
-         (Y_TIP, 0.026), (Y_TIP + 0.0002, 0.006)]
+F_PTS = [(fy(y), z) for y, z in (
+         (0.037, 0.330), (0.036, 0.290), (0.034, 0.240), (0.032, 0.195),
+         (0.033, 0.168), (0.036, 0.148), (0.043, 0.128), (0.053, 0.108),
+         (0.065, 0.090), (0.080, 0.076), (0.100, 0.066), (0.124, 0.058),
+         (0.146, 0.051), (0.163, 0.045), (0.175, 0.039), (0.1815, 0.032))] + \
+    [(Y_TIP, 0.024), (Y_TIP + 0.0002, z_floor(Y_TIP) + 0.001)]
+_KY = np.linspace(-0.030, Y_TIP - 0.004, 24)
 K_PTS = [(-0.042, 0.330), (-0.041, 0.290), (-0.038, 0.240), (-0.035, 0.195),
-         (-0.034, 0.160), (-0.036, 0.128), (-0.041, 0.098), (-0.048, 0.068),
-         (-0.051, 0.042), (-0.051, 0.022), (-0.047, 0.010), (-0.038, 0.006),
-         (-0.020, 0.006), (0.050, 0.006), (0.120, 0.006), (0.180, 0.006),
-         (Y_TIP + 0.0002, 0.006)]
+         (-0.034, 0.160), (-0.036, 0.130), (-0.041, 0.105), (-0.046, 0.086),
+         (-0.049, 0.072), (-0.0495, z_floor(-0.05) + 0.010), (-0.046, z_floor(-0.05) + 0.003),
+         (-0.038, z_floor(-0.04))] + \
+    [(float(y), float(z_floor(y))) for y in _KY] + [(Y_TIP + 0.0002, z_floor(Y_TIP) + 0.001)]
 
 
 def smoothstep(x, a, b):
@@ -117,17 +145,17 @@ def hit(curve, O, D, first=True):
 
 
 # half widths of the forefoot (outer, inner) along y
-_FW_Y = [0.06, 0.074, 0.100, 0.130, 0.155, 0.175]
-_FW_LAT = PchipInterpolator(_FW_Y, [0.0335, 0.0345, 0.0370, 0.0382, 0.0374, 0.0348])
-_FW_MED = PchipInterpolator(_FW_Y, [0.0318, 0.0322, 0.0338, 0.0350, 0.0345, 0.0328])
+_FW_Y = [fy(y) for y in (0.06, 0.074, 0.100, 0.130, 0.155, 0.175)]
+_FW_LAT = PchipInterpolator(_FW_Y, [0.0330, 0.0338, 0.0356, 0.0362, 0.0352, 0.0330])
+_FW_MED = PchipInterpolator(_FW_Y, [0.0312, 0.0316, 0.0328, 0.0334, 0.0326, 0.0306])
 # shaft half width along z (design, before the leg fit)
 _SH_Z = [0.10, 0.148, 0.175, 0.205, 0.240, 0.280, 0.340]
 _SH_A = PchipInterpolator(_SH_Z, [0.0345, 0.0330, 0.0300, 0.0290, 0.0310, 0.0330, 0.0340])
 
 
 def toe_taper(y):
-    q = np.clip((y - 0.140) / (Y_TIP - 0.140), 0, 1)
-    return (1 - q ** 2.6) ** (1 / 2.6)
+    q = np.clip((y - fy(0.135)) / (Y_TIP - fy(0.135)), 0, 1)
+    return (1 - q ** 3.4) ** (1 / 3.4)
 
 
 class Boot:
@@ -154,10 +182,10 @@ class Boot:
         self.ztop = Z_TOP[s]
         # the reference draws the left foot a little further out than the rig's
         # ankle: slide the foot (not the shaft) outwards
-        self.foot_dx = -0.004 if s == 'R' else 0.014
+        self.foot_dx = -0.004 if s == 'R' else 0.019
         self.leg = Bd.leg(s)
         # clearance of the shaft over the skin (the left leg wears the armour)
-        self.clr = 0.0045 if s == 'R' else 0.0085
+        self.clr = 0.0030 if s == 'R' else 0.0085
         self._front_tab()
 
     # -------------------------------------------------------------- frames
@@ -226,8 +254,8 @@ class Boot:
         # forefoot params at a given y
         def foot(y, Fz, Kz):
             tp = toe_taper(y)
-            Al = _FW_LAT(np.clip(y, 0.06, 0.175)) * tp
-            Am = _FW_MED(np.clip(y, 0.06, 0.175)) * tp
+            Al = _FW_LAT(np.clip(y, _FW_Y[0], _FW_Y[-1])) * tp
+            Am = _FW_MED(np.clip(y, _FW_Y[0], _FW_Y[-1])) * tp
             zc = z_floor(y) + 0.007
             return Al, Am, Fz - zc, zc - Kz, 2.7, 4.0
 
@@ -533,10 +561,10 @@ def solid(parts, mat, bevel=0.0005, angle=35.0, outline_w=0.7, **kw):
 
 # ------------------------------------------------------------------ the upper
 
-NU = 96
+NU = 64
 
 
-def t_samples(b, step=0.0048):
+def t_samples(b, step=0.0062):
     """Section parameters spaced ~step along the front and back lines."""
     tt = np.linspace(0, 3, 3001)
     pf = b.S(np.zeros_like(tt), tt)
@@ -584,7 +612,7 @@ def upper_mesh(b):
     prev = list(range(lastrow, lastrow + NU))
     for k in range(1, nr):
         f = 1 - k / nr
-        dome = 0.0065 * (1 - f ** 2)
+        dome = 0.0045 * (1 - f ** 2)
         R = tc + (rim - tc) * f + b.fwd * dome
         V.append(R)
         cur = list(range(base, base + NU))
@@ -593,7 +621,7 @@ def upper_mesh(b):
             F.append([prev[j], prev[j2], cur[j2], cur[j]])
         prev = cur
         base += NU
-    V.append((tc + b.fwd * 0.0065)[None])
+    V.append((tc + b.fwd * 0.0045)[None])
     for j in range(NU):
         F.append([prev[j], prev[(j + 1) % NU], base])
     V = np.concatenate(V)
@@ -608,20 +636,27 @@ def vertex_normals(V, T):
     return nrm(N)
 
 
-# ------------------------------------------------------------------ sole
+# ------------------------------------------------------------------ sole, heel, toe guard
 
-def floor_outline(b, V, T, n=160):
-    """Plan outline (local x, y) of the upper where it crosses the midsole top."""
+PLAN_C = np.array([0.0, 0.070])
+
+
+def plan_outline(b, V, F, levels, n=128, smooth=4):
+    """Plan outline (local x, y) of the upper: points where its surface crosses
+    the heights z_floor(y) + level (for each level), max radius per polar bin
+    around PLAN_C, then smoothed."""
+    T = tri_faces(F) if not isinstance(F, np.ndarray) else F
     Lc = b.local(V)
-    s = Lc[:, 2] - z_floor(Lc[:, 1])
     E = np.concatenate([T[:, [0, 1]], T[:, [1, 2]], T[:, [2, 0]]])
-    sa, sb = s[E[:, 0]], s[E[:, 1]]
-    m = (sa < 0) != (sb < 0)
-    E, sa, sb = E[m], sa[m], sb[m]
-    w = sa / (sa - sb)
-    Q = Lc[E[:, 0]] * (1 - w[:, None]) + Lc[E[:, 1]] * w[:, None]
-    c = np.array([0.0, 0.075])
-    d = Q[:, :2] - c
+    pts = []
+    for lv in levels:
+        s = Lc[:, 2] - z_floor(Lc[:, 1]) - lv
+        sa, sb = s[E[:, 0]], s[E[:, 1]]
+        m = (sa < 0) != (sb < 0)
+        w = sa[m] / (sa[m] - sb[m])
+        pts.append(Lc[E[m, 0]] * (1 - w[:, None]) + Lc[E[m, 1]] * w[:, None])
+    Q = np.concatenate(pts)
+    d = Q[:, :2] - PLAN_C
     ang = np.arctan2(d[:, 1], d[:, 0])
     rad = np.hypot(d[:, 0], d[:, 1])
     bins = np.linspace(-np.pi, np.pi, n + 1)
@@ -629,80 +664,228 @@ def floor_outline(b, V, T, n=160):
     r = np.zeros(n)
     np.maximum.at(r, k, rad)
     a = 0.5 * (bins[:-1] + bins[1:])
-    # fill empty bins and smooth (periodic)
     good = r > 0
     r = np.interp(a, np.concatenate([a[good] - 2 * np.pi, a[good], a[good] + 2 * np.pi]),
                   np.tile(r[good], 3))
-    for _ in range(3):
+    r0 = r.copy()
+    for _ in range(smooth * 3):                   # smooth upper envelope of r0
+        r = np.maximum(r0, 0.25 * np.roll(r, 1) + 0.5 * r + 0.25 * np.roll(r, -1))
+    for _ in range(2):
         r = 0.25 * np.roll(r, 1) + 0.5 * r + 0.25 * np.roll(r, -1)
-    P = c + np.stack([np.cos(a), np.sin(a)], 1) * r[:, None]
+    P = PLAN_C + np.stack([np.cos(a), np.sin(a)], 1) * r[:, None]
     return P
 
 
 def outline_normals(P):
     t = np.roll(P, -1, axis=0) - np.roll(P, 1, axis=0)
-    n = np.stack([t[:, 1], -t[:, 0]], 1)
-    n = nrm(n)
-    # outward: CCW polygon -> (ty, -tx) points out
+    n = nrm(np.stack([t[:, 1], -t[:, 0]], 1))
     if HS.polygon_area(P) < 0:
         n = -n
     return n
 
 
-def ring_solid(b, P, rings):
-    """Solid from plan outline P (local x, y): rings = [(offset, z or fn(y))],
-    bottom and top closed by flat n-gons."""
+def ring_solid(b, P, rings, ncap=4):
+    """Closed solid from a star-shaped plan outline P (local x, y) and rings
+    [(offset, z(x, y))]; the first and last ring are closed by concentric caps
+    that follow their z function (so the slab can follow the shank)."""
     n = len(P)
     Nn = outline_normals(P)
-    V = []
-    for off, z in rings:
+    V, F = [], []
+    for off, zf in rings:
         Q = P + Nn * off
-        zz = z(Q[:, 1]) if callable(z) else np.full(n, z)
-        V.append(np.c_[Q[:, 0], Q[:, 1], zz])
+        V.append(np.c_[Q, zf(Q[:, 0], Q[:, 1])])
+    nr = len(rings)
+    F = grid_quads(nr, n, closed_j=True)
+    base = nr * n
+    for which, (off, zf) in ((0, rings[0]), (nr - 1, rings[-1])):
+        Q0 = P + Nn * off
+        prev = list(range(which * n, which * n + n))
+        for k in range(1, ncap):
+            f = 1 - k / ncap
+            Q = PLAN_C + (Q0 - PLAN_C) * f
+            V.append(np.c_[Q, zf(Q[:, 0], Q[:, 1])])
+            cur = list(range(base, base + n))
+            for j in range(n):
+                j2 = (j + 1) % n
+                F.append([prev[j], prev[j2], cur[j2], cur[j]])
+            prev = cur
+            base += n
+        V.append(np.array([[PLAN_C[0], PLAN_C[1], float(zf(PLAN_C[:1], PLAN_C[1:])[0])]]))
+        for j in range(n):
+            F.append([prev[j], prev[(j + 1) % n], base])
+        base += 1
     V = np.concatenate(V)
+    return orient_closed(b.world(V), F)
+
+
+def loft_solid(b, rings):
+    """Closed solid between equal-length closed loops of local points
+    (rings[k] (n,3)); the two end loops are capped by flat n-gons."""
+    n = len(rings[0])
+    V = np.concatenate(rings)
     F = grid_quads(len(rings), n, closed_j=True)
-    F.append(list(range(n))[::-1])
+    F.append(list(range(n)))
     F.append([(len(rings) - 1) * n + j for j in range(n)])
-    W = b.world(V)
-    return orient_closed(W, F)
+    return orient_closed(b.world(V), F)
+
+
+def chamfer_poly(x0, x1, y0, y1, c):
+    return np.array([(x0 + c, y0), (x1 - c, y0), (x1, y0 + c), (x1, y1 - c), (x1 - c, y1),
+                     (x0 + c, y1), (x0, y1 - c), (x0, y0 + c)])
+
+
+def tangent_polygon(P, ks, clr):
+    """Circumscribed polyline of a dense convex curve P: tangent lines (offset
+    by clr) at the indices ks, consecutive lines intersected."""
+    T = nrm(np.roll(P, -1, 0) - np.roll(P, 1, 0))
+    Nn = outline_normals(P)
+    pts = []
+    L = [(P[k] + Nn[k] * clr, T[k]) for k in ks]
+    for (p0, t0), (p1, t1) in zip(L[:-1], L[1:]):
+        A = np.array([[t0[0], -t1[0]], [t0[1], -t1[1]]])
+        s = np.linalg.solve(A, p1 - p0)
+        pts.append(p0 + t0 * s[0])
+    return np.array([L[0][0]] + pts + [L[-1][0]])
+
+
+def sweep_open(b, C, prof, h=0.0016):
+    """Solid swept along an open plan polyline C (local x, y corners).  prof =
+    [(d, zfn)]: each profile vertex is the miter offset of C by d (outwards)
+    at height zfn(y of the base point).  Corners stay sharp and walls keep
+    their thickness; the two ends are capped."""
+    C = np.asarray(C, dtype=np.float64)
+    tg = nrm(np.diff(C, axis=0))
+    nn = np.stack([tg[:, 1], -tg[:, 0]], 1)
+    if np.mean(np.einsum('ij,ij->i', nn, 0.5 * (C[1:] + C[:-1]) - PLAN_C)) < 0:
+        nn = -nn
+
+    def miter(d):
+        pts = [C[0] + nn[0] * d]
+        for j in range(1, len(C) - 1):
+            p0, t0 = C[j] + nn[j - 1] * d, tg[j - 1]
+            p1, t1 = C[j] + nn[j] * d, tg[j]
+            A = np.array([[t0[0], -t1[0]], [t0[1], -t1[1]]])
+            s = np.linalg.solve(A, p1 - p0)
+            pts.append(p0 + t0 * s[0])
+        pts.append(C[-1] + nn[-1] * d)
+        return np.array(pts)
+
+    ks = [max(1, int(np.ceil(np.linalg.norm(C[j + 1] - C[j]) / h))) for j in range(len(C) - 1)]
+
+    def dense(M):
+        out = []
+        for j in range(len(C) - 1):
+            for i in range(ks[j]):
+                out.append(M[j] + (M[j + 1] - M[j]) * i / ks[j])
+        out.append(M[-1])
+        return np.array(out)
+    base = dense(C)
+    segn = np.concatenate([np.repeat(nn, ks, axis=0), nn[-1:]])
+    cols = []
+    for d, zf in prof:
+        Q = dense(miter(d))
+        cols.append(np.c_[Q, zf(base[:, 1])])
+    m = len(prof)
+    V = np.stack(cols, axis=1).reshape(-1, 3)       # ring i = profile at base point i
+    F = grid_quads(len(base), m, closed_j=True)
+    F.append(list(range(m)))
+    F.append([(len(base) - 1) * m + j for j in range(m)])
+    q = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(base, axis=0), axis=1))])
+    return orient_closed(b.world(V), F), base, segn, q / q[-1]
 
 
 def sole_parts(b, V, F):
-    T = tri_faces(F)
-    P = floor_outline(b, V, T)
+    out = {}
+    # --- sole slab: thin dark rubber, follows the heel seat, shank and ball
+    P = plan_outline(b, V, F, (0.0015, 0.004, 0.007))
     if HS.polygon_area(P) < 0:
         P = P[::-1]
-    out = {}
-    o = 0.0049        # wrap thickness + lip
-    zf = lambda y: z_floor(y)
-    out['SoleBase'] = ring_solid(b, P, [(o - 0.0028, 0.0), (o + 0.0002, 0.0026),
-                                        (o + 0.0002, 0.0072)])
-    out['Sole'] = ring_solid(b, P, [(o - 0.0004, 0.0066), (o, 0.0072), (o + 0.0009, 0.0125),
-                                    (o + 0.0004, lambda y: zf(y) - 0.0026),
-                                    (o - 0.0006, lambda y: zf(y) - 0.0004),
-                                    (o - 0.0040, zf)])
-    # wrap-up of the sole over the upper (toe bumper, sides, heel counter)
-    Lc = b.local(V)
-    x, y, z = Lc[:, 0], Lc[:, 1], Lc[:, 2]
-    wrap = np.interp(y, [-0.06, -0.025, 0.0, 0.11, 0.145, 0.172, 0.21],
-                     [0.011, 0.011, 0.0058, 0.0058, 0.0105, 0.0225, 0.0225])
-    low = z - (z_floor(y) + wrap)
-    yedge = -0.002 - (z - 0.03) * 0.50
-    heel = np.maximum(y - yedge, z - 0.094)
-    s = np.maximum(z_floor(y) - 0.0030 - z, np.minimum(low, heel))
-    Vc, Fc = clip_tris(V, T, s)
-    Nc = vertex_normals(Vc, Fc)
-    Nc = Nc * np.sign(np.einsum('ij,ij->i', Nc, vertex_normals(Vc, Fc))).mean()
-    out['SoleWrap'] = shell(Vc, Nc, Fc, 0.0045, 0.0003)
+    sbz = lambda x, y: sole_bot(y)
+    out['Sole'] = ring_solid(b, P, [
+        (0.0000, lambda x, y: sole_bot(y)),
+        (0.0016, lambda x, y: sole_bot(y) + 0.0012),
+        (0.0018, lambda x, y: sole_bot(y) + SOLE_T - 0.0012),
+        (0.0004, lambda x, y: sole_bot(y) + SOLE_T + 0.0004),
+        (-0.0040, lambda x, y: sole_bot(y) + SOLE_T + 0.0004)])
+    # --- heel block: tapered prism under the heel seat, set back from the instep
+    yb = P[:, 1]
+    sel = (yb > -0.034) & (yb < -0.026)
+    xc = 0.5 * (P[sel, 0].min() + P[sel, 0].max()) if sel.any() else 0.0
+    ytop0, ytop1 = float(P[:, 1].min()) + 0.0030, -0.006
+    hw_top = 0.0165
+    top = chamfer_poly(xc - hw_top, xc + hw_top, ytop0, ytop1, 0.0060)
+    bot = chamfer_poly(xc - 0.0115, xc + 0.0115, ytop0 + 0.0040, ytop0 + 0.0260, 0.0040)
+    mid = 0.55 * top + 0.45 * bot
+    ztop = HEEL_H + 0.0010
+    rings = [np.c_[bot, np.zeros(len(bot))],
+             np.c_[bot + (mid - bot) * 0.03, np.full(len(bot), 0.0045)],
+             np.c_[top, np.full(len(top), ztop)]]
+    hb = [loft_solid(b, rings)]
+    out['SoleHeel'] = hb
+    # --- angular toe guard (front 4.5 cm of the toe) + grey lip trim, screw, slot
+    PG = plan_outline(b, V, F, (0.002, 0.008, 0.014, 0.020, 0.026), smooth=5)
+    if HS.polygon_area(PG) < 0:
+        PG = PG[::-1]
+    yg0 = Y_TIP - 0.046
+    idx = np.where(PG[:, 1] > yg0)[0]
+    # order: outer side (x > 0) -> tip -> inner side, following the CCW loop
+    start = idx[np.argmin(np.where(PG[idx, 0] > 0, PG[idx, 1], 9.0))]
+    order = [(start + k) % len(PG) for k in range(len(PG))]
+    arc = []
+    for i in order:
+        if PG[i, 1] <= yg0:
+            break
+        arc.append(i)
+    ks = [arc[int(round(f * (len(arc) - 1)))] for f in (0.0, 0.22, 0.40, 0.60, 0.78, 1.0)]
+    C = tangent_polygon(PG, ks, 0.0008)
+
+    def zt(y):
+        return 0.0170 + 0.0115 * np.clip((y - yg0) / (Y_TIP - yg0), 0, 1)
+
+    # the guard's bottom edge runs down to the sole bottom found just behind it
+    zb = lambda y: sole_bot(y - 0.014) - 0.0002
+    ztop = lambda y: sole_bot(y) + zt(y)
+    gprof = [(-0.0140, lambda y: zb(y) + 0.0008), (0.0016, zb),
+             (0.0032, lambda y: zb(y) + 0.0014), (0.0032, lambda y: ztop(y) - 0.0065),
+             (0.0000, ztop), (-0.0140, ztop)]
+    # grey lip on the upper part of the guard's chamfer facet
+    nf = nrm(np.array([0.0065, 0.0032]))
+    A_, B_ = np.array([0.0032, -0.0065]), np.array([0.0, 0.0])
+    p0 = A_ + (B_ - A_) * 0.55
+    tq = [p0 - nf * 0.0002, B_ + (-0.0030, -0.0002), B_ + (-0.0030, 0.0007),
+          B_ + nf * 0.0006 + (-0.0004, 0.0), p0 + nf * 0.0006]
+    tprof = [(float(dq[0]), (lambda dz: (lambda y: ztop(y) + dz))(float(dq[1]))) for dq in tq]
+    g, gp, gn, gq = sweep_open(b, C, gprof)
+    out['SoleGuard'] = [g]
+    out['SoleTrim'] = [sweep_open(b, C, tprof)[0]]
+    # screw head (inner front) and slot decal (outer front) on the front wall
+    deco_s, deco_k = [], []
+    for qq, kind in ((0.30, 'slot'), (0.70, 'screw')):
+        i = int(np.argmin(np.abs(gq - qq)))
+        y = gp[i, 1]
+        zc = float(sole_bot(y)) + 0.40 * float(zt(y))
+        c = np.r_[gp[i] + gn[i] * 0.0030, zc]
+        tng = nrm(np.r_[np.gradient(gp, axis=0)[i], 0.0])
+        R = HS.frame_from(x=tng, z=np.r_[gn[i], 0.0])
+        if kind == 'screw':
+            V_, F_ = HS.prism(HS.circle(0.0011, 12), 0.0011, c, R, z0=-0.0004)
+            deco_s.append((b.world(V_), F_))
+        else:
+            V_, F_ = HS.prism(HS.rounded_rect(0.0052, 0.0016, 0.0007, 3), 0.0005, c, R,
+                              z0=-0.0003)
+            deco_k.append((b.world(V_), F_))
+    out['SoleScrew'] = deco_s
+    out['SoleSlot'] = deco_k
     return out, P
 
 
 # ------------------------------------------------------------------ pieces on the upper
 
-def patch(b, poly, off0, thick, h=0.0016, lift=None):
+def patch(b, poly, off0, thick, h=0.0025, lift=None, holes=()):
     """Hard shell over a 2D polygon of the chart (a = around, v = down the
     front line).  ``lift(Q)`` adds a per-vertex extra offset."""
-    Q, T = tri_region([np.asarray(poly, dtype=np.float64)], h)
+    loops = [np.asarray(poly, dtype=np.float64)] + [np.asarray(hh, dtype=np.float64) for hh in holes]
+    Q, T = tri_region(loops, h)
     a, t = b.chart(Q)
     P = b.S(a, t, arc=True)
     N = b.N(a, t, arc=True)
@@ -711,7 +894,46 @@ def patch(b, poly, off0, thick, h=0.0016, lift=None):
     return shell(P, N, T, thick, t0)
 
 
-def ring(b, zc, w, off0, thick, nu=112, nr=4, tilt=0.0, phase=0.0, u0=0.0, u1=1.0):
+SU, ST = 0.21, 0.09     # metric scale of the (u, t) parameters for patch_ut
+
+
+def patch_ut(b, poly, off0, thick, h=0.003):
+    """Hard shell over a polygon given in the surface parameters (u, t)."""
+    poly = np.asarray(poly, dtype=np.float64) * (SU, ST)
+    Q, T = tri_region([poly], h)
+    u, t = Q[:, 0] / SU, Q[:, 1] / ST
+    P = b.S(u, t)
+    N = b.N(u, t)
+    T = orient_tris(P, N, T)
+    return shell(P, N, T, thick, off0)
+
+
+def t_back_z(b, z, u=0.5):
+    """Surface parameter t where the line u (default: the back) reaches local
+    height z (first crossing going down)."""
+    tt = np.linspace(0, 2.6, 1301)
+    Lc, _ = b.S_local(np.full_like(tt, u), tt)
+    zz = Lc[:, 2]
+    k = int(np.argmax(zz < z))
+    w = (zz[k - 1] - z) / (zz[k - 1] - zz[k])
+    return float(tt[k - 1] + (tt[k] - tt[k - 1]) * w)
+
+
+def u_of_arc(b, z, a):
+    """Loop parameter u of the point at signed arc a (m, + outer side) from the
+    front line, on the shaft section at local height z."""
+    us = np.linspace(0, 1, 1441)
+    t = float(b.t_of_z(z))
+    P = b.S(us, np.full_like(us, t))
+    d = np.linalg.norm(np.diff(P, axis=0), axis=1)
+    c = np.concatenate([[0], np.cumsum(d)])
+    if a >= 0:
+        return float(np.interp(a, c, us))
+    cm = c[-1] - c
+    return float(np.interp(-a, cm[::-1], us[::-1]))
+
+
+def ring(b, zc, w, off0, thick, nu=72, nr=4, tilt=0.0, phase=0.0, u0=0.0, u1=1.0):
     """Band around the shaft between z = zc(u) -+ w/2 (local heights)."""
     closed = (u1 - u0) >= 1.0 - 1e-9
     us = np.linspace(u0, u1, nu, endpoint=not closed)
@@ -732,92 +954,112 @@ def arc_poly(cx, cy, r, a0, a1, n=10):
     return np.stack([cx + r * np.cos(a), cy + r * np.sin(a)], 1)
 
 
+def edge_strip(pts, w):
+    """Thin band of width w under a polyline of chart points (v grows down)."""
+    pts = np.asarray(pts, dtype=np.float64)
+    return np.concatenate([pts, (pts + (0.0, w))[::-1]])
+
+
 def details(b):
     s = b.side
     zm = b.zmap
     vz = lambda z: float(b.v_front_z(zm(z)))
-    vy = lambda y: float(b.v_front_y(y))
     out = {}
     ztop = b.ztop
     # --- padded collar at the top
-    zc0 = zm(0.2805)
-    out['BootCollar'] = [ring(b, 0.5 * (zc0 + ztop + 0.002), ztop + 0.002 - zc0, 0.0, 0.0024)]
-    # --- red bands and the name plate
-    out['BootRed'] = [ring(b, 0.5 * (zm(0.2795) + zm(0.2535)), zm(0.2795) - zm(0.2535), 0.0002, 0.0019)]
-    vr0, vr1 = vz(0.2495), vz(0.2335)
-    out['BootRed'].append(patch(b, [(-0.008, vr0), (0.040, vr0), (0.040, vr1), (-0.008, vr1)],
+    zc0 = zm(0.2895)
+    out['BootCollar'] = [ring(b, 0.5 * (zc0 + ztop + 0.002), ztop + 0.002 - zc0, 0.0, 0.0020)]
+    # --- name plate on black, red band around the rest of the cuff, red strip below
+    vp0, vp1 = vz(0.2870), vz(0.2655)
+    pa0, pa1 = (-0.0050, 0.0350) if s == 'R' else (-0.0190, 0.0190)
+    zr0, zr1 = zm(0.2640), zm(0.2885)
+    zrc = 0.5 * (zr0 + zr1)
+    ua = u_of_arc(b, zrc, pa1 + 0.0035)
+    ub = u_of_arc(b, zrc, pa0 - 0.0035)
+    out['BootRed'] = [ring(b, zrc, zr1 - zr0, 0.0002, 0.0019, nu=72, u0=ua, u1=ub)]
+    vr0, vr1 = vz(0.2615), vz(0.2515)
+    ra0, ra1 = (-0.008, 0.040) if s == 'R' else (-0.012, 0.034)
+    out['BootRed'].append(patch(b, [(ra0, vr0), (ra1, vr0), (ra1, vr1), (ra0, vr1)],
                                 0.0002, 0.0019))
-    vp0, vp1 = vz(0.2765), vz(0.2540)
-    pa0, pa1 = -0.0050, 0.0350
     c = 0.0018
     plate = [(pa0 + c, vp0), (pa1 - c, vp0), (pa1, vp0 + c), (pa1, vp1 - c), (pa1 - c, vp1),
              (pa0 + c, vp1), (pa0, vp1 - c), (pa0, vp0 + c)]
-    out['BootPlate'] = [patch(b, plate, 0.0021, 0.0014, h=0.0012)]
-    # engraved text lines + 2 rivets on the plate
+    out["BootPlate"] = [patch(b, plate, 0.0004, 0.0016, h=0.0026)]
     eng = []
-    for k, (va, vb, aa, ab) in enumerate(((0.32, 0.42, 0.25, 0.75), (0.55, 0.64, 0.30, 0.70))):
+    for va, vb, aa, ab in ((0.32, 0.42, 0.25, 0.75), (0.55, 0.64, 0.30, 0.70)):
         y0 = vp0 + (vp1 - vp0) * va
         y1 = vp0 + (vp1 - vp0) * vb
         x0 = pa0 + (pa1 - pa0) * aa
         x1 = pa0 + (pa1 - pa0) * ab
-        eng.append(patch(b, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], 0.0035, 0.00025,
-                         h=0.0006))
+        eng.append(patch(b, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], 0.0020, 0.00025,
+                         h=0.0008))
     for ax in (pa0 + 0.0028, pa1 - 0.0028):
         vm = 0.5 * (vp0 + vp1)
-        eng.append(patch(b, arc_poly(ax, vm, 0.0011, 0, 360, 10)[:-1], 0.0035, 0.0004,
-                         h=0.0006))
+        eng.append(patch(b, arc_poly(ax, vm, 0.0011, 0, 360, 10)[:-1], 0.0020, 0.0004,
+                         h=0.0008))
     out['BootPlateText'] = eng
     # --- three wrap straps under the cuff (slightly helical, overlapping)
     wr = []
-    for k, (zc, ph) in enumerate(((0.2255, 0.4), (0.2125, 2.2), (0.1995, 4.1))):
+    for k, (zc, ph) in enumerate(((0.2425, 0.4), (0.2295, 2.2), (0.2165, 4.1))):
         z0, z1 = zm(zc - 0.0072), zm(zc + 0.0072)
         wr.append(ring(b, 0.5 * (z0 + z1), z1 - z0, 0.0002 + 0.0006 * (2 - k), 0.0022,
                        tilt=0.0018, phase=ph))
     out['BootWraps'] = wr
-    # --- white inverted-U panel on the shin and the black tongue strip
-    zt0, zt1, zb = 0.1885, 0.1745, 0.112
+    # --- white inverted-U panel on the shin and the black centre strip
+    zt0, zt1, zb = 0.2110, 0.1955, 0.106
     U = [(-0.0330, vz(zt0)), (0.0330, vz(zt0)), (0.0345, vz(zt1)), (0.0400, vz(zb)),
          (0.0130, vz(zb)), (0.0120, vz(zt1)), (-0.0120, vz(zt1)), (-0.0130, vz(zb)),
          (-0.0400, vz(zb)), (-0.0345, vz(zt1))]
-    out['BootPanel'] = [patch(b, U, 0.0002, 0.0014, h=0.0018)]
-    vt = vz(0.1855)
+    out['BootPanel'] = [patch(b, U, 0.0002, 0.0014, h=0.0040)]
+    vt = vz(0.1945)
     rs = 0.0080
-    strip = [(rs, vz(0.105)), (rs, vt + rs)] + \
+    strip = [(rs, vz(0.100)), (rs, vt + rs)] + \
         [tuple(p) for p in arc_poly(0.0, vt + rs, rs, 0, -180, 12)[1:-1]] + \
-        [(-rs, vt + rs), (-rs, vz(0.105))]
-    out['BootTongue'] = [patch(b, strip, 0.0002, 0.0026)]
-    # tiny dark print on the top bar of the U
-    vq = vz(0.1835)
-    out['BootPrint'] = [patch(b, [(-0.012, vq), (0.004, vq), (0.004, vq + 0.0012),
-                                  (-0.012, vq + 0.0012)], 0.0016, 0.0002, h=0.0006),
-                        patch(b, [(-0.012, vq + 0.0022), (-0.002, vq + 0.0022),
-                                  (-0.002, vq + 0.0031), (-0.012, vq + 0.0031)], 0.0016,
-                              0.0002, h=0.0006)]
+        [(-rs, vt + rs), (-rs, vz(0.100))]
+    out['BootTongue'] = [patch(b, strip, 0.0002, 0.0026, h=0.003)]
+    # tiny dark print centred on the white top bar of the U
+    vq = vz(0.2045)
+    out['BootPrint'] = [patch(b, [(-0.012, vq), (0.006, vq), (0.006, vq + 0.0012),
+                                  (-0.012, vq + 0.0012)], 0.0016, 0.0002, h=0.0008),
+                        patch(b, [(-0.009, vq + 0.0024), (0.002, vq + 0.0024),
+                                  (0.002, vq + 0.0033), (-0.009, vq + 0.0033)], 0.0016,
+                              0.0002, h=0.0008)]
     # --- ankle strap with two side keepers
-    za0, za1 = 0.1495, 0.1635
-    ank = [ring(b, 0.5 * (za0 + za1), za1 - za0, 0.0018, 0.0026, nu=160)]
+    za0, za1 = 0.1665, 0.1805
+    ank = [ring(b, 0.5 * (za0 + za1), za1 - za0, 0.0018, 0.0026, nu=96)]
     for uc in (0.25, 0.75):
         ac = 0.052 if uc < 0.5 else -0.052
         k0, k1 = vz(za1 + 0.0035), vz(za0 - 0.0035)
         ank.append(patch(b, [(ac - 0.0065, k0), (ac + 0.0065, k0), (ac + 0.0065, k1),
-                             (ac - 0.0065, k1)], 0.0040, 0.0034, h=0.0012))
+                             (ac - 0.0065, k1)], 0.0040, 0.0034, h=0.0016))
     out['BootAnkleStrap'] = ank
-    # --- the wide instep straps (velcro): lower strap and the upper flap
-    vA0 = vz(0.128)
-    vA1 = vA0 + 0.050
-    vB0 = vA1 - 0.007
+    # --- the wide instep straps (velcro): upper flap with a pointed tab, lower strap
+    vA0 = vz(0.149)
+    vA1 = vA0 + 0.044
+    vB0 = vA1 - 0.006
     vB1 = vB0 + 0.044
-    am = -0.070
-    al = 0.072
+    am, al = -0.068, 0.070
+    o_low, o_flap, th = 0.0006, 0.0044, 0.0030
     lower = [(am, vB0 + 0.003), (0.0, vB0 - 0.002), (al, vB0 + 0.003), (al, vB1 - 0.004),
              (0.0, vB1), (am, vB1 - 0.004)]
-    flap = [(am - 0.002, vA0 + 0.006), (-0.020, vA0 + 0.0015), (0.0, vA0 - 0.0015),
-            (0.020, vA0 + 0.0015), (al + 0.004, vA0 + 0.006), (al + 0.016, 0.5 * (vA0 + vA1) + 0.004),
-            (al + 0.004, vA1 + 0.002), (0.0, vA1), (am - 0.002, vA1 + 0.002)]
+    flap_top = [(am - 0.002, vA0 + 0.006), (-0.024, vA0 + 0.0012), (0.0, vA0 - 0.0016),
+                (0.024, vA0 + 0.0012), (al - 0.002, vA0 + 0.006)]
+    flap = flap_top + [(al + 0.020, vA1 - 0.006), (al + 0.004, vA1 + 0.002), (0.0, vA1),
+                       (am - 0.002, vA1 + 0.002)]
+
     def tab_lift(Q):
-        return 0.0045 * smoothstep(Q[:, 0], al - 0.004, al + 0.016)
-    out['BootInstep'] = [patch(b, lower, 0.0003, 0.0028, h=0.0026),
-                         patch(b, flap, 0.0028, 0.0028, h=0.0024, lift=tab_lift)]
+        return 0.0040 * smoothstep(Q[:, 0], al - 0.008, al + 0.020)
+    out['BootInstep'] = [patch(b, lower, o_low, th, h=0.0045),
+                         patch(b, flap, o_flap, th, h=0.0045, lift=tab_lift)]
+    # light bevel edge lines along the top edge of the flap and the lower strap's hem
+    hem = [(am, vB1 - 0.004 - 0.0013), (0.0, vB1 - 0.0013), (al, vB1 - 0.004 - 0.0013)]
+    flap_bot = [(am, vA1 + 0.002 - 0.0012), (0.0, vA1 - 0.0012), (al + 0.004, vA1 + 0.002 - 0.0012)]
+    out['BootEdge'] = [patch(b, edge_strip(flap_top, 0.0013), o_flap + th + 0.0001, 0.0002,
+                             h=0.0022, lift=tab_lift),
+                       patch(b, edge_strip(flap_bot, 0.0010), o_flap + th + 0.0001, 0.0002,
+                             h=0.0022, lift=tab_lift),
+                       patch(b, edge_strip(hem, 0.0011), o_low + th + 0.0001, 0.0002,
+                             h=0.0022)]
     # velcro print: two rows of tiny white "words" on the flap
     txt = []
     vm = 0.5 * (vA0 + vA1)
@@ -825,35 +1067,36 @@ def details(b):
             (vm + 0.0002, [(-0.011, -0.004), (-0.002, 0.009)])]
     for vr, words in rows:
         for x0, x1 in words:
-            txt.append(patch(b, [(x0, vr), (x1, vr), (x1, vr + 0.0016), (x0, vr + 0.0016)],
-                             0.0056, 0.0002, h=0.0007))
+            txt.append(patch(b, [(x0, vr), (x1, vr), (x1, vr + 0.0015), (x0, vr + 0.0015)],
+                             o_flap + th + 0.0001, 0.0002, h=0.0008))
     out['BootPrintW'] = txt
-    # --- black toe cap with a light grey trim along its top edge
-    vc0 = vB1 + 0.009
+    # --- flat black toe cap (its lower part runs under the toe guard)
+    vc0 = vB1 + 0.003
     vend = float(b.tab_v[-1]) - 1e-4
-    cap = [(-0.095, vc0 + 0.010), (-0.030, vc0 + 0.001), (0.0, vc0), (0.030, vc0 + 0.001),
-           (0.095, vc0 + 0.010), (0.095, vend), (-0.095, vend)]
-    out['BootToe'] = [patch(b, cap, 0.0002, 0.0018, h=0.0030)]
-    # light grey bracket-shaped trim along the top edge of the toe cap
-    tr = [(-0.050, 0.0150), (-0.040, 0.0062), (-0.020, 0.0034), (0.0, 0.0030),
-          (0.020, 0.0034), (0.040, 0.0062), (0.050, 0.0150)]
-    top = [(a, vc0 + d) for a, d in tr]
-    bot = [(a + (0.004 if a < 0 else -0.004 if a > 0 else 0.0), vc0 + d + 0.0036)
-           for a, d in tr[::-1]]
-    out['BootToeTrim'] = [patch(b, top + bot, 0.0019, 0.0004, h=0.0010)]
-    # perforations on the vamp between the instep strap and the toe cap
-    vh = 0.5 * (vB1 + vc0 + 0.003)
-    out['BootHoles'] = [patch(b, arc_poly(ax, vh + 0.0008 * abs(ax) / 0.012, 0.0011, 0, 360, 9)[:-1],
-                              0.0002, 0.0003, h=0.0006)
-                        for ax in (-0.018, -0.006, 0.006, 0.018)]
+    cap = [(-0.095, vc0 + 0.008), (-0.030, vc0 + 0.001), (0.0, vc0), (0.030, vc0 + 0.001),
+           (0.095, vc0 + 0.008), (0.095, vend), (-0.095, vend)]
+    out['BootToe'] = [patch(b, cap, 0.0002, 0.0012, h=0.006)]
+    # perforations: 6 light-rimmed holes in an arc on the vamp
+    vh = vc0 + 0.0095
+    holes = []
+    for ax in np.linspace(-0.020, 0.020, 6):
+        vv = vh - 0.0030 * (ax / 0.020) ** 2
+        holes.append(patch(b, arc_poly(ax, vv, 0.0015, 0, 360, 13)[:-1], 0.0014, 0.0003,
+                           h=0.0010, holes=[arc_poly(ax, vv, 0.0008, 360, 0, 9)[:-1]]))
+    out['BootHoles'] = holes
+    # --- grey heel counter column on the back (heel seat up to the ankle strap)
+    tb = t_back_z(b, z_floor(-0.05) + 0.004)
+    tt = t_back_z(b, 0.163)
+    out['BootHeelBack'] = [patch_ut(b, [(0.5 - 0.042, tb), (0.5 + 0.042, tb),
+                                        (0.5 + 0.026, tt), (0.5 - 0.026, tt)], 0.0002, 0.0022)]
     return out
 
 
-MATS = {'BootCollar': 'leather', 'BootRed': 'red', 'BootPlate': 'chrome',
+MATS = {'BootCollar': 'leather', 'BootRed': 'boots_red', 'BootPlate': 'chrome',
         'BootPlateText': 'gunmetal', 'BootWraps': 'black', 'BootPanel': 'white',
         'BootTongue': 'black', 'BootPrint': 'gunmetal', 'BootAnkleStrap': 'black',
-        'BootInstep': 'black', 'BootPrintW': 'decal_white', 'BootToe': 'black',
-        'BootToeTrim': 'boots_rubber', 'BootHoles': 'rubber'}
+        'BootInstep': 'black', 'BootEdge': 'boots_edge', 'BootPrintW': 'decal_white',
+        'BootToe': 'rubber', 'BootHoles': 'gray', 'BootHeelBack': 'boots_rubber'}
 
 
 def build_side(s):
@@ -863,10 +1106,16 @@ def build_side(s):
     out['BootUpper' + s] = HS.hard_mesh((V, F), 'leather', bevel=0.0004, angle=38.0,
                                         outline_w=0.8)
     sp, P = sole_parts(b, V, F)
-    out['SoleBase' + s] = HS.hard_mesh(sp['SoleBase'], 'boots_rubber', bevel=0.0006, angle=35)
-    out['Sole' + s] = solid([sp['Sole'], sp['SoleWrap']], 'boots_sole', bevel=0.0006, angle=35)
+    out['Sole' + s] = HS.hard_mesh(sp['Sole'], 'rubber', bevel=0.0005, angle=35, outline_w=0.7)
+    out['SoleHeel' + s] = solid(sp['SoleHeel'], 'boots_rubber', bevel=0.0006, angle=30)
+    out['SoleGuard' + s] = solid(sp['SoleGuard'], 'boots_sole', bevel=0.0005, angle=28)
+    out['SoleTrim' + s] = solid(sp['SoleTrim'], 'boots_rubber', bevel=0.0003, angle=28,
+                                outline_w=0.5)
+    out['SoleScrew' + s] = solid(sp['SoleScrew'], 'gunmetal', bevel=0.0002, angle=35,
+                                 outline=False)
+    out['SoleSlot' + s] = solid(sp['SoleSlot'], 'rubber', bevel=0.0, angle=35, outline=False)
     for name, parts in details(b).items():
-        small = name in ('BootPlateText', 'BootPrint', 'BootPrintW', 'BootHoles')
+        small = name in ('BootPlateText', 'BootPrint', 'BootPrintW', 'BootHoles', 'BootEdge')
         out[name + s] = solid(parts, MATS[name], bevel=0.0 if small else 0.0004, angle=35,
                               outline=not small, outline_w=0.5)
     return out, b

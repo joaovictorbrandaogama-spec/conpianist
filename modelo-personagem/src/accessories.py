@@ -176,15 +176,28 @@ def rivet(r, h, seg=12, origin=(0, 0, 0), R=np.eye(3)):
 
 
 # ====================================================================== tech collar
+#
+# A rigid tube (fixed elliptical section around the neck axis, not derived
+# from the body) in three bands: a thin top band, a main band carrying the
+# gunmetal label plate framed by two chunky posts, and a bottom band.  The
+# body's neck widens strongly below z ~ 1.457, so the bottom band opens into a
+# shallow cone and then sinks into the shoulders (only its top shows).
 
 NB, NT = J['neck_base'], J['neck_top']
-COLLAR_Z = (1.425, 1.476)
-SEG_Z = [(1.4250, 1.4378), (1.4384, 1.4508), (1.4514, 1.4636), (1.4642, 1.4760)]
-COL_T, COL_LIP, COL_C = 0.0040, 0.0014, 0.0011
-COL_CLR = 0.0012          # clearance from the neck
-COL_CAP = 0.0440          # trapezius may poke through below this radius
-FRONT = -np.pi / 2        # polar angle of the front (-Y)
-_RB = None
+COLLAR_Z = (1.4250, 1.4810)
+BANDS = [(1.4250, 1.4562), (1.4570, 1.4728), (1.4736, 1.4810)]    # bottom, main, top
+BAND_DW = [0.0005, 0.0, 0.0005]      # small step of the bottom / top band over the main band
+COL_RX, COL_RY = 0.0297, 0.0292      # inner radii of the straight tube (neck ~28-29 mm)
+COL_W = 0.0026                       # wall thickness (outer = inner + COL_W)
+FLARE_Z, FLARE_K = 1.4572, 0.42      # below FLARE_Z the tube opens into a shallow cone
+COL_C = 0.0007                       # chamfer of the band edges
+FRONT = -np.pi / 2                   # polar angle of the front (-Y)
+POST_PHI = np.radians(40.0)          # posts either side of the front label
+POST_HW = 0.0046                     # post half width (arc length)
+POST_OUT = 0.0020                    # post stands this much proud of the main band
+PLATE_Z = (1.4584, 1.4688)
+PLATE_OUT = 0.0021
+STRIPE_HW = 0.0042
 
 
 def neck_centre(z):
@@ -192,66 +205,34 @@ def neck_centre(z):
     return NB[0] + (NT[0] - NB[0]) * t, NB[1] + (NT[1] - NB[1]) * t
 
 
-def _neck_table():
-    """Polar radius of the body + head around the neck axis, rb(phi, z)."""
-    global _RB
-    if _RB is not None:
-        return _RB
-    head = B.HeadSDF()
-    fn = lambda P: np.minimum(O.body_fn(P), head(P))
-    phis = np.linspace(-np.pi, np.pi, 145)[:-1]
-    zs = np.arange(1.418, 1.4825, 0.001)
-    Ph, Z = np.meshgrid(phis, zs)
-    cx, cy = neck_centre(Z)
-    Ori = np.stack([cx, cy, Z], -1).reshape(-1, 3)
-    D = np.stack([np.cos(Ph), np.sin(Ph), np.zeros_like(Ph)], -1).reshape(-1, 3)
-    t, ok = G.ray_hit(fn, Ori, D, 0.0, 0.12, n=120, mode='exit')
-    r = t.reshape(Z.shape)
-    # circular smoothing in phi, light smoothing in z
-    for _ in range(3):
-        r = 0.25 * np.roll(r, 1, axis=1) + 0.5 * r + 0.25 * np.roll(r, -1, axis=1)
-    r = np.minimum(r, COL_CAP)
-    # never narrower than the top ring (keeps the collar a rigid tube)
-    r = np.maximum(r, 0.0290)
-    _RB = (phis, zs, r)
-    return _RB
-
-
-def rb(phi, z):
-    phis, zs, r = _neck_table()
+def r_in(phi, z):
+    """Inner radius of the collar tube at polar angle phi and height z."""
     phi = np.asarray(phi, dtype=np.float64)
     z = np.asarray(z, dtype=np.float64)
-    p = (phi + np.pi) % (2 * np.pi) - np.pi
-    fi = (p - phis[0]) / (phis[1] - phis[0])
-    i0 = np.floor(fi).astype(int)
-    a = fi - i0
-    n = len(phis)
-    zi = np.clip((z - zs[0]) / (zs[1] - zs[0]), 0, len(zs) - 1.0001)
-    j0 = np.floor(zi).astype(int)
-    b = zi - j0
-    def g(i, j):
-        return r[j, i % n]
-    return ((1 - a) * (1 - b) * g(i0, j0) + a * (1 - b) * g(i0 + 1, j0) +
-            (1 - a) * b * g(i0, j0 + 1) + a * b * g(i0 + 1, j0 + 1))
+    re = 1.0 / np.sqrt((np.cos(phi) / COL_RX) ** 2 + (np.sin(phi) / COL_RY) ** 2)
+    return re + FLARE_K * np.maximum(FLARE_Z - z, 0.0)
+
+
+# backwards compatible name (other helpers below use it)
+def rb(phi, z):
+    return r_in(phi, z)
 
 
 def polar_point(phi, z, dr):
+    phi = np.asarray(phi, dtype=np.float64)
+    z = np.broadcast_to(np.asarray(z, dtype=np.float64), phi.shape)
     cx, cy = neck_centre(z)
-    r = rb(phi, z) + dr
-    return np.stack([cx + r * np.cos(phi), cy + r * np.sin(phi), np.broadcast_to(z, np.shape(r))],
-                    -1)
+    r = r_in(phi, z) + dr
+    return np.stack([cx + r * np.cos(phi), cy + r * np.sin(phi), z], -1)
 
 
 def polar_lathe(profile, phis, closed=True):
     """Ring around the neck: profile = closed loop of (dr, z, mat) points
-    (dr = offset from the neck radius rb); phis = polar angles.  The face
-    from profile point j to j+1 gets material j.  Returns (V, F, mats)."""
+    (dr = offset from the collar's inner radius); phis = polar angles.  The
+    face from profile point j to j+1 gets material j.  Returns (V, F, mats)."""
     prof = list(profile)
     m, n = len(prof), len(phis)
-    V = []
-    for dr, z, _ in prof:
-        V.append(polar_point(phis, np.full(n, z), dr))
-    V = np.concatenate(V)
+    V = np.concatenate([polar_point(phis, np.full(n, z), dr) for dr, z, _ in prof])
     F, M = [], []
     ncol = n if closed else n - 1
     for j in range(m):
@@ -268,262 +249,456 @@ def polar_lathe(profile, phis, closed=True):
     return V, F, M
 
 
-def seg_outer(k):
-    """Outer profile points (dr, z) of collar segment k, bottom to top."""
-    za, zb = SEG_Z[k]
-    t, lip, c = COL_T, COL_LIP, COL_C
-    return [(t + lip - c, za), (t + lip, za + c), (t + 0.25 * lip, zb - c),
-            (t + 0.25 * lip - c, zb)]
+def band_profile(k, tuck=0.0012):
+    """Closed (dr, z, mat) section of band k: chamfered outer wall with a grey
+    highlight on the upper chamfer; the inner wall reaches a little below
+    the band so the grooves between bands are never see-through."""
+    za, zb = BANDS[k]
+    w = COL_W + BAND_DW[k]
+    c = COL_C
+    top_mat = 'acc_red' if k == len(BANDS) - 1 else 'acc_matte'
+    zlo = za - (tuck if k > 0 else 0.0)
+    return [(w - c, za, 'acc_matte'), (w, za + c, 'acc_matte'), (w, zb - c, 'acc_edge'),
+            (w - c, zb, 'acc_matte'), (0.0013, zb, top_mat), (0.0004, zb - 0.0009, 'acc_matte'),
+            (0.0004, zlo, 'acc_matte'), (COL_W - 0.0012, zlo, 'acc_matte'),
+            (COL_W - 0.0012, za, 'acc_matte')]
 
 
-def collar_outer_dr(z):
-    """Outer offset of the collar plates at height z (max lip)."""
-    return COL_T + COL_LIP
+def arc_phis(pc, half_len, r, n):
+    hw = half_len / r
+    return np.linspace(pc - hw, pc + hw, n)
+
+
+def raised_block(pc, half_len, z0, z1, d_out, d_in, n=4, c=0.0007, mats=('acc_matte',) * 6):
+    """A block standing on the collar between angles pc +- half_len (arc
+    length) and heights z0..z1, its front at offset d_out with chamfers."""
+    ph = arc_phis(pc, half_len, 0.032, n)
+    prof = [(d_out - c, z0, mats[0]), (d_out, z0 + c, mats[1]), (d_out, z1 - c, mats[2]),
+            (d_out - c, z1, mats[3]), (d_in, z1, mats[4]), (d_in, z0, mats[5])]
+    return polar_lathe(prof, ph, closed=False)
+
+
+def print_bars(pc, zc, d, rows, seed, mat_h=0.00025):
+    """Small white 'printed text' bars on the collar surface at offset d.
+    rows = [(dz, height, length)]"""
+    rng = np.random.default_rng(seed)
+    bars = []
+    rr = float(r_in(pc, zc)) + d
+    for dz, h, length in rows:
+        u = -length / 2
+        while u < length / 2:
+            ln = min(rng.uniform(0.0007, 0.0024), length / 2 - u)
+            if ln > 0.0004:
+                p0, p1 = pc + u / rr, pc + (u + ln) / rr
+                z0 = zc + dz
+                cs = polar_point(np.array([p0, p1, p1, p0]), np.array([z0, z0, z0 + h, z0 + h]), d)
+                nn = np.array([np.cos(pc), np.sin(pc), 0.0])
+                V = np.concatenate([cs, cs + nn * mat_h])
+                F = [[0, 1, 2, 3][::-1], [4, 5, 6, 7], [0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6],
+                     [3, 0, 4, 7]]
+                bars.append((V, F))
+            u += ln + rng.uniform(0.0004, 0.0010)
+    return bars
 
 
 def collar():
     out = {}
     phis = np.linspace(-np.pi, np.pi, 97)[:-1]
     parts, mats = [], []
-    for k in range(len(SEG_Z)):
-        za, zb = SEG_Z[k]
-        o = seg_outer(k)
-        # the inner part of each plate reaches down into the one below (no
-        # see-through slit at the grooves)
-        tuck = 0.0022 if k > 0 else 0.0
-        prof = [(o[0][0], o[0][1], 'acc_matte'), (o[1][0], o[1][1], 'acc_matte'),
-                (o[2][0], o[2][1], 'acc_edge'), (o[3][0], o[3][1], 'acc_matte'),
-                (0.0006, zb, 'acc_matte'), (0.0006, za - tuck, 'acc_matte'),
-                (COL_T - 0.0014, za - tuck, 'acc_matte'), (COL_T - 0.0014, za, 'acc_matte')]
-        V, F, M = polar_lathe(prof, phis)
+
+    def add(vfm):
+        V, F, M = vfm
         parts.append((V, F))
-        mats += M
-    # vertical posts either side of the front label
-    def strip_prof(d_out, d_in, z0, z1, mat_top='acc_edge'):
-        pts = [(d_out - 0.0008, z0, 'acc_matte'), (d_out, z0 + 0.0008, 'acc_matte')]
-        for k in range(len(SEG_Z)):
-            for dr, z in seg_outer(k)[1:3]:
-                if z0 + 0.001 < z < z1 - 0.001:
-                    pts.append((dr + (d_out - COL_T - COL_LIP), z, 'acc_matte'))
-        pts += [(d_out, z1 - 0.0008, mat_top), (d_out - 0.0008, z1, 'acc_matte'),
-                (d_in, z1, 'acc_matte'), (d_in, z0, 'acc_matte')]
-        return pts
-    post_mats = []
+        mats.extend(M)
+
+    for k in range(len(BANDS)):
+        add(polar_lathe(band_profile(k), phis))
+    # chunky posts either side of the label plate, full collar height
+    z0p, z1p = BANDS[0][1] - 0.0080, BANDS[-1][1] - 0.0004
+    pm = ('acc_matte', 'acc_matte', 'acc_edge', 'acc_matte', 'acc_matte', 'acc_matte')
     for sgn in (-1, 1):
-        pc = FRONT + sgn * np.radians(40.0)
-        hw = 0.0028 / 0.040
-        ph = np.linspace(pc - hw, pc + hw, 4)
-        V, F, M = polar_lathe(strip_prof(COL_T + COL_LIP + 0.0012, COL_T - 0.0010,
-                                         SEG_Z[0][0] + 0.0015, SEG_Z[-1][1] - 0.0008),
-                              ph, closed=False)
-        parts.append((V, F))
-        mats += M
-    # label plate across the front of the third segment
-    za, zb = SEG_Z[2]
-    hw = 0.0215 / 0.036
-    ph = np.linspace(FRONT - hw, FRONT + hw, 15)
-    d = COL_T + COL_LIP + 0.0012
-    prof = [(d - 0.0008, za + 0.0006, 'acc_matte'), (d, za + 0.0014, 'acc_matte'),
-            (d, zb - 0.0014, 'acc_edge'), (d - 0.0008, zb - 0.0006, 'acc_matte'),
-            (COL_T - 0.001, zb - 0.0006, 'acc_matte'), (COL_T - 0.001, za + 0.0006, 'acc_matte')]
-    V, F, M = polar_lathe(prof, ph, closed=False)
-    parts.append((V, F))
-    mats += M
+        add(raised_block(FRONT + sgn * POST_PHI, POST_HW, z0p, z1p, COL_W + POST_OUT,
+                         COL_W - 0.0010, n=4, c=0.0008, mats=pm))
     Vc, Fc = merge_vf(parts)
-    # small round bolts near the bottom of the posts
-    bolts = []
-    for sgn in (-1, 1):
-        pc = FRONT + sgn * np.radians(40.0)
-        zb_ = 0.5 * (SEG_Z[0][0] + SEG_Z[0][1]) + 0.0010
-        cx, cy = neck_centre(zb_)
-        r0 = rb(pc, zb_) + COL_T + COL_LIP + 0.0012
-        nn = np.array([np.cos(pc), np.sin(pc), 0.0])
-        org = np.array([cx, cy, zb_]) + nn * (r0 - 0.0003)
-        bolts.append(rivet(0.0017, 0.0012, 12, origin=org, R=frame_from(x=np.array([0, 0, 1.0]), z=nn)))
-    out['AccCollarBolts'] = hard_mesh(bolts, 'metal', bevel=0.0002, angle=35, outline_w=0.35)
-    out['AccCollar'] = hard_mesh((Vc, Fc), 'acc_matte', bevel=0.0005, angle=35, outline_w=0.8)
+    out['AccCollar'] = hard_mesh((Vc, Fc), 'acc_matte', bevel=0.0004, angle=35, outline_w=0.8)
     out['AccCollar'].mats = mats
 
-    # red stripe down the front centre (over the plates, under the label)
-    hw = 0.0046 / 0.036
-    ph = np.linspace(FRONT - hw, FRONT + hw, 3)
-    pts = []
-    for k in range(len(SEG_Z)):
-        for dr, z in seg_outer(k):
-            pts.append((dr + 0.00035, z, 'acc_red'))
-    pts += [(COL_T - 0.0008, SEG_Z[-1][1], 'acc_red'), (COL_T - 0.0008, SEG_Z[0][0], 'acc_red')]
-    V, F, M = polar_lathe(pts, ph, closed=False)
-    out['AccCollarStripe'] = hard_mesh((V, F), 'acc_red', bevel=0.0002, angle=35, outline_w=0.35)
+    # gunmetal label plate between the posts (stands in front of the stripe)
+    r_mid = float(r_in(FRONT, 0.5 * sum(PLATE_Z)))
+    half = (POST_PHI * r_mid - POST_HW) - 0.0004
+    V, F, M = raised_block(FRONT, half, PLATE_Z[0], PLATE_Z[1], COL_W + PLATE_OUT,
+                           COL_W - 0.0010, n=15, c=0.0008)
+    out['AccCollarPlate'] = hard_mesh((V, F), 'gunmetal', bevel=0.0003, angle=35, outline_w=0.6)
 
-    # small white printed label on the plate: two rows of text bars
-    rng = np.random.default_rng(11)
-    bars = []
-    zc = 0.5 * (za + zb)
-    rr = rb(FRONT, zc) + d
-    for row, (z0, h, length) in enumerate(((zc + 0.0002, 0.0017, 0.030), (zc - 0.0024, 0.0012, 0.020))):
-        u = -length / 2
-        while u < length / 2:
-            ln = rng.uniform(0.0008, 0.0026) if row == 0 else rng.uniform(0.0006, 0.0018)
-            ln = min(ln, length / 2 - u)
-            if ln > 0.0004:
-                p0, p1 = FRONT + u / rr, FRONT + (u + ln) / rr
-                cs = []
-                for ph_, zz in ((p0, z0), (p1, z0), (p1, z0 + h), (p0, z0 + h)):
-                    cs.append(polar_point(np.array([ph_]), np.array([zz]), d - 0.0001)[0])
-                cs = np.array(cs)
-                nn = nrm(cs[0] - np.r_[neck_centre(zc), zc])
-                nn[2] = 0
-                nn = nrm(nn)
-                V = np.concatenate([cs, cs + nn * 0.00025])
-                F = [[0, 1, 2, 3][::-1], [4, 5, 6, 7], [0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6],
-                     [3, 0, 4, 7]]
-                bars.append((V, F))
-            u += ln + rng.uniform(0.0005, 0.0011)
+    # red stripe down the front centre: above the plate (through the top band)
+    # and below it (through the bottom band); the plate covers the middle
+    stripe = []
+    for zlo, zhi, ks, hl in ((PLATE_Z[1] - 0.0010, BANDS[1][1], (1,), half),
+                             (BANDS[0][0], PLATE_Z[0] + 0.0010, (0, 1), STRIPE_HW)):
+        ph = arc_phis(FRONT, hl, 0.032, 3 if hl < 0.006 else 15)
+        pts = []
+        for k in ks:
+            za, zb = BANDS[k]
+            w = COL_W + BAND_DW[k] + 0.0003
+            for z in (za, zb):
+                zc_ = min(max(z, zlo), zhi)
+                pts.append((w, zc_, 'acc_red'))
+        pts = [p for i, p in enumerate(pts) if i == 0 or abs(p[1] - pts[i - 1][1]) > 1e-6]
+        pts += [(COL_W - 0.0008, zhi, 'acc_red'), (COL_W - 0.0008, zlo, 'acc_red')]
+        V, F, _ = polar_lathe(pts, ph, closed=False)
+        stripe.append((V, F))
+    out['AccCollarStripe'] = hard_mesh(stripe, 'acc_red', bevel=0.0002, angle=35, outline_w=0.35)
+
+    # white print: two centred lines on the plate
+    zc = 0.5 * sum(PLATE_Z)
+    bars = print_bars(FRONT, zc, COL_W + PLATE_OUT, [(0.0006, 0.0018, 0.026),
+                                                     (-0.0026, 0.0013, 0.018)], 11)
     out['AccCollarLabel'] = hard_mesh(bars, 'decal_white', bevel=0.0, outline=False)
+
+    # small bolts near the bottom of the posts
+    bolts = []
+    for sgn in (-1, 1):
+        pc = FRONT + sgn * POST_PHI
+        zb_ = z0p + 0.0042
+        org = polar_point(np.array([pc]), np.array([zb_]), COL_W + POST_OUT - 0.0002)[0]
+        nn = np.array([np.cos(pc), np.sin(pc), 0.0])
+        bolts.append(rivet(0.0016, 0.0010, 12, origin=org,
+                           R=frame_from(x=np.array([0, 0, 1.0]), z=nn)))
+    out['AccCollarBolts'] = hard_mesh(bolts, 'metal', bevel=0.0002, angle=35, outline_w=0.35)
     return out
+
+
+def collar_outer(phi, z):
+    """Outer radius of the collar (main band) for straps routed around it."""
+    return r_in(phi, z) + COL_W + 0.0006
 
 
 # ====================================================================== goggles
+#
+# Two chunky tactical eye-cups: an octagonal (cut-corner) lens opening in a
+# thick bevelled rubber frame, a faceted crimson lens (flat-shaded facets in
+# dark / mid / bright red + sharp white glints), a short wide rubber bridge,
+# a chrome brow plate over the bridge and her right cup, small white print.
+# Her right cup is tilted down and turned partly edge-on, the other faces
+# forward, as in the reference.
 
-LENS_W, LENS_H, LENS_R = 0.034, 0.021, 0.0075
-FRAME_W = 0.0055
-
-
-def domed_lens(w, h, r, t, dome, seg=4, rings=5):
-    """Rounded-rectangle lens, flat back at z=0, front domed up to t + dome
-    (a curved glossy surface gives a small specular spot instead of a flat
-    sheet that lights up all at once)."""
-    base = rounded_rect(w, h, r, seg)
-    n = len(base)
-    V = [np.c_[base, np.zeros(n)], np.c_[base, np.full(n, t)]]
-    for k in range(1, rings):
-        f = 1.0 - k / rings
-        z = t + dome * (1.0 - f ** 2)
-        V.append(np.c_[base * f, np.full(n, z)])
-    V.append(np.array([[0.0, 0.0, t + dome]]))
-    V = np.concatenate(V)
-    F = [list(range(n))[::-1]]
-    for i in range(n):                     # side wall
-        j = (i + 1) % n
-        F.append([i, j, n + j, n + i])
-    for k in range(1, rings):              # dome rings
-        a0, a1 = k * n, (k + 1) * n
-        for i in range(n):
-            j = (i + 1) % n
-            F.append([a0 + i, a0 + j, a1 + j, a1 + i])
-    c = len(V) - 1
-    a0 = rings * n
+def round_poly(base, d, seg):
+    """Outward offset of a convex CCW polygon by d with round corners
+    (seg + 1 points per corner, so loops of any d match vertex for vertex)."""
+    from hardsurf import ccw
+    P = ccw(np.asarray(base, dtype=np.float64))
+    n = len(P)
+    out = []
     for i in range(n):
-        F.append([a0 + i, a0 + (i + 1) % n, c])
+        a, b, c = P[i - 1], P[i], P[(i + 1) % n]
+        e1, e2 = b - a, c - b
+        a1 = np.arctan2(-e1[0], e1[1])
+        a2 = np.arctan2(-e2[0], e2[1])
+        if a2 < a1:
+            a2 += 2 * np.pi
+        for t in np.linspace(a1, a2, seg + 1):
+            out.append(b + d * np.array([np.cos(t), np.sin(t)]))
+    return np.array(out)
+
+
+def ring_loft(base, prof, seg=3):
+    """Revolve-like loft of a closed (d, z) section around a convex outline."""
+    loops = [np.c_[round_poly(base, d, seg), np.full(len(base) * (seg + 1), z)] for d, z in prof]
+    m = len(loops[0])
+    V = np.concatenate(loops)
+    F = []
+    for k in range(len(prof)):
+        k2 = (k + 1) % len(prof)
+        for i in range(m):
+            j = (i + 1) % m
+            F.append([k * m + i, k * m + j, k2 * m + j, k2 * m + i])
     return V, F
 
 
-def lens_frame_parts(sgn):
-    """One goggle eye-piece in its local frame (z = lens normal, x towards
-    her left; sgn = -1 for the piece on her right)."""
-    seg = 4
-    inner = rounded_rect(LENS_W, LENS_H, LENS_R, seg)
-    cup_o = rounded_rect(LENS_W + 2 * FRAME_W + 0.0016, LENS_H + 2 * FRAME_W + 0.0016,
-                         LENS_R + FRAME_W + 0.0008, seg)
-    bez_o = rounded_rect(LENS_W + 2 * FRAME_W, LENS_H + 2 * FRAME_W, LENS_R + FRAME_W, seg)
-    bez_i = rounded_rect(LENS_W + 0.0012, LENS_H + 0.0012, LENS_R + 0.0006, seg)
-    rubber = [frame_prism(cup_o, inner, 0.0062, origin=(0, 0, -0.0044)),     # back cup
-              frame_prism(bez_o, bez_i, 0.0034, origin=(0, 0, 0.0021))]      # front bezel
+CUP_BASE = chamfer_rect(0.0340, 0.0185, 0.0062)    # core outline (lens = +2.5 mm)
+LENS_D, FRAME_D = 0.0025, 0.0105                   # lens opening / frame outer offsets
+FRAME_Z0, FRAME_Z1 = -0.0068, 0.0024               # back / front face of the frame
+CUP_W = 0.0340 + 2 * FRAME_D                       # 55 mm
+CUP_H = 0.0185 + 2 * FRAME_D                       # 39.5 mm
+
+
+def faceted_lens():
+    """Low-poly domed lens: 16-gon rim, 8-gon mid ring, apex.  Returns
+    (V, F, mats, facets) in the cup frame; facet materials by orientation."""
+    rim = round_poly(CUP_BASE, LENS_D + 0.0004, 1)                 # 16 points
+    n = len(rim)
+    core = np.asarray(CUP_BASE)
+    from hardsurf import ccw
+    core = ccw(core)
+    mid = core * np.array([0.62, 0.58]) + np.array([0.0, 0.0012])
+    apex = np.array([0.0015, 0.0022])
+    zr, zm, za, zb = -0.0010, 0.0012, 0.0020, -0.0030
+    V = np.concatenate([np.c_[rim, np.full(n, zb)], np.c_[rim, np.full(n, zr)],
+                        np.c_[mid, np.full(len(mid), zm)], [[apex[0], apex[1], za]]])
+    B0, R0, M0, A = 0, n, 2 * n, 2 * n + len(mid)
+    F = [list(range(n))[::-1]]
+    for i in range(n):
+        j = (i + 1) % n
+        F.append([B0 + i, B0 + j, R0 + j, R0 + i])
+    for i in range(len(mid)):
+        i2 = (i + 1) % len(mid)
+        F.append([R0 + 2 * i, R0 + 2 * i + 1, M0 + i])                        # corner tri
+        F.append([R0 + 2 * i + 1, R0 + (2 * i + 2) % n, M0 + i2, M0 + i])      # side quad
+        F.append([M0 + i, M0 + i2, A])                                         # top tri
+    mats = []
+    for f in F:
+        p = V[f]
+        nv = np.cross(p[1] - p[0], p[2] - p[0])
+        nv = nv / (np.linalg.norm(nv) + 1e-12)
+        if nv[2] < 0.2:
+            mats.append('acc_lens_dark')
+        elif nv[1] > 0.30:
+            mats.append('acc_lens_hi')
+        elif nv[1] < -0.22:
+            mats.append('acc_lens_dark')
+        else:
+            mats.append('acc_lens')
+    return V, F, mats
+
+
+def quad_patch(Q, uv, lift):
+    """Polygon inside quad/tri Q (bilinear / barycentric uv), lifted along
+    its normal: a thin plate for glints and prints."""
+    Q = np.asarray(Q)
+    if len(Q) == 3:
+        Q = np.array([Q[0], Q[1], Q[2], Q[2]])
+    nv = np.cross(Q[1] - Q[0], Q[3] - Q[0] if np.linalg.norm(Q[3] - Q[2]) > 1e-9 else Q[2] - Q[0])
+    nv /= np.linalg.norm(nv)
+    pts = []
+    for u, v in uv:
+        p = (1 - u) * (1 - v) * Q[0] + u * (1 - v) * Q[1] + u * v * Q[2] + (1 - u) * v * Q[3]
+        pts.append(p + nv * lift)
+    pts = np.array(pts)
+    k = len(pts)
+    V = np.concatenate([pts, pts + nv * 0.0002])
+    F = [list(range(k))[::-1], list(range(k, 2 * k))]
+    for i in range(k):
+        j = (i + 1) % k
+        F.append([i, j, k + j, k + i])
+    return V, F
+
+
+def cup_parts(sgn):
+    """One eye-cup in its local frame (x towards her left, y up, z out of the
+    lens).  Returns dict of lists of (V, F) (+ lens mats)."""
+    prof = [(LENS_D - 0.0004, FRAME_Z0), (FRAME_D, FRAME_Z0), (FRAME_D, 0.0002),
+            (FRAME_D - 0.0013, FRAME_Z1), (LENS_D + 0.0022, FRAME_Z1),
+            (LENS_D, FRAME_Z1 - 0.0016)]
+    rubber = [ring_loft(CUP_BASE, prof, seg=3)]
     # strap lug on the outer side
-    lx = sgn * (LENS_W / 2 + FRAME_W + 0.0035)
-    lug = chamfer_rect(0.0085, 0.0125, 0.002)
-    rubber.append(prism(lug + np.array([lx, 0.0]), 0.0052, z0=-0.0068))
-    lens = [domed_lens(LENS_W + 0.0006, LENS_H + 0.0006, LENS_R + 0.0003, 0.0016, 0.0016)]
-    lens = [(lens[0][0] + np.array([0.0, 0.0, -0.0022]), lens[0][1])]
-    # highlight: one slanted streak and a small dot, upper inner corner
-    shine = []
-    cx0 = -sgn * 0.0060
-    for (cx, cy, w, h, sl) in ((cx0, 0.0010, 0.0030, 0.0110, 0.0045),
-                               (cx0 + 0.0048, 0.0030, 0.0012, 0.0060, 0.0025)):
-        poly = [(cx - w / 2 - sl / 2, cy - h / 2), (cx + w / 2 - sl / 2, cy - h / 2),
-                (cx + w / 2 + sl / 2, cy + h / 2), (cx - w / 2 + sl / 2, cy + h / 2)]
-        shine.append(prism(np.array(poly), 0.0003, z0=0.0002))
-    metal = [rivet(0.0016, 0.0012, 10, origin=(lx, 0.0, -0.0016))]
-    return rubber, lens, shine, metal
+    lx = sgn * (CUP_W / 2 + 0.0030)
+    lug = tapered_prism(chamfer_rect(0.0090, 0.0150, 0.0024) + np.array([lx, -0.0010]),
+                        0.0070, 0.86, z0=FRAME_Z0 + 0.0004)
+    rubber.append(lug)
+    V, F, lm = faceted_lens()
+    # glints: a slanted sliver and a small chip on the upper outer facets
+    glint = []
+    rim = round_poly(CUP_BASE, LENS_D + 0.0004, 1)
+    n = len(rim)
+    from hardsurf import ccw
+    core = ccw(np.asarray(CUP_BASE))
+    mid = core * np.array([0.62, 0.58]) + np.array([0.0, 0.0012])
+    # pick the side quad whose midpoint is most 'up and towards -sgn x' (inner top)
+    best, bq = -9, None
+    for i in range(len(mid)):
+        i2 = (i + 1) % len(mid)
+        Q = [np.r_[rim[2 * i + 1], -0.0010], np.r_[rim[(2 * i + 2) % n], -0.0010],
+             np.r_[mid[i2], 0.0012], np.r_[mid[i], 0.0012]]
+        c = np.mean(Q, axis=0)
+        sc = c[1] / CUP_H + 0.6 * (-sgn) * c[0] / CUP_W
+        if sc > best:
+            best, bq = sc, Q
+    glint.append(quad_patch(bq, [(0.30, 0.10), (0.42, 0.10), (0.30, 0.85), (0.18, 0.85)], 0.00015))
+    glint.append(quad_patch(bq, [(0.58, 0.20), (0.66, 0.20), (0.62, 0.55)], 0.00015))
+    # small white print on the frame's front face (upper outer corner + lower)
+    prints = []
+    rng = np.random.default_rng(5 + sgn)
+    for (x0, y0, length, h) in ((sgn * 0.0040, CUP_H / 2 - 0.0034, 0.0120, 0.0009),
+                                (sgn * 0.0060, CUP_H / 2 - 0.0050, 0.0080, 0.0007),
+                                (sgn * 0.0090, -CUP_H / 2 + 0.0032, 0.0070, 0.0008)):
+        u = 0.0
+        while u < length:
+            ln = min(rng.uniform(0.0006, 0.0018), length - u)
+            if ln > 0.0004:
+                xa = x0 + sgn * u - (ln if sgn < 0 else 0.0) * 0
+                poly = np.array([(xa, y0), (xa + sgn * ln, y0), (xa + sgn * ln, y0 + h), (xa, y0 + h)])
+                prints.append(prism(poly, 0.00025, z0=FRAME_Z1))
+            u += ln + rng.uniform(0.0004, 0.0008)
+    metal = [rivet(0.0017, 0.0012, 10, origin=(lx, -0.0010, FRAME_Z0 + 0.0074))]
+    return dict(rubber=rubber, lens=[(V, F)], lens_mats=lm, glint=glint, prints=prints,
+                metal=metal)
 
 
-def goggles(collar_front_y):
+GOG_PX = ((326.0, 191.0), (354.0, 187.5))     # her right / her left cup centres (reference px)
+_OBST = None
+
+
+def _obstacles():
+    """Vertices of the garments the goggles rest on (coat lapels, top), read
+    from the other parts' caches, with their shell thickness."""
+    global _OBST
+    if _OBST is None:
+        pts = []
+        try:
+            import cache
+            for part in ('coat', 'top'):
+                try:
+                    ms = cache.load(part)
+                except Exception:
+                    continue
+                for m in ms.values():
+                    v = m['verts']
+                    keep = (np.abs(v[:, 0]) < 0.09) & (v[:, 2] > 1.36) & (v[:, 2] < 1.47) & \
+                        (v[:, 1] < 0.03)
+                    th = float(m['props'].get('solidify') or 0.0)
+                    if keep.any():
+                        pts.append(np.c_[v[keep], np.full(int(keep.sum()), th)])
+        except Exception:
+            pass
+        _OBST = np.concatenate(pts) if pts else np.zeros((0, 4))
+    return _OBST
+
+
+def _clear_shift(c, R, margin=0.0008, frac=0.6):
+    """Move a cup at (c, R) towards the camera (-Y, so it keeps its place in
+    the front view) until nothing of the coat / top lies in front of its back
+    face inside the central part of its outline (the rubber rim may press
+    into a lapel).  Returns the new centre."""
+    Q = _obstacles()
+    if not len(Q):
+        return c
+    d = np.array([0.0, -1.0, 0.0])
+    dn = float(np.dot(d, R[:, 2]))
+    for _ in range(3):
+        q = (Q[:, :3] - c) @ R
+        inside = (np.abs(q[:, 0]) < frac * CUP_W / 2) & (np.abs(q[:, 1]) < frac * CUP_H / 2)
+        if not inside.any():
+            break
+        need = float((q[inside, 2] + Q[inside, 3] + margin - FRAME_Z0).max())
+        if need <= 1e-5:
+            break
+        c = c + d * need / dn
+    return c
+
+
+def goggles(collar_front_y=None):
     out = {}
-    cL = np.array([(325 - PX0) * S, 0.0, (PY0 - 191) * S])
-    cR = np.array([(357 - PX0) * S, 0.0, (PY0 - 188) * S])
-    M = 0.5 * (cL + cR)
-    M[1] = collar_front_y - 0.0105
-    tilt = np.radians(24.0)
+    cR_ = np.array([(GOG_PX[0][0] - PX0) * S, 0.0, (PY0 - GOG_PX[0][1]) * S])
+    cL_ = np.array([(GOG_PX[1][0] - PX0) * S, 0.0, (PY0 - GOG_PX[1][1]) * S])
+    tilt = np.radians(16.0)
     n_g = nrm(np.array([0.0, -np.cos(tilt), np.sin(tilt)]))
-    x_g = nrm(cR - cL)
+    x_g = nrm(cL_ - cR_)
     Rg = frame_from(x=x_g, z=n_g)
     x_g, y_g, n_g = Rg[:, 0], Rg[:, 1], Rg[:, 2]
-    half = 0.5 * np.linalg.norm(cR - cL)
-    rub, lns, shn, met, lugs = [], [], [], [], []
-    for sgn, yaw in ((-1, np.radians(24.0)), (1, np.radians(12.0))):
-        a = yaw
-        n_i = np.cos(a) * n_g + sgn * np.sin(a) * x_g
-        x_i = np.cos(a) * x_g - sgn * np.sin(a) * n_g
+    rub, lns, lmats, gl, pr, met = [], [], [], [], [], []
+    frames, lugs = {}, {}
+    for sgn, c0, yaw, roll in ((-1, cR_, np.radians(36.0), np.radians(18.0)),
+                               (1, cL_, np.radians(10.0), np.radians(-4.0))):
+        # roll about the view axis (her right cup: outer end down), then yaw outwards
+        xr = np.cos(roll) * x_g + np.sin(roll) * y_g
+        yr = np.cross(n_g, xr)
+        n_i = np.cos(yaw) * n_g + sgn * np.sin(yaw) * xr
+        x_i = np.cos(yaw) * xr - sgn * np.sin(yaw) * n_g
         Ri = frame_from(x=x_i, z=n_i)
-        c = M + sgn * x_g * half - n_g * 0.0040 * np.sin(a) / np.sin(np.radians(24))
-        r, l, s, m = lens_frame_parts(sgn)
-        rub += [(place(v, c, Ri), f) for v, f in r]
-        lns += [(place(v, c, Ri), f) for v, f in l]
-        shn += [(place(v, c, Ri), f) for v, f in s]
-        met += [(place(v, c, Ri), f) for v, f in m]
-        lugs.append(place(np.array([[sgn * (LENS_W / 2 + FRAME_W + 0.0060), 0.0, -0.0042]]),
-                          c, Ri)[0])
-    # rubber nose piece: a U hanging between the cups, plus a top bar
-    gap = 2 * half - LENS_W - 2 * FRAME_W           # clear gap between bezels
-    xi = gap / 2 + 0.0030                           # reach into the bezels
-    yb = -(LENS_H / 2 + FRAME_W) + 0.0010
-    path2 = [(-xi, 0.0040), (-gap / 2 + 0.0005, -0.0030), (-0.0040, yb + 0.0015),
-             (0.0, yb), (0.0040, yb + 0.0015), (gap / 2 - 0.0005, -0.0030), (xi, 0.0040)]
-    P2, _ = catmull(np.array([(x, y, 0.0) for x, y in path2]), 40)
+        # rest the back of the cup on the body / chest, then in front of the
+        # coat lapels and the top if they are under its footprint
+        sp = O.surface_point(O.body_fn, c0[0], c0[2])
+        c = sp + Ri[:, 2] * (-FRAME_Z0 + 0.0012) + np.array([0.0, -0.0015, 0.0])
+        c = _clear_shift(c, Ri)
+        frames[sgn] = (c, Ri)
+        p = cup_parts(sgn)
+        pl = lambda items: [(place(v, c, Ri), f) for v, f in items]
+        rub += pl(p['rubber'])
+        lns += pl(p['lens'])
+        lmats += p['lens_mats']
+        gl += pl(p['glint'])
+        pr += pl(p['prints'])
+        met += pl(p['metal'])
+        lugs[sgn] = place(np.array([[sgn * (CUP_W / 2 + 0.0060), -0.0010, FRAME_Z0 + 0.0040]]),
+                          c, Ri)[0]
+    # short wide rubber bridge block joining the inner edges of the cups
+    (cA, RA), (cB, RB) = frames[-1], frames[1]
+    pA = place(np.array([[CUP_W / 2 - 0.0050, 0.0040, -0.0018]]), cA, RA)[0]
+    pB = place(np.array([[-CUP_W / 2 + 0.0050, 0.0040, -0.0018]]), cB, RB)[0]
+    xb = nrm(pB - pA)
+    zb = nrm(RA[:, 2] + RB[:, 2])
+    Rb = frame_from(x=xb, z=zb)
+    Lb = float(np.linalg.norm(pB - pA))
+    bv, bf = tapered_prism(chamfer_rect(Lb, 0.0095, 0.0022), 0.0080, 0.88, z0=-0.0040)
+    rub.append((place(bv, 0.5 * (pA + pB), Rb), bf))
+    # chrome brow plate: spans the bridge and the top of her right cup
+    yt = CUP_H / 2
+    trap = np.array([(0.0040, yt - 0.0004), (CUP_W / 2 + 0.0080, yt - 0.0004),
+                     (CUP_W / 2 + 0.0050, yt - 0.0080), (0.0085, yt - 0.0080)])
+    tv, tf = tapered_prism(trap, 0.0022, 0.84, z0=FRAME_Z1 - 0.0004)
+    met.append((place(tv, cA, RA), tf))
+    out['AccGoggles'] = hard_mesh(rub, 'acc_matte', bevel=0.0005, angle=35, outline_w=0.75)
+    out['AccGogglesLens'] = hard_mesh(lns, 'acc_lens', bevel=0.0, angle=8.0, outline_w=0.4)
+    out['AccGogglesLens'].mats = lmats
+    out['AccGogglesShine'] = hard_mesh(gl, 'white', bevel=0.0, outline=False)
+    out['AccGogglesPrint'] = hard_mesh(pr, 'decal_white', bevel=0.0, outline=False)
+    out['AccGogglesMetal'] = hard_mesh(met, 'metal', bevel=0.0003, angle=35, outline_w=0.45)
+    out['AccGogglesStrap'] = goggle_strap(lugs, frames)
+    return out
+
+
+def goggle_strap(lugs, frames):
+    """Strap from each lug round the back of the collar.  Built in polar
+    coordinates about the neck axis: radius and height blend smoothly from
+    each lug to a ring just outside the collar at the back (no corners), then
+    the path is pushed just clear of the body and smoothed."""
     from hardsurf import sweep
-    Vn, Fn = sweep(chamfer_rect(0.0050, 0.0050, 0.0008), P2, np.array([0.0, 0.0, 1.0]))
-    dz = 0.0035                                     # cups wrap forward at the inner side
-    rub.append((place(Vn + np.array([0.0, 0.0, dz - 0.0003]), M, Rg), Fn))
-    ytop = LENS_H / 2 + FRAME_W - 0.0030
-    rub.append(box((gap + 0.0050, 0.0050, 0.0042), origin=M + y_g * ytop + n_g * (dz - 0.0004), R=Rg))
-    # silver triangular bridge clasp on the top bar, pointing down
-    tri = [(-0.0078, ytop + 0.0034), (0.0078, ytop + 0.0034), (0.0, ytop - 0.0085)]
-    met.append(tapered_prism(tri, 0.0020, 0.80, z0=dz + 0.0016))
-    met[-1] = (place(met[-1][0], M, Rg), met[-1][1])
-    met.append(rivet(0.0011, 0.0009, 10, origin=M + y_g * (ytop + 0.0005) + n_g * (dz + 0.0034), R=Rg))
-    out['AccGoggles'] = hard_mesh(rub, 'acc_matte', bevel=0.0005, angle=35, outline_w=0.7)
-    out['AccGogglesLens'] = hard_mesh(lns, 'lens', bevel=0.0004, angle=35, outline_w=0.4)
-    out['AccGogglesShine'] = hard_mesh(shn, 'white', bevel=0.0, outline=False)
-    out['AccGogglesMetal'] = hard_mesh(met, 'chrome', bevel=0.0003, angle=35, outline_w=0.4)
-    # strap: from each lug around the back of the collar
-    zs = 1.4335
-    phL = np.arctan2(lugs[0][1] - neck_centre(zs)[1], lugs[0][0] - neck_centre(zs)[0])
-    phR = np.arctan2(lugs[1][1] - neck_centre(zs)[1], lugs[1][0] - neck_centre(zs)[0])
-    phL = phL % (2 * np.pi)                      # ~ 220 deg
-    phR = phR % (2 * np.pi) - 2 * np.pi          # ~ -60 deg
-    ph = np.linspace(phL - np.radians(18), phR + np.radians(18), 40)
-    zz = zs + 0.004 * np.cos(ph - np.pi / 2) ** 2 * (np.sin(ph) > 0)
-    head = B.HeadSDF()
-    pts = []
-    for p, z in zip(ph, zz):
-        r0 = rb(p, z) + COL_T + COL_LIP + 0.0012
-        cx, cy = neck_centre(z)
-        d = np.array([np.cos(p), np.sin(p), 0.0])
-        # push out of the shoulders where they rise above the collar base
-        r = r0
-        for _ in range(40):
-            q = np.array([cx, cy, z]) + d * r
-            if O.body_fn(q[None])[0] > 0.0020:
-                break
-            r += 0.001
-        pts.append(np.array([cx, cy, z]) + d * r)
-    ctrl = [lugs[0]] + pts + [lugs[1]]
-    P, T = catmull(np.array(ctrl), 90)
+    zs = 1.4535
+    cx, cy = neck_centre(zs)
+    ctr = np.array([cx, cy])
+
+    def pol(p):
+        d = p[:2] - ctr
+        return np.arctan2(d[1], d[0]), float(np.linalg.norm(d)), p[2]
+
+    aR, rR, zR = pol(lugs[-1])          # her right lug, ~ 200-230 deg
+    aL, rL, zL = pol(lugs[1])           # her left lug, ~ -30 deg
+    aR = aR % (2 * np.pi)
+    aL = aL % (2 * np.pi) - 2 * np.pi
+    ph = np.linspace(aR, aL, 160)       # decreasing, through the back (+90 deg)
+    blend = np.radians(75.0)
+    wR = np.clip((aR - ph) / blend, 0, 1)
+    wL = np.clip((ph - aL) / blend, 0, 1)
+    w = np.minimum(wR, wL)
+    w = w * w * (3 - 2 * w)
+    r_ring = r_in(ph, zs) + COL_W + 0.0016
+    end_r = np.where(ph > 0.5 * (aR + aL), rR, rL)
+    end_z = np.where(ph > 0.5 * (aR + aL), zR, zL)
+    r = (1 - w) * end_r + w * r_ring
+    z = (1 - w) * end_z + w * zs
+    P = np.stack([cx + r * np.cos(ph), cy + r * np.sin(ph), z], 1)
+    # push out of the body (radially), keep the ends on the lugs
+    for _ in range(3):
+        off = np.zeros(len(P))
+        for i, q in enumerate(P):
+            d = np.r_[q[:2] - ctr, 0.0]
+            d = nrm(d)
+            rr = 0.0
+            while O.body_fn((q + d * rr)[None])[0] < 0.0016 and rr < 0.03:
+                rr += 0.0005
+            off[i] = rr
+        off[:3] = 0.0
+        off[-3:] = 0.0
+        for _ in range(8):
+            off[1:-1] = np.maximum(off[1:-1], 0.5 * (off[:-2] + off[2:]))
+        for i, q in enumerate(P):
+            d = nrm(np.r_[q[:2] - ctr, 0.0])
+            P[i] = q + d * off[i]
+        for _ in range(6):
+            P[1:-1] = 0.25 * P[:-2] + 0.5 * P[1:-1] + 0.25 * P[2:]
     up = np.tile(np.array([0.0, 0.0, 1.0]), (len(P), 1))
     V, F = sweep(rounded_rect(0.0018, 0.0090, 0.0006, seg=1), P, up)
-    out['AccGogglesStrap'] = hard_mesh((V, F), 'acc_matte', bevel=0.0003, angle=40,
-                                       outline_w=0.5)
-    return out
+    return hard_mesh((V, F), 'acc_matte', bevel=0.0003, angle=40, outline_w=0.5)
 
 
 # ====================================================================== arm rings
@@ -561,21 +736,49 @@ def limb_radius(ch, s0, s1, level, C, ax):
     return r
 
 
-def ring_parts(C, ax, xref, ri, rbody, rflange, H, seg=56):
-    """Flanged ring: silver flange on top (towards the shoulder) with a glowing
-    band under its rim, a grooved metal body below.  Returns (metal, glow)."""
+def ring_parts(C, ax, xref, ri, rbody, rflange, H, seg=64):
+    """Flanged ring: a wide chamfered chrome flange on top (towards the
+    shoulder), a recessed glowing band right under it, then a tall straight
+    chrome body with a fine groove.  Returns (metal, glow, R)."""
     R = frame_from(x=xref - ax * np.dot(xref, ax), z=ax)
-    c = 0.0007
     rb_, rf = rbody, rflange
-    prof = [(ri, -H), (rb_ - c, -H), (rb_, -H + c), (rb_, -H + 0.0045),
-            (rb_ - 0.0012, -H + 0.0057), (rb_ - 0.0012, -H + 0.0073), (rb_, -H + 0.0085),
-            (rb_, -0.0074), (rf - 0.0030, -0.0074), (rf - 0.0030, -0.0030),
-            (rf - c, -0.0030), (rf, -0.0030 + c), (rf, -c), (rf - c, 0.0),
-            (ri + 0.0016, 0.0), (ri, -0.0016)]
+    zg0, zg1 = -0.0052, -0.0078          # glow groove
+    zm = -0.5 * (H + 0.0078) - 0.0010     # fine groove on the body
+    prof = [(ri, -H), (rb_ - 0.0008, -H), (rb_, -H + 0.0008),
+            (rb_, zm - 0.0006), (rb_ - 0.0006, zm), (rb_, zm + 0.0006),
+            (rb_, zg1), (rb_ - 0.0010, zg1), (rb_ - 0.0010, zg0),
+            (rf - 0.0010, zg0), (rf, zg0 + 0.0008), (rf, -0.0012), (rf - 0.0012, 0.0),
+            (ri - 0.0010, 0.0), (ri - 0.0025, -0.0012), (ri - 0.0025, -0.0030), (ri, -0.0045)]
     metal = closed_lathe(prof, seg, C, R)
-    glow = closed_lathe([(rf - 0.0040, -0.0053), (rf - 0.0009, -0.0053),
-                         (rf - 0.0009, -0.0031), (rf - 0.0040, -0.0031)], seg, C, R)
-    return metal, glow
+    glow = closed_lathe([(rb_ - 0.0011, zg1 + 0.0001), (rb_ - 0.0002, zg1 + 0.0001),
+                         (rb_ - 0.0002, zg0 - 0.0001), (rb_ - 0.0011, zg0 - 0.0001)], seg, C, R)
+    return metal, glow, R
+
+
+def ring_print(C, ax, R, rbody, z0, seed):
+    """A few small dark printed marks on the ring body, facing the camera."""
+    rng = np.random.default_rng(seed)
+    fw = np.array([0.0, -1.0, 0.0])
+    fw = fw - ax * np.dot(fw, ax)
+    a0 = np.arctan2(np.dot(fw, R[:, 1]), np.dot(fw, R[:, 0]))
+    out = []
+    for row, (dz, h, L) in enumerate(((0.0, 0.0013, 0.020), (-0.0024, 0.0010, 0.013))):
+        u = -L / 2 + (0.003 if row else 0.0)
+        while u < L / 2:
+            ln = min(rng.uniform(0.0008, 0.0022), L / 2 - u)
+            if ln > 0.0004:
+                a, b = a0 + u / rbody, a0 + (u + ln) / rbody
+                pts = []
+                for ang, z in ((a, z0 + dz), (b, z0 + dz), (b, z0 + dz + h), (a, z0 + dz + h)):
+                    pts.append((rbody * np.cos(ang), rbody * np.sin(ang), z))
+                pts = np.array(pts)
+                nn = np.c_[np.cos([a, b, b, a]), np.sin([a, b, b, a]), np.zeros(4)]
+                V = np.concatenate([pts - nn * 0.0001, pts + nn * 0.00018])
+                F = [[0, 1, 2, 3][::-1], [4, 5, 6, 7], [0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6],
+                     [3, 0, 4, 7]]
+                out.append((place(V, C, R), F))
+            u += ln + rng.uniform(0.0004, 0.0009)
+    return out
 
 
 def arm_rings():
@@ -585,28 +788,37 @@ def arm_rings():
     wrap = 0.0012 + 0.0024 + 0.0015 + 0.0012      # red wrap + crossing straps
     xref = arm.R[:, 0]
     END = O.SK_L - 0.036
-    # elbow: just below the sleeve hem
-    s_top = END + 0.0015
-    H = 0.020
+    # elbow: right under the sleeve hem (the hem tucks into the flange)
+    s_top = END - 0.0085
+    H = 0.030
     C, ax = limb_axis(ch, s_top)
     ri = limb_radius(ch, s_top - 0.002, s_top + H, wrap, C, ax) + 0.0010
-    m1, g1 = ring_parts(C, ax, xref, ri, ri + 0.0042, ri + 0.0135, H)
-    # wrist: ring + white cuff towards the hand
-    s_top = O.L_L - 0.025
-    H = 0.017
+    m1, g1, R1 = ring_parts(C, ax, xref, ri, ri + 0.0045, ri + 0.0140, H)
+    p1 = ring_print(C, ax, R1, ri + 0.0045, -0.5 * (H + 0.0078) + 0.0030, 3)
+    # wrist: ring, a dark band, then the white cuff towards the hand
+    s_top = O.L_L - 0.036
+    H = 0.024
     C, ax = limb_axis(ch, s_top)
     ri = limb_radius(ch, s_top, s_top + H, wrap, C, ax) + 0.0010
-    m2, g2 = ring_parts(C, ax, xref, ri, ri + 0.0040, ri + 0.0125, H)
-    Rw = frame_from(x=xref - ax * np.dot(xref, ax), z=ax)
-    rc = ri + 0.0026
+    m2, g2, Rw = ring_parts(C, ax, xref, ri, ri + 0.0042, ri + 0.0120, H)
+    p2 = ring_print(C, ax, Rw, ri + 0.0042, -0.5 * (H + 0.0078) + 0.0025, 4)
     c = 0.0008
-    cuff = closed_lathe([(ri - 0.0004, -H - 0.0135), (rc - c, -H - 0.0135), (rc, -H - 0.0135 + c),
-                         (rc, -H - c), (rc - c, -H + 0.0004), (ri - 0.0004, -H + 0.0004)],
+    rd = ri + 0.0030
+    dark = closed_lathe([(ri - 0.0004, -H - 0.0060), (rd - c, -H - 0.0060), (rd, -H - 0.0060 + c),
+                         (rd, -H - c), (rd - c, -H + 0.0004), (ri - 0.0004, -H + 0.0004)],
+                        48, C, Rw)
+    rc = ri + 0.0026
+    z0 = -H - 0.0062
+    cuff = closed_lathe([(ri - 0.0004, z0 - 0.0120), (rc - c, z0 - 0.0120), (rc, z0 - 0.0120 + c),
+                         (rc, z0 - c), (rc - c, z0 + 0.0002), (ri - 0.0004, z0 + 0.0002)],
                         48, C, Rw)
     out['AccRingElbow'] = hard_mesh([m1], 'chrome', bevel=0.0004, angle=35, outline_w=0.6)
     out['AccRingElbowGlow'] = hard_mesh([g1], 'glow_blue', bevel=0.0, outline=False)
     out['AccRingWrist'] = hard_mesh([m2], 'chrome', bevel=0.0004, angle=35, outline_w=0.6)
     out['AccRingWristGlow'] = hard_mesh([g2], 'glow_blue', bevel=0.0, outline=False)
+    out['AccRingElbowPrint'] = hard_mesh(p1, 'acc_matte', bevel=0.0, outline=False)
+    out['AccRingWristPrint'] = hard_mesh(p2, 'acc_matte', bevel=0.0, outline=False)
+    out['AccWristBand'] = hard_mesh([dark], 'acc_matte', bevel=0.0004, angle=35, outline_w=0.6)
     out['AccWristCuff'] = hard_mesh([cuff], 'white', bevel=0.0005, angle=35, outline_w=0.6)
     return out
 
@@ -616,23 +828,6 @@ def arm_rings():
 def strip_sign(st, ch_lift_fn=None):
     """+1 if the strip's local x grows with the chart angle."""
     return 1.0
-
-
-def belt_buckle():
-    tb = np.radians(-38.0)
-    lev = O.WBELT_LEV + O.WBELT_T
-    st = torso_strip(O.hips_fn(), lambda th: O.zc_of('white', th), lev, tb)
-    sx = _dir_sign(st, O.hips_fn(), lambda th: O.zc_of('white', th), lev, tb, torso=True)
-    tongue = 0.0028           # tongue sits this much above the belt top
-    parts = buckle_parts(0.029, 0.036, 0.0043, 0.0050, -0.0016, prong_dir=-sx,
-                         rnd=0.0035, prong=False)
-    # prong lying on the tongue, pointing to the tongue's free end
-    x1 = -sx * (0.029 / 2 - 0.0012)
-    poly = [(0.0, -0.0013), (x1 + sx * 0.003, -0.0013), (x1, 0.0), (x1 + sx * 0.003, 0.0013),
-            (0.0, 0.0013)]
-    parts.append(prism(poly, 0.0014, z0=tongue - 0.0001))
-    return {'AccBeltBuckle': hard_mesh(st.bend(parts), 'chrome', bevel=0.0005, angle=35,
-                                       outline_w=0.7)}
 
 
 def _dir_sign(st, fn, zfun_or_s, level, th_c, torso=False, loft=None):
@@ -651,49 +846,110 @@ def _dir_sign(st, fn, zfun_or_s, level, th_c, torso=False, loft=None):
     return 1.0 if np.dot(R[:, 0], P[1] - P[0]) > 0 else -1.0
 
 
+def bevel_frame(core, d_in, d_out, z0, h, ch=0.0008, seg=3):
+    """Flat buckle frame around a convex core outline: inner loop offset d_in,
+    outer d_out, from z0 to z0 + h with chamfered top edges."""
+    prof = [(d_in, z0), (d_out, z0), (d_out, z0 + h - ch), (d_out - ch, z0 + h),
+            (d_in + ch, z0 + h), (d_in, z0 + h - ch)]
+    return ring_loft(core, prof, seg)
+
+
+def belt_buckle():
+    """Large metal belt buckle: a D / hexagon frame (corners on the tip side
+    cut at 45 degrees), a heavy cross bar at 40 % of its width, and an oval
+    metal-rimmed slot in the tongue.  Bent onto the belt."""
+    tb = np.radians(-38.0)
+    lev = O.WBELT_LEV + O.WBELT_T
+    st = torso_strip(O.hips_fn(), lambda th: O.zc_of('white', th), lev, tb)
+    sx = _dir_sign(st, O.hips_fn(), lambda th: O.zc_of('white', th), lev, tb, torso=True)
+    W, Hh, bar, dep = 0.044, 0.036, 0.0056, 0.0055
+    ci, cw, chh = 0.0006, W - 2 * bar, Hh - 2 * bar
+    # core outline (local x = -sx is the belt tip side; chamfer those corners)
+    t = -sx
+    c = 0.0068
+    core = np.array([(t * (cw / 2 - c), chh / 2), (-t * cw / 2, chh / 2), (-t * cw / 2, -chh / 2),
+                     (t * (cw / 2 - c), -chh / 2), (t * cw / 2, -chh / 2 + c),
+                     (t * cw / 2, chh / 2 - c)]) * np.array([1.0, 1.0])
+    core = core - np.sign(core) * ci       # so that the inner loop (offset ci) is the opening
+    z0 = -0.0016
+    parts = [bevel_frame(core, ci, ci + bar, z0, dep, ch=0.0010, seg=3)]
+    # heavy cross bar at ~40 % of the width from the tip side
+    xb = t * (W / 2 - 0.40 * W)
+    parts.append(tapered_prism(chamfer_rect(0.0062, chh + 0.0016, 0.0010) + np.array([xb, 0.0]),
+                               dep - 0.0004, 0.80, z0=z0))
+    metal = st.bend(parts)
+    # oval metal-rimmed slot in the tongue, beyond the bar
+    zt = O.TONGUE_LEV + 0.0025 - lev
+    xs = -t * 0.0080
+    oval_o = rounded_rect(0.0090, 0.0040, 0.00199, seg=4) + np.array([xs, 0.0])
+    oval_i = rounded_rect(0.0066, 0.0020, 0.00099, seg=4) + np.array([xs, 0.0])
+    metal += st.bend([frame_prism(oval_o, oval_i, 0.0007, origin=(0, 0, zt + 0.00025))])
+    hole = st.bend([prism(oval_i * np.array([1.0, 1.0]), 0.0004, z0=zt - 0.0001)])
+    return {'AccBeltBuckle': hard_mesh(metal, 'metal', bevel=0.0005, angle=35, outline_w=0.8),
+            'AccBeltBuckleSlot': hard_mesh(hole, 'clothing_seam', bevel=0.0, outline=False)}
+
+
 THIGH_TH = np.radians(36.0)
 
 
 def thigh_buckles():
-    """Big chrome buckles on the two left-thigh straps.  The frame is rigid
-    (flat, placed on the tangent plane at the strap); the tail and keeper are
-    bent onto the strap so they follow the thigh."""
+    """Watch-strap pin buckles on the two left-thigh straps: a heavy chrome
+    C-bow on the outer side (its ends dive under the strap at the hinge), a
+    long pin from a hole in the strap over the bow, a short strap end tucked
+    under the bow and a flat tapered chrome keeper further in."""
+    from hardsurf import sweep
     fn = G.body_subset(['gluteL', 'legL'])
     th_c = THIGH_TH
-    metal, tails, dark = [], [], []
-    Lx, Wy, bar, dep = 0.030, 0.040, 0.0056, 0.0052
+    bows, small, tails, holes = [], [], [], []
+    hb = 0.0185                 # bow half height (outer centre line)
     for sc in O.STRAP_S:
         lv0 = O.strap_level(sc)
         lev = lambda T, Sv, lv0=lv0: lv0(T, Sv) + O.STRAP_T
         st = limb_strip(O.LEG_L, fn, sc, lev, th_c)
         sx = _dir_sign(st, fn, sc, lev, th_c, loft=O.LEG_L)     # +x*sx = outwards
-        C, R = st.frame(0.0)
-        tail_t = 0.0022
-        # rigid frame + centre bar, prong lying on the tail pointing outwards
-        m = buckle_parts(Lx, Wy, bar, dep, -0.0013, prong=False, rnd=0.0032)
-        x1 = sx * (Lx / 2 - 0.0012)
-        poly = [(0.0, -0.0015), (x1 - sx * 0.0035, -0.0015), (x1, 0.0),
-                (x1 - sx * 0.0035, 0.0015), (0.0, 0.0015)]
-        m.append(prism(poly, 0.0015, z0=tail_t))
-        metal += [(place(v, C, R), f) for v, f in m]
-        # strap tail: from under the centre bar outwards, round end, eyelets
-        L = 0.046
-        V, F = strap_mesh(L, O.STRAP_W - 0.003, tail_t, end='round', tip=0.010, du=0.004)
-        V[:, 0] = sx * (V[:, 0] - 0.002)
-        V[:, 2] -= 0.0002
-        tails.append((st(V), F))
-        ey = []
-        for k in range(3):
-            u = sx * (Lx / 2 + 0.0105 + 0.0075 * k)
-            ey.append(rivet(0.0014, 0.0007, 10, origin=(u, 0.0, tail_t - 0.0002)))
-        metal += st.bend(ey)
-        # leather keeper loop just past the buckle
-        kx = sx * (Lx / 2 + 0.0042)
-        dark += st.bend([box((0.0055, O.STRAP_W + 0.0024, 0.0016),
-                             origin=(kx, 0.0, tail_t + 0.0006))])
-    return {'AccThighBuckles': hard_mesh(metal, 'chrome', bevel=0.0005, angle=35, outline_w=0.7),
-            'AccThighStrapTails': hard_mesh(tails + dark, 'acc_matte', bevel=0.0004, angle=40,
-                                            outline_w=0.6)}
+        u0 = -0.012                                             # hinge position (outer = +)
+        zb = 0.0016                                             # bow underside over the strap
+        # C-bow: centre line from under the strap at the hinge, round the outside
+        ctrl = [(u0 - 0.003, -hb + 0.001, -0.0024), (u0 + 0.004, -hb, zb), (u0 + 0.015, -hb, zb),
+                (u0 + 0.0215, -hb + 0.0012, zb), (u0 + 0.0250, -hb + 0.0060, zb),
+                (u0 + 0.0262, -0.0050, zb), (u0 + 0.0262, 0.0050, zb),
+                (u0 + 0.0250, hb - 0.0060, zb), (u0 + 0.0215, hb - 0.0012, zb),
+                (u0 + 0.015, hb, zb), (u0 + 0.004, hb, zb), (u0 - 0.003, hb - 0.001, -0.0024)]
+        ctrl = np.array([(sx * u, y, z) for u, y, z in ctrl])
+        Pc, _ = catmull(ctrl, 60)
+        prof = np.array([(-0.0030, 0.0), (0.0030, 0.0), (0.0030, 0.0028), (0.0013, 0.0046),
+                         (-0.0013, 0.0046), (-0.0030, 0.0028)])
+        up = np.tile(np.array([0.0, 0.0, 1.0]), (len(Pc), 1))
+        Vb, Fb = sweep(prof, Pc, up)
+        C, R = st.frame(sx * (u0 + 0.012))
+        Vb = Vb - np.array([sx * (u0 + 0.012), 0.0, 0.0])
+        bows.append((place(Vb, C, R), Fb))
+        # pin: from a hole near the hinge up onto the outer bar of the bow
+        pa = np.array([sx * (u0 + 0.0035), 0.0, 0.0012])
+        pb = np.array([sx * (u0 + 0.0280), 0.0, zb + 0.0049])
+        path = np.array([pa + (pb - pa) * k for k in np.linspace(0, 1, 6)])
+        Vp, Fp = sweep(chamfer_rect(0.0034, 0.0022, 0.0006), path,
+                       np.tile(np.array([0.0, 0.0, 1.0]), (6, 1)))
+        Vp[:, 2] -= Vp[:, 0] * 0.0       # (straight)
+        small.append((place(Vp - np.array([sx * (u0 + 0.012), 0.0, 0.0]), C, R), Fp))
+        holes += st.bend([prism(rounded_rect(0.0040, 0.0030, 0.0012, seg=3) +
+                                np.array([sx * (u0 + 0.0040), 0.0]), 0.0003, z0=0.00005)])
+        # short strap end tucked under the bow, 9 mm past its outer edge
+        L = 0.030
+        Vt, Ft = strap_mesh(L, O.STRAP_W - 0.0030, 0.0015, end='round', tip=0.006, du=0.003)
+        Vt[:, 0] = sx * (Vt[:, 0] + u0 + 0.0060)
+        Vt[:, 2] -= 0.0001
+        tails.append((st(Vt), Ft))
+        # flat tapered chrome keeper further in
+        kx = sx * (u0 - 0.030)
+        kv, kf = tapered_prism(chamfer_rect(0.0072, O.STRAP_W + 0.0034, 0.0012), 0.0021, 0.78,
+                               z0=-0.0002)
+        small += st.bend([(kv + np.array([kx, 0.0, 0.0]), kf)])
+    return {'AccThighBuckles': hard_mesh(bows + small, 'chrome', bevel=0.0005, angle=35,
+                                         outline_w=0.7),
+            'AccThighStrapTails': hard_mesh(tails, 'acc_matte', bevel=0.0004, angle=40,
+                                            outline_w=0.6),
+            'AccThighBuckleHoles': hard_mesh(holes, 'clothing_seam', bevel=0.0, outline=False)}
 
 
 def garter_buckle():
@@ -712,13 +968,17 @@ def bikini_clasp():
     zt = z0 + 0.0055
     zm = 0.5 * (zt + z1)
     lev = O.BAND_LEV + O.BAND_T
-    st = torso_strip(O.top_fn(), lambda th: np.full_like(th, zm), lev, np.radians(-35.0))
-    parts = [tapered_prism(chamfer_rect(0.017, 0.0145, 0.0020), 0.0020, 0.93, z0=-0.0004)]
+    th_c = np.radians(-35.0)
+    zf = lambda th: np.full_like(th, zm)
+    st = torso_strip(O.top_fn(), zf, lev, th_c)
+    sx = _dir_sign(st, O.top_fn(), zf, lev, th_c, torso=True)
+    xc = -sx * 0.006                     # a little towards her right
+    parts = [tapered_prism(chamfer_rect(0.024, 0.011, 0.0016) + np.array([xc, 0.0]), 0.0015, 0.94,
+                           z0=-0.0002)]
     for k in range(4):
-        y = -0.0045 + k * 0.0030
-        parts.append(tapered_prism(chamfer_rect(0.0145, 0.0016, 0.0004), 0.0011, 0.85,
-                                   z0=0.0014))
-        parts[-1] = (parts[-1][0] + np.array([0.0, y, 0.0]), parts[-1][1])
+        y = -0.0036 + k * 0.0024
+        parts.append(tapered_prism(chamfer_rect(0.0215, 0.0013, 0.0004) + np.array([xc, y]),
+                                   0.0009, 0.80, z0=0.0012))
     return {'AccBikiniClasp': hard_mesh(st.bend(parts), 'chrome', bevel=0.0003, angle=35,
                                         outline_w=0.5)}
 
@@ -764,43 +1024,48 @@ def back_surface_y(x, z, off=0.008):
     return ys[i] if d[i] < 0 else -1.0
 
 
-def hang_path(x0, x1, ztop, zend, ymin, n=48):
-    zs = np.linspace(ztop, zend, n)
-    xs = np.linspace(x0, x1, n)
-    yb = np.array([back_surface_y(x, z) for x, z in zip(xs, zs)])
-    y = np.maximum.accumulate(np.maximum(yb + 0.002, ymin))
-    # soften the drape corner
-    for _ in range(4):
+def hang_path(x0, x1, ztop, zend, amp, n=60):
+    """Strap centre line: starts under the base belt at the back, follows the
+    shorts over the buttock, then hangs; a gentle sideways S."""
+    t = np.linspace(0.0, 1.0, n)
+    zs = ztop + (zend - ztop) * t
+    xs = x0 + (x1 - x0) * t + amp * np.sin(1.5 * np.pi * t)
+    yb = np.array([back_surface_y(x, z, 0.0062) for x, z in zip(xs, zs)])
+    y = np.maximum.accumulate(np.maximum(yb + 0.0006, yb[0]))
+    for _ in range(6):
         y[1:-1] = np.maximum(y[1:-1], 0.5 * (y[:-2] + y[2:]))
-    return np.stack([xs, y, zs], 1)
+    return np.stack([xs, y, zs], 1), t
 
 
-STRAPS = [  # x top, x bottom, z top, z end, width, y min
-    (-0.014, -0.012, 1.000, 0.585, 0.022, 0.095),
-    (0.003, 0.004, 0.995, 0.640, 0.016, 0.101),
-    (0.205, 0.222, 0.975, 0.590, 0.020, 0.060),
-    (0.165, 0.150, 0.985, 0.640, 0.016, 0.080),
+STRAPS = [  # x top, x bottom, z top, z end, width, S amplitude, twist (deg)
+    (-0.015, -0.012, 1.090, 0.585, 0.022, 0.006, 16.0),
+    (0.004, 0.008, 1.088, 0.640, 0.016, -0.005, -12.0),
+    (0.088, 0.104, 1.070, 0.600, 0.020, 0.006, 14.0),
+    (0.070, 0.080, 1.076, 0.650, 0.016, -0.004, -18.0),
 ]
 
 
 def hanging_straps():
-    black, metal = [], []
-    for x0, x1, zt, ze, w, ymin in STRAPS:
-        P = hang_path(x0, x1, zt, ze, ymin)
-        N = np.tile(np.array([0.0, -1.0, 0.0]), (len(P), 1))
+    black, seam = [], []
+    for x0, x1, zt, ze, w, amp, tw in STRAPS:
+        P, t = hang_path(x0, x1, zt, ze, amp)
+        a = np.radians(tw) * np.sin(np.pi * np.clip(1.3 * t - 0.15, 0, 1))
+        N = np.stack([np.sin(a), -np.cos(a), np.zeros_like(a)], 1)
         st = Strip(P, N, P[0], np.array([1.0, 0.0, 0.0]))
-        sx = 1.0 if np.dot(st.T[0], P[1] - P[0]) * (1 if st.u0 == 0 else -1) > 0 else -1.0
         L = float(st.L[-1])
         down = 1.0 if st.u0 < 1e-9 else -1.0
-        V, F = strap_mesh(L, w, 0.0024, end='flat', du=0.010)
+        V, F = strap_mesh(L, w, 0.0022, end='flat', du=0.008)
         V[:, 0] *= down
+        V[:, 2] -= 0.0011
         black.append((st(V), F))
-        # stitched end: a thin grey seam line a little above the cut
-        sv, sf = box((0.0010, w - 0.004, 0.0004), origin=(down * (L - 0.012), 0.0, 0.0025))
-        metal.append((st(sv), sf))
+        # keeper loop just under the belt, and a stitched end above the cut
+        kv, kf = box((0.0070, w + 0.0030, 0.0026), origin=(down * 0.020, 0.0, 0.0014))
+        black.append((st(kv), kf))
+        sv, sf = box((0.0010, w - 0.004, 0.0004), origin=(down * (L - 0.012), 0.0, 0.0012))
+        seam.append((st(sv), sf))
     return {'AccHangingStraps': hard_mesh(black, 'acc_matte', bevel=0.0004, angle=40,
                                           outline_w=0.7),
-            'AccHangingStrapsSeam': hard_mesh(metal, 'acc_edge', bevel=0.0, outline=False)}
+            'AccHangingStrapsSeam': hard_mesh(seam, 'acc_edge', bevel=0.0, outline=False)}
 
 
 # ====================================================================== hip pouch
@@ -844,9 +1109,7 @@ def hip_pouch():
 def build():
     out = {}
     out.update(collar())
-    cx, cy = neck_centre(1.430)
-    front_y = cy - (rb(FRONT, 1.430) + COL_T + COL_LIP)
-    out.update(goggles(front_y))
+    out.update(goggles())
     out.update(arm_rings())
     out.update(belt_buckle())
     out.update(thigh_buckles())

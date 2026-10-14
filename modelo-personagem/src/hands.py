@@ -5,23 +5,33 @@ Every digit and the palm is a *tube*: rounded-square cross sections
 rest axis and then posed by hinge rotations at the joints (the rotation
 angle is blended over a few millimetres around each joint, about a hinge
 that sits on the palm side, so knuckles round off on the back and crease on
-the palm side).  Shading normals come from the clean analytic surfaces, so
-the toon terminator stays smooth.
+the palm side).
+
+Shading normals do NOT come from the modelled surface: every digit is also
+evaluated as a "normal tube" (same parameters, no knuckle bumps / creases and
+wider joint blends) and the custom normals are taken from that smooth twin,
+so the toon terminator stays clean over the joints.  Bandage strips and the
+printed panels take the normals of the surface they lie on.
 
 Canonical (rest) hand frame of a RIGHT hand: wrist centre at the origin,
 fingers along -Z, palm facing +Y, thumb on the +X side.  Left hands are the
 mirror image (x -> -x).  ``hand_frame`` maps canonical to world.
 
-Objects (all names start with Hand/Fingers and end with the side letter):
+Both hands hang palm-to-thigh and are seen from the thumb side in 3/4 (as in
+the reference and the official art), so they read narrow from the front.
+
+Objects (all names start with Hand and end with the side letter):
   HandR        palm + digits, white glove / skin (multi-material)
-  HandWrapsR   bandage wraps of the right hand (white strips)
-  HandL        palm + digits, white glove with red finger ends
-  HandStripesL red graphic panels on the back of the left glove
+  HandWrapsR   bandage wraps of the right hand (figure-8 X over the back)
+  HandL        palm + digits, white glove with red thumb and red claws
+  HandStripesL red panels printed on the back of the left glove
+  HandRivetsL  two small metal rivets near the left knuckles
 """
 
 import numpy as np
 
 import clothing_geo as G
+import hardsurf as hs
 from meshutil import MeshData
 from rig import J
 
@@ -66,15 +76,18 @@ class Tube:
     a = half width, bb/bf = half depth to the back / palm side, eb/ef =
     superellipse exponents of the back / palm halves, (xc, yc) = section
     centre offset.  ``joints``: (s_j, angle_deg, blend_halfwidth, hinge_y).
-    The tube runs from s0 to s1 with rounded caps of length c0 / c1."""
+    The tube runs from s0 to s1 with caps of length c0 / c1; ``tip`` is the
+    cap shape at s1: 'round', 'soft' (slightly pointed) or 'claw' (cone)."""
 
-    def __init__(self, origin, R, s0, s1, prof, joints=(), c0=0.006, c1=0.006):
+    def __init__(self, origin, R, s0, s1, prof, joints=(), c0=0.006, c1=0.006, tip='round'):
         self.o = np.asarray(origin, dtype=np.float64)
         self.R = np.asarray(R, dtype=np.float64)
         self.s0, self.s1 = s0, s1
         self.prof = prof
         self.joints = list(joints)
         self.c0, self.c1 = c0, c1
+        self.tip = tip
+        self.twin = None          # smooth twin used for the shading normals
 
     # rest surface in local coordinates
     def section(self, s):
@@ -85,8 +98,10 @@ class Tube:
         f = np.ones_like(s)
         if self.c1 > 0:
             t = np.clip((s - (self.s1 - self.c1)) / self.c1, 0, 1)
-            if getattr(self, 'claw', False):
-                f = f * np.maximum(1 - t ** 1.5, 0) ** 0.72      # pointed claw tip
+            if self.tip == 'claw':
+                f = f * np.maximum(1 - t, 0) ** 0.85 * (1 + 0.35 * t * (1 - t))
+            elif self.tip == 'soft':
+                f = f * np.maximum(1 - t ** 1.7, 0) ** 0.6
             else:
                 f = f * np.sqrt(np.maximum(1 - t ** 2, 0))
         if self.c0 > 0:
@@ -149,40 +164,54 @@ class Tube:
         L = self.rest(th, s, off)
         return self.world(self.deform(L, s.ravel()))
 
-    def mesh(self, nth=16, step=0.002, tip_rings=6):
-        """Quad mesh of the posed tube with apex vertices at both caps."""
+    def centre(self, s):
+        """Posed section centre (for orienting normals)."""
+        s = np.asarray(s, dtype=np.float64).ravel()
+        a, bb, bf, eb, ef, xc, yc = self.section(s)
+        return self.world(self.deform(np.stack([xc, yc, s], axis=1), s))
+
+    def mesh(self, nth=12, step=0.003, tip_rings=5):
+        """Quad mesh of the posed tube with apex vertices at both caps.
+        Returns (verts, faces, ring_s, twin_verts)."""
         s0, s1, c0, c1 = self.s0, self.s1, self.c0, self.c1
         mid = np.linspace(s0 + c0, s1 - c1, max(2, int(np.ceil((s1 - c1 - s0 - c0) / step)) + 1))
         # extra rings around the joints
         for sj, ang, w, hy in self.joints:
             if s0 + c0 < sj < s1 - c1 and abs(ang) > 1e-6:
-                mid = np.concatenate([mid, sj + np.linspace(-w, w, 5)])
+                mid = np.concatenate([mid, sj + np.linspace(-w, w, 3)])
         mid = np.unique(np.round(mid, 7))
-        cap0 = s0 + c0 * (1 - np.sin(np.linspace(0, np.pi / 2, tip_rings + 1)[1:-1]))[::-1]
-        cap1 = s1 - c1 * (1 - np.sin(np.linspace(0, np.pi / 2, tip_rings + 1)[1:-1]))
-        cap0 = np.sort(cap0)
-        cap1 = np.sort(cap1)
-        ss = np.unique(np.concatenate([cap0[cap0 < mid[0]], mid, cap1[cap1 > mid[-1]]]))
+        # drop rings closer than 0.6 mm
+        keep = np.concatenate([[True], np.diff(mid) > 0.0006])
+        mid = mid[keep]
+        k = np.linspace(0, np.pi / 2, tip_rings + 1)[1:-1]
+        cap0 = np.sort(s0 + c0 * (1 - np.sin(k))[::-1])
+        cap1 = np.sort(s1 - c1 * (1 - np.sin(k)))
+        ss = np.unique(np.concatenate([cap0[cap0 < mid[0] - 1e-5], mid, cap1[cap1 > mid[-1] + 1e-5]]))
         th = np.linspace(0, 2 * np.pi, nth, endpoint=False) + np.pi / nth
         TH, SS = np.meshgrid(th, ss)
-        V = self.point(TH, SS).reshape(len(ss), nth, 3)
-        A = self.point(np.zeros(1), np.array([s0]))[0]
-        B = self.point(np.zeros(1), np.array([s1]))[0]
-        verts = np.concatenate([V.reshape(-1, 3), A[None], B[None]])
-        ia, ib = len(ss) * nth, len(ss) * nth + 1
         F = []
         for i in range(len(ss) - 1):
             for j in range(nth):
                 j2 = (j + 1) % nth
                 F.append([i * nth + j, i * nth + j2, (i + 1) * nth + j2, (i + 1) * nth + j])
+        ia, ib = len(ss) * nth, len(ss) * nth + 1
         for j in range(nth):
             j2 = (j + 1) % nth
             F.append([ia, j2, j])
             n0 = (len(ss) - 1) * nth
             F.append([ib, n0 + j, n0 + j2])
+
+        def verts_of(tb):
+            V = tb.point(TH, SS).reshape(-1, 3)
+            A = tb.point(np.zeros(1), np.array([s0]))[0]
+            B = tb.point(np.zeros(1), np.array([s1]))[0]
+            return np.concatenate([V, A[None], B[None]])
+
+        verts = verts_of(self)
         F = orient_outward(verts, F)
+        twin = verts_of(self.twin) if self.twin is not None else verts
         ring_s = np.concatenate([SS.ravel(), [s0, s1]])
-        return verts, F, ring_s
+        return verts, F, ring_s, twin
 
 
 def orient_outward(V, F):
@@ -211,89 +240,117 @@ def vertex_normals(V, F):
 
 # ------------------------------------------------------------------ hand anatomy (canonical right hand)
 
-# name: (MCP x, MCP z, half width, lengths (prox, mid, dist), spread deg)
+# name: (MCP x, MCP z, half width, lengths (prox, mid, dist))
 FINGERS = {
-    'index':  (0.0215, -0.0835, 0.0076, (0.039, 0.023, 0.020)),
-    'middle': (0.0072, -0.0870, 0.0078, (0.043, 0.026, 0.021)),
-    'ring':   (-0.0074, -0.0850, 0.0073, (0.040, 0.024, 0.020)),
-    'pinky':  (-0.0212, -0.0790, 0.0064, (0.031, 0.019, 0.018)),
+    'index':  (0.0190, -0.0835, 0.0067, (0.039, 0.023, 0.020)),
+    'middle': (0.0064, -0.0870, 0.0069, (0.043, 0.026, 0.021)),
+    'ring':   (-0.0066, -0.0850, 0.0064, (0.040, 0.024, 0.020)),
+    'pinky':  (-0.0188, -0.0790, 0.0056, (0.031, 0.019, 0.018)),
 }
 NARROW = 0.85          # each phalanx ~15 % narrower than the previous one
 DEPTH = 0.80           # depth / width of a finger section (wider than deep)
 
 
 def palm_tube():
-    """Palm loft from inside the sleeve (z = +0.03) to the knuckle line."""
+    """Palm loft from inside the sleeve (z = +0.03) to the knuckle line.  The
+    thumb side (+x) swells into the thenar pad between s = 0.01 and 0.06
+    (width added on +x only: a and xc grow together), fuller on the palm
+    side, so the thumb grows out of the palm instead of the wrist."""
     R = np.stack([np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), np.array([0, 0, -1.0])], axis=1)
     #        s       a       bb      bf      eb   ef   xc       yc
-    prof = [(-0.030, 0.0170, 0.0125, 0.0125, 2.2, 2.2, 0.0, 0.0),
-            (0.000, 0.0172, 0.0118, 0.0122, 2.4, 2.3, 0.0, 0.0),
-            (0.020, 0.0240, 0.0105, 0.0128, 2.8, 2.4, 0.0010, 0.0),
-            (0.045, 0.0300, 0.0098, 0.0120, 3.2, 2.5, 0.0005, 0.0),
-            (0.070, 0.0306, 0.0093, 0.0102, 3.4, 2.6, 0.0, 0.0),
-            (0.092, 0.0304, 0.0090, 0.0092, 3.4, 2.6, 0.0, 0.0)]
+    prof = [(-0.030, 0.0165, 0.0122, 0.0122, 2.2, 2.2, 0.0, 0.0),
+            (0.000, 0.0168, 0.0115, 0.0120, 2.4, 2.3, 0.0, 0.0),
+            (0.018, 0.0228, 0.0102, 0.0136, 2.8, 2.3, 0.0030, 0.0008),
+            (0.036, 0.0272, 0.0096, 0.0140, 3.1, 2.4, 0.0034, 0.0010),
+            (0.054, 0.0278, 0.0092, 0.0118, 3.3, 2.5, 0.0018, 0.0),
+            (0.072, 0.0274, 0.0089, 0.0098, 3.4, 2.6, 0.0, 0.0),
+            (0.092, 0.0272, 0.0087, 0.0090, 3.4, 2.6, 0.0, 0.0)]
     return Tube([0, 0, 0], R, -0.030, 0.092, prof, c0=0.004, c1=0.012)
 
 
-def finger_tube(name, curls, spread, side_sign=1.0, claw=False):
+def finger_tube(name, curls, spread, claw=False, bump=1.0, blend=1.0, length=1.0):
+    """bump = 1 for the modelled surface (knuckles / creases), 0 for the
+    smooth twin used for the shading normals (with blend > 1)."""
     x, z, w, L = FINGERS[name]
     L1, L2, L3 = L
+    if claw:
+        L3 = L3 * 1.25
+    L1, L2, L3 = L1 * length, L2 * length, L3 * length
     w2, w3 = w * NARROW, w * NARROW ** 2
     d1, d2, d3 = w * DEPTH, w2 * DEPTH, w3 * DEPTH
+    m = lambda k: 1.0 + bump * (k - 1.0)
     s_in = -0.013
     e = 2.9
     prof = [(s_in, w * 1.02, d1 * 1.05, d1 * 1.05, e, e, 0, 0),
-            (0.000, w * 1.04, d1 * 1.10, d1 * 1.00, e, e, 0, 0),      # MCP knuckle
-            (L1 * 0.5, w * 0.97, d1 * 0.98, d1 * 1.00, e, e, 0, 0),
-            (L1 - 0.003, w2 * 1.04, d2 * 1.02, d2 * 1.02, e, e, 0, 0),
-            (L1, w2 * 1.07, d2 * 1.10, d2 * 0.92, e, e, 0, 0),         # PIP
-            (L1 + L2 * 0.5, w2 * 0.98, d2 * 0.98, d2 * 1.00, e, e, 0, 0),
-            (L1 + L2, w3 * 1.05, d3 * 1.08, d3 * 0.92, e, e, 0, 0),    # DIP
-            (L1 + L2 + L3 * 0.55, w3 * 0.98, d3 * 0.95, d3 * 1.05, e, e, 0, 0),
-            (L1 + L2 + L3, w3 * 0.90, d3 * 0.85, d3 * 0.95, e, e, 0, 0)]
-    c1, c2, c3 = curls
-    joints = [(0.0, c1, 0.0050, d1 * 0.55),
-              (L1, c2, 0.0035, d2 * 0.55),
-              (L1 + L2, c3, 0.0030, d3 * 0.55)]
+            (0.000, w * m(1.04), d1 * m(1.10), d1 * 1.00, e, e, 0, 0),      # MCP knuckle
+            (L1 * 0.5, w * 0.95, d1 * 0.97, d1 * 1.00, e, e, 0, 0),
+            (L1 - 0.003, w2 * 1.02, d2 * 1.02, d2 * 1.02, e, e, 0, 0),
+            (L1, w2 * m(1.05), d2 * m(1.08), d2 * m(0.94), e, e, 0, 0),    # PIP
+            (L1 + L2 * 0.5, w2 * 0.96, d2 * 0.97, d2 * 1.00, e, e, 0, 0),
+            (L1 + L2, w3 * m(1.04), d3 * m(1.06), d3 * m(0.94), e, e, 0, 0)]  # DIP
+    if claw:
+        # long tapered claw: the last 40 % of the distal segment narrows to a point
+        prof += [(L1 + L2 + L3 * 0.35, w3 * 0.94, d3 * 0.90, d3 * 0.95, e, e, 0, 0),
+                 (L1 + L2 + L3 * 0.62, w3 * 0.74, d3 * 0.74, d3 * 0.78, e, 2.6, 0, 0),
+                 (L1 + L2 + L3 * 0.84, w3 * 0.46, d3 * 0.52, d3 * 0.52, 2.6, 2.4, 0, 0),
+                 (L1 + L2 + L3, w3 * 0.25, d3 * 0.30, d3 * 0.30, 2.4, 2.2, 0, 0)]
+        c1 = w3 * 0.45
+        tip = 'claw'
+    else:
+        prof += [(L1 + L2 + L3 * 0.55, w3 * 0.93, d3 * 0.93, d3 * 1.02, e, e, 0, 0),
+                 (L1 + L2 + L3, w3 * 0.84, d3 * 0.82, d3 * 0.92, e, e, 0, 0)]
+        c1 = w3 * 1.05
+        tip = 'soft'
+    c1_, c2, c3 = curls
+    joints = [(0.0, c1_, 0.0050 * blend, d1 * 0.55),
+              (L1, c2, 0.0035 * blend, d2 * 0.55),
+              (L1 + L2, c3, 0.0030 * blend, d3 * 0.55)]
     # finger frame: base at the MCP joint, along -Z spread about the palm normal
-    t = rot([0, 1.0, 0], -np.radians(spread * side_sign)) @ np.array([0, 0, -1.0])
+    t = rot([0, 1.0, 0], -np.radians(spread)) @ np.array([0, 0, -1.0])
     y = np.array([0, 1.0, 0])
     xax = np.cross(y, t)
     R = np.stack([xax, y, t], axis=1)
     origin = np.array([x, 0.0010, z])
-    tb = Tube(origin, R, s_in, L1 + L2 + L3, prof, joints, c0=0.004,
-              c1=w3 * (1.9 if claw else 0.95))
-    tb.claw = claw
+    tb = Tube(origin, R, s_in, L1 + L2 + L3, prof, joints, c0=0.004, c1=c1, tip=tip)
     tb.seg = (L1, L1 + L2)
     return tb
 
 
-def thumb_tube(curls, abduct=0.0, roll=0.0, claw=False):
-    """Thumb from the carpus (inside the palm) to the tip.  The metacarpal
-    tube is fat on its palm side: that is the thenar pad."""
+def thumb_tube(curls, opp=45.0, abduct=0.0, claw=False, bump=1.0, blend=1.0):
+    """Thumb from inside the thenar pad to the tip.  The metacarpal is buried
+    in the palm's thenar swell, so the free thumb starts ~40 % down the palm.
+    ``opp`` turns the thumb towards the palm side (opposition)."""
     c1, c2, c3 = curls
-    base = np.array([0.0135, 0.0045, -0.010])
-    t = nrm([0.50, 0.42, -0.76])
-    t = rot([0, 0, 1.0], np.radians(abduct)) @ t
-    yp = nrm(np.array([-0.85, 0.55, -0.15]))          # pad faces the fingers
+    base = np.array([0.0150, 0.0050, -0.016])
+    t = nrm([0.40, 0.10, -0.91])
+    yp = nrm([-0.88, 0.47, -0.05])                   # pad faces the fingers
+    Ro = rot([0, 0, 1.0], np.radians(opp)) @ rot([0, 1.0, 0], np.radians(abduct))
+    t, yp = Ro @ t, Ro @ yp
     yp = nrm(yp - t * np.dot(yp, t))
-    yp = rot(t, np.radians(roll)) @ yp
     xax = np.cross(yp, t)
     R = np.stack([xax, yp, t], axis=1)
-    L0, L1, L2 = 0.040, 0.029, 0.025
+    L0, L1, L2 = 0.034, 0.026, 0.022
+    if claw:
+        L2 *= 1.15
+    m = lambda k: 1.0 + bump * (k - 1.0)
     e = 2.6
-    prof = [(-0.004, 0.0105, 0.0090, 0.0110, 2.2, 2.2, 0, 0.0005),
-            (0.014, 0.0118, 0.0088, 0.0135, 2.4, 2.3, 0, 0.0025),      # thenar
-            (0.030, 0.0102, 0.0080, 0.0098, e, e, 0, 0.0010),
-            (L0, 0.0088, 0.0074, 0.0072, e, e, 0, 0),                  # MCP
-            (L0 + L1 * 0.5, 0.0077, 0.0063, 0.0065, e, e, 0, 0),
-            (L0 + L1, 0.0075, 0.0061, 0.0057, e, e, 0, 0),             # IP
-            (L0 + L1 + L2 * 0.55, 0.0067, 0.0051, 0.0058, e, e, 0, 0),
-            (L0 + L1 + L2, 0.0058, 0.0044, 0.0049, e, e, 0, 0)]
-    joints = [(0.006, c1, 0.008, 0.004), (L0, c2, 0.004, 0.0040), (L0 + L1, c3, 0.0035, 0.0035)]
-    tb = Tube(base, R, -0.004, L0 + L1 + L2, prof, joints, c0=0.008,
-              c1=0.0062 * (1.7 if claw else 1.0))
-    tb.claw = claw
+    prof = [(-0.004, 0.0098, 0.0085, 0.0100, 2.2, 2.2, 0, 0.0005),
+            (0.016, 0.0102, 0.0080, 0.0110, 2.4, 2.3, 0, 0.0015),
+            (L0 - 0.004, 0.0085, 0.0070, 0.0074, e, e, 0, 0.0004),
+            (L0, 0.0080 * m(1.04), 0.0066 * m(1.06), 0.0064, e, e, 0, 0),     # MCP
+            (L0 + L1 * 0.5, 0.0070, 0.0057, 0.0060, e, e, 0, 0),
+            (L0 + L1, 0.0068 * m(1.04), 0.0055 * m(1.05), 0.0052, e, e, 0, 0),  # IP
+            (L0 + L1 + L2 * 0.55, 0.0061, 0.0047, 0.0053, e, e, 0, 0)]
+    if claw:
+        prof += [(L0 + L1 + L2 * 0.80, 0.0046, 0.0038, 0.0040, e, 2.4, 0, 0),
+                 (L0 + L1 + L2, 0.0020, 0.0018, 0.0018, 2.4, 2.2, 0, 0)]
+        c1t, tip = 0.0030, 'claw'
+    else:
+        prof += [(L0 + L1 + L2, 0.0054, 0.0042, 0.0046, e, e, 0, 0)]
+        c1t, tip = 0.0060, 'soft'
+    joints = [(0.010, c1, 0.008 * blend, 0.004), (L0, c2, 0.004 * blend, 0.0040),
+              (L0 + L1, c3, 0.0035 * blend, 0.0035)]
+    tb = Tube(base, R, -0.004, L0 + L1 + L2, prof, joints, c0=0.008, c1=c1t, tip=tip)
     tb.seg = (L0, L0 + L1)
     return tb
 
@@ -302,15 +359,22 @@ class Hand:
     """A posed canonical hand: palm + 4 fingers + thumb, mapped to world by
     (M, wrist) with a smooth wrist bend towards the forearm direction."""
 
-    def __init__(self, side, curls, spread, thumb, M, wrist, fore_dir, scale=1.0, claw=False):
+    def __init__(self, side, curls, spread, thumb, M, wrist, fore_dir, scale=1.0, claw=False,
+                 length=1.0):
         self.side = side
         self.scale = scale
         self.sx = 1.0 if side == 'R' else -1.0
         self.M = np.asarray(M, dtype=np.float64)
         self.wrist = np.asarray(wrist, dtype=np.float64)
         self.palm = palm_tube()
-        self.fingers = {n: finger_tube(n, curls[n], spread[n], claw=claw) for n in FINGERS}
+        self.fingers = {}
+        for n in FINGERS:
+            f = finger_tube(n, curls[n], spread[n], claw=claw, length=length)
+            f.twin = finger_tube(n, curls[n], spread[n], claw=claw, length=length,
+                                 bump=0.0, blend=2.2)
+            self.fingers[n] = f
         self.thumb = thumb_tube(*thumb, claw=claw)
+        self.thumb.twin = thumb_tube(*thumb, claw=claw, bump=0.0, blend=2.0)
         # wrist bend: canonical +Z (towards the elbow) should become -fore_dir
         up_c = self.to_world_dir(np.array([0, 0, 1.0]))
         want = -nrm(fore_dir)
@@ -342,65 +406,78 @@ class Hand:
         out.append(('thumb', self.thumb))
         return out
 
+    def surface(self, tube, th, s, off=0.0):
+        """World points on a tube (rest parameters th, s, normal offset)."""
+        th, s = np.broadcast_arrays(np.asarray(th, dtype=np.float64),
+                                    np.asarray(s, dtype=np.float64))
+        return self.to_world(tube.point(th.ravel(), s.ravel(), off))
+
+    def surface_normal(self, tube, th, s, eps=0.02, ds=0.0008):
+        """Outward world normal of the posed (smooth twin) tube surface."""
+        tb = tube.twin if tube.twin is not None else tube
+        th = np.asarray(th, dtype=np.float64).ravel()
+        s = np.asarray(s, dtype=np.float64).ravel()
+        Pa, Pb = self.surface(tb, th + eps, s), self.surface(tb, th - eps, s)
+        Pc, Pd = self.surface(tb, th, s + ds), self.surface(tb, th, s - ds)
+        N = nrm(np.cross(Pa - Pb, Pc - Pd))
+        P = self.surface(tb, th, s)
+        C = self.to_world(tb.centre(s))
+        flip = np.einsum('ij,ij->i', N, P - C) < 0
+        N[flip] *= -1
+        return N
+
 
 def tube_world_mesh(hand, tube, nth, step, mat_fn):
-    """Mesh one tube in world space.  mat_fn(s) -> material per face."""
-    V, F, ring_s = tube.mesh(nth=nth, step=step)
-    # tube.point gives canonical coordinates (tube local -> canonical)
+    """Mesh one tube in world space.  mat_fn(s) -> material per face.
+    Returns (V, F, mats, shading normals from the smooth twin)."""
+    V, F, ring_s, VT = tube.mesh(nth=nth, step=step)
     W = hand.to_world(V)
+    WT = hand.to_world(VT)
     if hand.sx < 0:
         F = [f[::-1] for f in F]
     fs = np.array([ring_s[list(f)].mean() for f in F])
     mats = [mat_fn(s) for s in fs]
-    return W, F, mats
+    N = vertex_normals(WT, F)
+    return W, F, mats, N
 
 
-def merge_parts(parts):
-    V, F, M, off = [], [], [], 0
-    for v, f, m in parts:
+def hand_mesh(hand, mats, outline_w=0.55):
+    """mats: dict part -> callable(s) -> material name."""
+    V, F, M, N, off = [], [], [], [], 0
+    for name, tube in hand.parts():
+        nth = 16 if name == 'palm' else 12
+        step = 0.004 if name == 'palm' else 0.003
+        v, f, m, n = tube_world_mesh(hand, tube, nth, step, mats[name])
         V.append(v)
+        N.append(n)
         F += [[int(i) + off for i in face] for face in f]
         M += list(m)
         off += len(v)
-    return np.concatenate(V), F, M
-
-
-def hand_mesh(hand, mats):
-    """mats: dict part -> callable(s) -> material name."""
-    items = []
-    for name, tube in hand.parts():
-        nth = 20 if name == 'palm' else 14
-        step = 0.004 if name == 'palm' else 0.0028
-        items.append(tube_world_mesh(hand, tube, nth, step, mats[name]))
-    V, F, M = merge_parts(items)
-    N = vertex_normals(V, F)
-    md = MeshData(V, F, mats=M, outline_w=0.55)
-    md.normals = N
+    md = MeshData(np.concatenate(V), F, mats=M, outline_w=outline_w)
+    md.normals = np.concatenate(N)
     return md
 
 
 # ------------------------------------------------------------------ strips on tubes
 
-def strip_on_tube(hand, tube, centre_fn, half_w, t_range, n_along, n_across=3,
-                  off=0.0004, thick=0.0005):
+def strip_on_tube(hand, tube, centre_fn, half_w, n_along, off, thick=0.0005, taper=0.06):
     """Thin band lying on a tube: centre_fn(t) -> (theta, s) in the tube's
-    rest parameters; the band spans +-half_w along s.  Returns world (V, F)."""
-    t = np.linspace(t_range[0], t_range[1], n_along)
+    rest parameters (t in 0..1); the band spans +-half_w along s.  ``off``
+    is the per-sample lift above the surface.  Shading normals are the
+    normals of the surface underneath.  Returns world (V, F, N)."""
+    n_across = 3
+    t = np.linspace(0.0, 1.0, n_along)
     th, s = centre_fn(t)
     q = np.linspace(-1, 1, n_across)
     TH = np.repeat(th[:, None], n_across, axis=1)
     hw = np.broadcast_to(np.asarray(half_w, dtype=np.float64), t.shape).copy()
-    u = (t - t_range[0]) / (t_range[1] - t_range[0])
-    hw *= 0.55 + 0.45 * sstep(np.minimum(u, 1 - u) / 0.06)       # tapered strip ends
+    if taper > 0:
+        hw *= 0.55 + 0.45 * sstep(np.minimum(t, 1 - t) / taper)       # tapered strip ends
     SS = s[:, None] + q[None, :] * hw[:, None]
-    offs = off + np.zeros_like(TH)
-    if np.ndim(off) == 0:
-        offs = np.full_like(TH, off)
-    outer = tube.rest(TH.ravel(), SS.ravel(), offs.ravel() + thick)
-    inner = tube.rest(TH.ravel(), SS.ravel(), offs.ravel())
-    Lo = tube.world(tube.deform(outer, SS.ravel()))
-    Li = tube.world(tube.deform(inner, SS.ravel()))
-    Wo, Wi = hand.to_world(Lo), hand.to_world(Li)
+    offs = np.broadcast_to(np.asarray(off, dtype=np.float64).reshape(-1, 1), TH.shape)
+    Wo = hand.surface(tube, TH.ravel(), SS.ravel(), offs.ravel() + thick)
+    Wi = hand.surface(tube, TH.ravel(), SS.ravel(), offs.ravel())
+    Nn = hand.surface_normal(tube, TH.ravel(), SS.ravel())
     n = n_along * n_across
     V = np.concatenate([Wo, Wi])
     F = []
@@ -419,47 +496,52 @@ def strip_on_tube(hand, tube, centre_fn, half_w, t_range, n_along, n_across=3,
         for j in range(n_across - 1):
             a, b = idx(i, j), idx(i, j + 1)
             F.append([b, b + n, a + n, a] if i == 0 else [a, a + n, b + n, b])
-    return V, F
+    return V, F, np.concatenate([Nn, Nn])
 
 
-def finish_strips(items, mat, outline_w=0.4, outline=True):
-    """Closed thin shells -> one MeshData with outward faces and smooth
-    shading normals (the shells are thin, so rims take the surface normal)."""
-    V, F = [], []
+def finish_shells(items, mat, outline_w=0.4, outline=True):
+    """Closed thin shells (V, F, N) -> one MeshData with outward faces; the
+    shading normals are the ones given (those of the surface underneath)."""
+    V, F, N = [], [], []
     off = 0
-    for v, f in items:
+    for v, f, nn in items:
         f = orient_outward(np.asarray(v), [list(x) for x in f])
         V.append(v)
+        N.append(nn)
         F += [[int(i) + off for i in face] for face in f]
         off += len(v)
-    V = np.concatenate(V)
-    md = MeshData(V, F, mat=mat, outline_w=outline_w, outline=outline)
-    md.normals = vertex_normals(V, F)
+    md = MeshData(np.concatenate(V), F, mat=mat, outline_w=outline_w, outline=outline)
+    md.normals = np.concatenate(N)
     return md
 
 
-def decal_on_back(hand, tube, poly_xs, off=0.00025, thick=0.00025, h=0.0028):
+def decal_on_back(hand, tube, poly_xs, off=0.00025, thick=0.00025, h=0.0022):
     """Flat graphic panel on the back of a tube: poly_xs is a 2D polygon in
-    (x, s) rest coordinates (x across the back, s along the tube)."""
+    (x, s) rest coordinates (x across the back, s along the tube).  Returns
+    (V, F, N) with the normals of the glove surface underneath."""
     Q, F = G.tri_region([np.asarray(poly_xs, dtype=np.float64)], h)
     th = tube.back_theta(Q[:, 0], Q[:, 1])
     P = tube.rest(th, Q[:, 1])
-    N = tube.rest_normal(th, Q[:, 1])
-    F = G.orient(P, N, F)
-    V, Fs = G.shell(P, N, F, thick, off)
-    ss = np.concatenate([Q[:, 1], Q[:, 1]])
-    W = hand.to_world(tube.world(tube.deform(V, ss)))
+    Nr = tube.rest_normal(th, Q[:, 1])
+    F = G.orient(P, Nr, F)
+    E = G.boundary_edges(np.asarray(F))
+    n = len(Q)
+    Fs = [list(f) for f in F] + [list(f) for f in (np.asarray(F)[:, ::-1] + n)] + \
+         [[a, b, b + n, a + n][::-1] for a, b in E]
+    Wo = hand.surface(tube, th, Q[:, 1], off + thick)
+    Wi = hand.surface(tube, th, Q[:, 1], off)
+    Nw = hand.surface_normal(tube, th, Q[:, 1])
     if hand.sx < 0:
         Fs = [f[::-1] for f in Fs]
-    return W, Fs
+    return np.concatenate([Wo, Wi]), Fs, np.concatenate([Nw, Nw])
 
 
 # ------------------------------------------------------------------ world frames
 
 def hand_frame(hand_dir, palm_dir):
     """Rotation canonical -> world from the hand direction (wrist ->
-    knuckles) and the palm normal (for the right hand; the left hand mirrors
-    x in canonical space first)."""
+    knuckles) and the palm normal.  For a left hand canonical x is mirrored
+    first, so the same frame puts its thumb on the other side."""
     z = -nrm(hand_dir)
     y = nrm(np.asarray(palm_dir, dtype=np.float64))
     y = nrm(y - z * np.dot(y, z))
@@ -467,25 +549,15 @@ def hand_frame(hand_dir, palm_dir):
     return np.stack([x, y, z], axis=1)
 
 
-def hand_frame_L(hand_dir, palm_dir):
-    """Same for a left hand: canonical x is mirrored, so the frame's x is
-    built for the mirrored geometry (keeps M a proper rotation)."""
-    z = -nrm(hand_dir)
-    y = nrm(np.asarray(palm_dir, dtype=np.float64))
-    y = nrm(y - z * np.dot(y, z))
-    return hand_frame(hand_dir, palm_dir)
-
-
 # ------------------------------------------------------------------ the two hands
 
 def scabbard_frame():
-    """Centre, axis (towards the hand), width and depth axes of the big
-    scabbard where the right hand holds it."""
+    """Centre, axis (towards the hand), across and thickness axes of the big
+    scabbard where it passes the right hand, plus the Sword (or None)."""
     try:
         import swords as S
-        _, info = S.upper_sword()
-        sw = S.scabbard_sword(info)
-        d = 236.0
+        sw = S.scabbard_sword()
+        d = getattr(S, 'SCAB_D_HAND', 240.0)
         L = sw.to_local(np.array([[d, 0.0, 0.0]]))
         C, T, V, W = sw.path.frame_at(L[:, 0])
         Cn = sw.path.map(L)[0]
@@ -495,103 +567,162 @@ def scabbard_frame():
                 nrm([-0.643, 0.0, 0.766]), nrm([0.24, -0.95, 0.202]), None)
 
 
-RPOSE = dict(fwd=1.1, side=0.3, roll=15.0, palm=None, scale=0.92,
-             curls={'index': (44, 56, 34), 'middle': (44, 56, 34), 'ring': (44, 54, 32),
-                    'pinky': (44, 50, 30)},
-             spread={'index': 2, 'middle': 0, 'ring': -2, 'pinky': -5},
-             thumb=((10, 25, 25), -20.0, 0.0))
+# Right hand: hangs from the wrist, palm turned to the thigh, thumb / index
+# edge towards the camera, fingers loosely curled (a relaxed fist whose
+# knuckle line runs along the scabbard's direction in the front view).
+RPOSE = dict(palm=(0.80, 0.60, 0.0), tilt=(-0.10, 0.0, 0.0), wrist_off=0.004, scale=0.92,
+             curls={'index': (38, 62, 38), 'middle': (44, 66, 40), 'ring': (50, 66, 40),
+                    'pinky': (56, 62, 38)},
+             spread={'index': 3, 'middle': 0, 'ring': -3, 'pinky': -7},
+             thumb=((12, 28, 30), 40.0, 0.0))
 
 
 def right_hand(p=None):
-    """Right hand in front of the scabbard: back of the hand towards the
-    camera, palm towards the scabbard, fingers hooked over its outer edge
-    with the bare fingertips resting on the front face."""
     p = dict(RPOSE, **(p or {}))
-    C, T, V, W, sw = scabbard_frame()
     fore = nrm(J['wrist_R'] - J['elbow_R'])
-    wrist = J['wrist_R'] + fore * 0.004
-    hand_dir = nrm(fore + p['fwd'] * W + p['side'] * np.array([-1.0, 0, 0]))
-    palm_dir = nrm(p['palm']) if p.get('palm') is not None else -W
-    palm_dir = rot(hand_dir, np.radians(p['roll'])) @ palm_dir
-    M = hand_frame(hand_dir, palm_dir)
+    wrist = J['wrist_R'] + fore * p['wrist_off']
+    hand_dir = nrm(fore + np.asarray(p['tilt'], dtype=np.float64))
+    M = hand_frame(hand_dir, nrm(p['palm']))
     return Hand('R', p['curls'], p['spread'], p['thumb'], M, wrist, fore, scale=p['scale'])
 
 
-LPOSE = dict(palm=(-0.45, 0.89, 0.0), tilt=(0.0, 0.0, 0.0), scale=0.92,
-             curls={'index': (20, 55, 50), 'middle': (18, 52, 50), 'ring': (14, 46, 46),
-                    'pinky': (10, 40, 40)},
-             spread={'index': 8, 'middle': 0, 'ring': -8, 'pinky': -18},
-             thumb=((0, 15, 20), 40.0, 0.0))
+# Left hand: relaxed, palm to the thigh and a little back, so the back of the
+# hand shows in 3/4 with the red thumb on the body side; the red claws hook
+# down and inwards in an uneven fan.
+LPOSE = dict(palm=(-0.88, 0.40, 0.0), tilt=(-0.05, 0.0, -0.10), wrist_off=0.008, scale=0.95,
+             curls={'index': (25, 60, 50), 'middle': (22, 58, 48), 'ring': (20, 52, 44),
+                    'pinky': (18, 46, 40)},
+             spread={'index': 15, 'middle': 2, 'ring': -10, 'pinky': -25},
+             thumb=((15, 30, 30), 35.0, 0.0))
 
 
 def left_hand(p=None):
-    """Relaxed left hand hanging below the wrist ring, fingers slightly
-    spread and curled like claws."""
     p = dict(LPOSE, **(p or {}))
     fore = nrm(J['wrist_L'] - J['elbow_L'])
-    wrist = J['wrist_L'] + fore * 0.004
-    hand_dir = nrm(fore + np.asarray(p['tilt']))
+    wrist = J['wrist_L'] + fore * p['wrist_off']
+    hand_dir = nrm(fore + np.asarray(p['tilt'], dtype=np.float64))
     M = hand_frame(hand_dir, nrm(p['palm']))
     return Hand('L', p['curls'], p['spread'], p['thumb'], M, wrist, fore, scale=p['scale'],
                 claw=True)
 
 
-# ------------------------------------------------------------------ materials / details
+# ------------------------------------------------------------------ clearance
 
-def wrap_turn(tube, th0, s_a, s_b, turns=1.0, off0=0.00035, rise=0.0005):
-    """Centre line of one helical bandage turn around a tube."""
+_BODY = None
+
+
+def body_clearance(P):
+    """Signed distance of world points to the body (thighs, hips)."""
+    global _BODY
+    if _BODY is None:
+        import body as B
+        _BODY = B.BodySDF()
+    return _BODY(np.asarray(P, dtype=np.float64))
+
+
+def push_clear(hand, objs, min_gap=0.002):
+    """Move the hand objects out of the body (along the mean SDF gradient at
+    the offending vertices) until the gap is >= min_gap; returns the shift."""
+    V = np.concatenate([m.verts for m in objs])
+    d = body_clearance(V)
+    worst = d.min()
+    if worst >= min_gap:
+        return 0.0, worst
+    bad = V[d < min_gap]
+    e = 1e-4
+    g = np.stack([(body_clearance(bad + e * np.eye(3)[k]) - body_clearance(bad - e * np.eye(3)[k]))
+                  / (2 * e) for k in range(3)], axis=1)
+    gdir = nrm(g.mean(axis=0))
+    shift = 0.0
+    for _ in range(40):
+        shift += 0.0005
+        if body_clearance(V + gdir * shift).min() >= min_gap:
+            break
+    for m in objs:
+        m.verts = m.verts + gdir * shift
+    return shift, worst
+
+
+# ------------------------------------------------------------------ right hand
+
+def _path_fn(keys):
+    """Piecewise-linear (theta, s) path through key points, smoothed."""
+    K = np.array(keys, dtype=np.float64)
+    seg = np.r_[0, np.cumsum(np.hypot(np.diff(K[:, 0]) * 0.02, np.diff(K[:, 1])))]
+    u = seg / seg[-1]
+
     def fn(t):
-        th = th0 + t * 2 * np.pi * turns
-        return th, s_a + (s_b - s_a) * t
-    def offs(n):
-        return (off0 + rise * np.linspace(0, 1, n))[:, None]
-    return fn, offs
-
-
-def bandage(hand, tube, th0, s_a, s_b, half_w, turns=1.0, n=48, off0=0.00035):
-    fn, offs = wrap_turn(tube, th0, s_a, s_b, turns, off0, rise=0.0005 * turns)
-    n = max(12, int(n * turns))
-    return strip_on_tube(hand, tube, fn, half_w, (0.0, 1.0), n, 3, off=offs(n), thick=0.00045)
+        from scipy.interpolate import PchipInterpolator
+        return (PchipInterpolator(u, K[:, 0])(t), PchipInterpolator(u, K[:, 1])(t))
+    return fn
 
 
 def build_right():
-    """White fingerless glove (palm and proximal phalanges) under bandage
-    wraps; bare skin fingertips."""
+    """White fingerless glove (palm and proximal phalanges) under a
+    figure-8 bandage that crosses in an X over the back of the hand; bare
+    skin fingertips."""
     hand = right_hand()
-    GLOVE = 0.80                    # glove / wraps cover this fraction of the proximal phalanx
+    GLOVE = 0.72                    # glove covers this fraction of the proximal phalanx
 
     def finger_mat(tube):
         L1 = tube.seg[0]
-        return lambda s: 'white' if s < GLOVE * L1 + 0.0015 else 'skin'
+        return lambda s: 'white' if s < GLOVE * L1 else 'skin'
 
     mats = {'palm': lambda s: 'white',
-            'thumb': lambda s: 'white' if s < hand.thumb.seg[0] + 0.004 else 'skin'}
+            'thumb': lambda s: 'white' if s < hand.thumb.seg[0] + 0.003 else 'skin'}
     for n, f in hand.fingers.items():
         mats[n] = finger_mat(f)
-    out = {'HandR': hand_mesh(hand, mats)}
+    body = hand_mesh(hand, mats)
     P = hand.palm
-    PALM = np.pi / 2                # wrap ends are tucked on the palm side
-    wraps = [bandage(hand, P, PALM, -0.010, 0.016, 0.0090),
-             bandage(hand, P, PALM + 0.5, 0.040, 0.014, 0.0085, off0=0.0009),
-             bandage(hand, P, PALM - 0.3, 0.030, 0.056, 0.0090),
-             bandage(hand, P, PALM + 0.2, 0.078, 0.058, 0.0090, off0=0.0009)]
-    for n, f in hand.fingers.items():
+    pi = np.pi
+    wraps = []
+    # wrist turn (under the X), ends tucked on the palm side
+    fn = _path_fn([(pi / 2, -0.010), (pi / 2 + 2.4 * pi, 0.002)])
+    wraps.append(strip_on_tube(hand, P, fn, 0.0055, 60, 0.0003 + 0.0004 * np.linspace(0, 1, 60)))
+    # figure 8: pinky side of the wrist -> across the back -> index knuckle,
+    # round the knuckles on the palm side, back across to the thumb side of
+    # the wrist: an X on the back of the hand
+    fn = _path_fn([(pi + 0.05, 0.004), (1.5 * pi, 0.036), (2 * pi - 0.05, 0.070),
+                   (2.5 * pi, 0.079), (3 * pi + 0.05, 0.074),
+                   (3.5 * pi, 0.040), (4 * pi - 0.05, 0.008), (4.45 * pi, 0.004)])
+    n = 120
+    lift = 0.0008 + 0.0007 * sstep((np.linspace(0, 1, n) - 0.55) / 0.15)
+    wraps.append(strip_on_tube(hand, P, fn, 0.0068, n, lift, taper=0.03))
+    # one band round the knuckles on top of everything
+    fn = _path_fn([(pi * 0.6, 0.083), (pi * 2.7, 0.084)])
+    wraps.append(strip_on_tube(hand, P, fn, 0.0046, 56, 0.0019))
+    # thin single turns on the finger bases (over the glove)
+    for nm, f in hand.fingers.items():
         L1 = f.seg[0]
-        wraps.append(bandage(hand, f, PALM, 0.000, GLOVE * L1 - 0.004, 0.0050, turns=2.0, n=36,
-                             off0=0.0003))
+        sc = 0.40 * L1
+        fn = _path_fn([(pi / 2, sc - 0.0015), (pi / 2 + 2 * pi, sc + 0.0015)])
+        wraps.append(strip_on_tube(hand, f, fn, 0.0026, 26, 0.0003, taper=0.12))
+    # thumb: two narrow turns round the base of the free thumb
     t = hand.thumb
-    wraps.append(bandage(hand, t, PALM, 0.006, t.seg[0] - 0.004, 0.0075, turns=1.5, n=40))
-    out['HandWrapsR'] = finish_strips(wraps, 'white', outline_w=0.35)
-    return out
+    fn = _path_fn([(pi / 2, t.seg[0] - 0.012), (pi / 2 + 4 * pi, t.seg[0] - 0.001)])
+    wraps.append(strip_on_tube(hand, t, fn, 0.0032, 64, 0.0003 + 0.0006 * np.linspace(0, 1, 64),
+                               taper=0.05))
+    wr = finish_shells(wraps, 'white', outline_w=0.25)
+    shift, worst = push_clear(hand, [body, wr])
+    print(f'hands: right hand body clearance {worst * 1000:.1f} mm, pushed {shift * 1000:.1f} mm')
+    return {'HandR': body, 'HandWrapsR': wr}
 
 
-# graphic panels on the back of the left glove, (u, v): u = 0 thumb side ..
-# 1 little-finger side, v = 0 wrist .. 1 knuckles
+# ------------------------------------------------------------------ left hand
+
+# printed red panels on the back of the left glove, (u, v): u = 0 thumb side
+# .. 1 little-finger side, v = 0 wrist .. 1 knuckles.  Between them a white
+# diagonal strap crosses the back from the thumb side of the cuff down to the
+# little-finger side.
 LEFT_PANELS = [
-    [(0.30, -0.12), (0.84, -0.12), (0.60, 0.34)],
-    [(0.18, 0.28), (0.42, 0.28), (0.68, 0.80), (0.44, 0.82)],
-    [(0.70, 0.44), (0.95, 0.36), (0.95, 0.98), (0.80, 0.98)],
+    # cuff, little-finger side (above the strap)
+    [(0.36, -0.30), (1.08, -0.30), (1.08, 0.40), (0.86, 0.33), (0.46, 0.13)],
+    # wide diagonal stripe below the strap, down to the index / middle knuckles
+    [(0.48, 0.30), (0.90, 0.47), (0.62, 1.04), (0.12, 1.04), (0.12, 0.86)],
+    # thumb edge, from the cuff to the thumb root
+    [(-0.08, -0.30), (0.16, -0.30), (0.10, 0.02), (-0.08, 0.10)],
 ]
+LEFT_RIVETS = [(0.78, 0.66), (0.86, 0.82)]
 
 
 def build_left():
@@ -599,23 +730,42 @@ def build_left():
 
     def finger_mat(tube):
         L1 = tube.seg[0]
-        return lambda s: 'white' if s < 0.72 * L1 else 'hands_red'
+        return lambda s: 'white' if s < 0.30 * L1 else 'hands_red'
 
     mats = {'palm': lambda s: 'white'}
     for n, f in hand.fingers.items():
         mats[n] = finger_mat(f)
-    mats['thumb'] = lambda s: 'white' if s < hand.thumb.seg[0] - 0.006 else 'hands_red'
-    out = {'HandL': hand_mesh(hand, mats)}
+    mats['thumb'] = lambda s: 'white' if s < 0.020 else 'hands_red'
+    body = hand_mesh(hand, mats)
     P = hand.palm
+
+    def uv_to_xs(u, v):
+        sv = 0.002 + v * 0.082
+        a, bb, bf, eb, ef, xc, yc = P.section(np.array([sv]))
+        return (xc[0] + a[0] * 0.995 * (1 - 2 * u), sv)
+
     panels = []
     for poly in LEFT_PANELS:
-        xs = []
-        for u, v in poly:
-            sv = 0.004 + v * 0.078
-            a = P.section(np.array([sv]))[0][0]
-            xs.append((a * 0.97 * (1 - 2 * u), sv))
-        panels.append(decal_on_back(hand, P, np.array(xs)))
-    out['HandStripesL'] = finish_strips(panels, 'hands_red', outline=False)
+        # densify the outline so its edges follow the curved back
+        pts = []
+        for k in range(len(poly)):
+            a, b = np.array(poly[k]), np.array(poly[(k + 1) % len(poly)])
+            for t in np.linspace(0, 1, 6, endpoint=False):
+                pts.append(uv_to_xs(*(a + (b - a) * t)))
+        panels.append(decal_on_back(hand, P, np.array(pts)))
+    out = {'HandL': body, 'HandStripesL': finish_shells(panels, 'hands_red', outline=False)}
+    rivets = []
+    for u, v in LEFT_RIVETS:
+        x, sv = uv_to_xs(u, v)
+        th = P.back_theta(np.array([x]), np.array([sv]))
+        C = hand.surface(P, th, np.array([sv]), 0.0002)[0]
+        N = hand.surface_normal(P, th, np.array([sv]))[0]
+        R = hs.frame_from(z=N)
+        rivets.append(hs.lathe([(0, 0), (0.0011, 0), (0.0011, 0.0005), (0.0007, 0.0009),
+                                (0, 0.0009)], 12, C, R))
+    out['HandRivetsL'] = hs.hard_mesh(rivets, 'metal', bevel=0.0, outline_w=0.3)
+    shift, worst = push_clear(hand, [body, out['HandStripesL'], out['HandRivetsL']])
+    print(f'hands: left hand body clearance {worst * 1000:.1f} mm, pushed {shift * 1000:.1f} mm')
     return out
 
 

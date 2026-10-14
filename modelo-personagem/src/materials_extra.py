@@ -57,3 +57,13 @@ EXTRA['swords_steel'] = ('#C4C7CF', '#83878F', '#33363D', dict(thr=0.45, spec=0.
                                                               spec_col='#FFFFFF'))
 # swords: near-white hot core of the scabbard glow slot
 EXTRA['swords_glow_core'] = ('#FFE2E8', '#FFC6D0', '#7A1424', dict(emit=1.0))
+
+# accessories: faceted goggle lens (deep translucent crimson): mid, dark lower facets,
+# bright upper facets; no specular blob (the glints are separate white pieces)
+EXTRA['acc_lens'] = ('#B8222C', '#74101A', '#2A0406', dict(thr=0.40))
+EXTRA['acc_lens_dark'] = ('#5E0C14', '#360609', '#1A0204', dict(thr=0.40))
+EXTRA['acc_lens_hi'] = ('#E4434D', '#B02A33', '#2A0406', dict(thr=0.40))
+# boots: muted coral red of the cuff bands (official art ~#B5443E lit, ~#7A1F1F shadow)
+EXTRA['boots_red'] = ('#B8463F', '#7A1F1F', '#3A0A0A', dict(thr=0.40, spec=0.12, gloss=0.4))
+# boots: light bevel edge line on the black velcro straps
+EXTRA['boots_edge'] = ('#7E8492', '#4E535E', '#1A1C21', dict(thr=0.40))
