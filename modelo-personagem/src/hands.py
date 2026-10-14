@@ -68,8 +68,7 @@ class Tube:
     centre offset.  ``joints``: (s_j, angle_deg, blend_halfwidth, hinge_y).
     The tube runs from s0 to s1 with rounded caps of length c0 / c1."""
 
-    def __init__(self, origin, R, s0, s1, prof, joints=(), c0=0.006, c1=0.006,
-                 axis_x=None):
+    def __init__(self, origin, R, s0, s1, prof, joints=(), c0=0.006, c1=0.006):
         self.o = np.asarray(origin, dtype=np.float64)
         self.R = np.asarray(R, dtype=np.float64)
         self.s0, self.s1 = s0, s1
@@ -385,7 +384,7 @@ def hand_mesh(hand, mats):
 def strip_on_tube(hand, tube, centre_fn, half_w, t_range, n_along, n_across=3,
                   off=0.0004, thick=0.0005):
     """Thin band lying on a tube: centre_fn(t) -> (theta, s) in the tube's
-    rest parameters; the band spans +-half_w along s.  Returns world (V, F, N)."""
+    rest parameters; the band spans +-half_w along s.  Returns world (V, F)."""
     t = np.linspace(t_range[0], t_range[1], n_along)
     th, s = centre_fn(t)
     q = np.linspace(-1, 1, n_across)
@@ -600,7 +599,7 @@ def build_left():
 
     def finger_mat(tube):
         L1 = tube.seg[0]
-        return lambda s: 'white' if s < L1 + 0.001 else 'hands_red'
+        return lambda s: 'white' if s < 0.72 * L1 else 'hands_red'
 
     mats = {'palm': lambda s: 'white'}
     for n, f in hand.fingers.items():
@@ -615,7 +614,6 @@ def build_left():
             sv = 0.004 + v * 0.078
             a = P.section(np.array([sv]))[0][0]
             xs.append((a * 0.97 * (1 - 2 * u), sv))
-        # resample edges so the panel follows the changing width
         panels.append(decal_on_back(hand, P, np.array(xs)))
     out['HandStripesL'] = finish_strips(panels, 'hands_red', outline=False)
     return out
