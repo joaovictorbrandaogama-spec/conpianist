@@ -1381,10 +1381,13 @@ def sleeves():
     out['ArmWrapRed'] = G.solid([G.band_shell(ch, thr, G.rows(W0, W1, 0.004), red_lev, RED_T)],
                                 'clothing_red', bevel=0.0004, outline_w=0.8, angle=60)
     rfun = _radius_table(ch, W0, W1, 0.0040)
-    sa, sb = END + 0.002, L_L - 0.010
+    # wide black band with printed text right under the elbow ring (as in the
+    # reference), the straps start under it and end under the wrist ring
+    WB0, WB1 = END + 0.027, END + 0.055
+    sa, sb = WB0 + 0.020, L_L - 0.012
     base = lambda T, Sv: red_lev(T, Sv) + RED_T + 0.0002
-    WIDTH = 0.019
-    s1, c1, k1 = _helix(ch, rfun, sa, sb, (sb - sa) / 4.0, 1, np.radians(20), WIDTH, base,
+    WIDTH = 0.020
+    s1, c1, k1 = _helix(ch, rfun, sa, sb, (sb - sa) / 4.5, 1, np.radians(20), WIDTH, base,
                         0.0012)
     r_m = rfun(0.5 * (sa + sb))
     hw1 = WIDTH / 2
@@ -1393,16 +1396,15 @@ def sleeves():
         d = np.abs(G.wrap_angle(T, c1(Sv))) * rfun(Sv) / np.sqrt(1 + (k1 * rfun(Sv)) ** 2)
         over = 1 - sstep(d, hw1 + 0.0005, hw1 + 0.0065)
         return base(T, Sv) + 0.0013 * over
-    s2, c2, k2 = _helix(ch, rfun, sa + 0.012, sb - 0.050, (sb - sa - 0.062) / 2.0, -1,
+    s2, c2, k2 = _helix(ch, rfun, sa + 0.006, sb - 0.030, (sb - sa - 0.036) / 1.6, -1,
                         np.radians(200), WIDTH * 0.95, lev2, 0.0012)
-    # wide black band ~3 cm above the wrist and a small white text tag on it
-    WB0, WB1 = L_L - 0.078, L_L - 0.050
     wb_lev = lambda T, Sv: red_lev(T, Sv) + RED_T + 0.0029
     wband = _ring(ch, WB0, WB1, wb_lev, 0.0018, n=96)
-    out['ArmWrapBlack'] = G.solid([s1, s2, wband], 'clothing_fabric', bevel=0.0004, outline_w=0.6,
+    wband2 = _ring(ch, L_L - 0.046, L_L - 0.030, wb_lev, 0.0016, n=96)   # above the wrist ring
+    out['ArmWrapBlack'] = G.solid([s1, s2, wband, wband2], 'clothing_fabric', bevel=0.0004, outline_w=0.6,
                                   angle=50)
     tag_lev = lambda T, Sv: wb_lev(T, Sv) + 0.0018 + 0.0001
-    tg = _text_bars(ch, np.radians(10) * ARM_R0, WB0 + 0.008, 3, tag_lev, rng, 0.012,
-                    h=0.0010, step=0.0030)
+    tg = _text_bars(ch, np.radians(-5) * ARM_R0, WB0 + 0.009, 2, tag_lev, rng, 0.020,
+                    h=0.0010, step=0.0035)
     out['ArmWrapText'] = G.solid(tg, 'decal_white', bevel=0.0, outline=False)
     return out

@@ -5,9 +5,9 @@ build() -> {name: MeshData}
 Layout (front reference, 735x1030 px, see rig.px):
 
 * SwordNightblaze_*  the big red katana scabbard.  Visible from the hand
-  (px 249,508) down-left to the black L-shaped end cap (px 60,667); behind
-  the hand it bends backwards, crosses her lower back and ends in the mount
-  at her back-left hip.  Outer edge: red with a black sawtooth band (6 teeth,
+  (px 249,508) down-left to the black L-shaped end cap (px 60,667); it is
+  one straight rigid piece that runs on behind the hand, the coat and the
+  buttocks (depth growing linearly) into the mount at her back-left hip.  Outer edge: red with a black sawtooth band (6 teeth,
   white marks in the notches); inner side: raised white plate with two brass
   pins and a pink glow slot, black edge rail.  Rigid on the right hand.
 * SwordUpper_*       the red sheathed sword / katana hilt sticking out of the
@@ -16,8 +16,10 @@ Layout (front reference, 735x1030 px, see rig.px):
 * SwordKodachi_*     the black short sword below it (px 434,444 -> 590,368):
   grey inset strip, red/white band, angular black tip cap, white connector
   with a round badge.
-* SwordMount_*       white/grey mount at the back-left hip with the black drum
-  connector (gold and light-blue rings).
+* SwordMount_*       one solid bracket behind the back-left hip: white housing
+  block (dark front cover), steel scabbard collar and guard hanger, gunmetal
+  clamp arm to the belt, black drum connector (gold and light-blue rings).
+  The upper sword and kodachi trail slightly backwards from it.
 
 Every piece is a 2D outline (local s = along the sword, v = across) extruded
 along the thickness w, with separate raised inset pieces for colour regions.
@@ -159,9 +161,11 @@ def rect_section(vlo, vhi, w0, w1, c=0.0, cw=None):
                      (vlo + c, w1), (vlo, w1 - cw), (vlo, w0 + cw), (vlo + c, w0)])
 
 
-def band(ds, vlo, vhi, w0, w1, c=0.0):
-    """Loft of rectangles whose v-extent follows vlo(d), vhi(d) (arrays)."""
-    return loft(ds, [rect_section(a, b, w0, w1, c) for a, b in zip(vlo, vhi)])
+def band(ds, vlo, vhi, w0, w1, c=0.0, cw=None):
+    """Loft of rectangles whose v-extent follows vlo(d), vhi(d) (arrays);
+    chamfer c across (pixels) and cw in depth (metres, default 1.2 mm)."""
+    cw = min(0.0012, (w1 - w0) * 0.2) if cw is None else cw
+    return loft(ds, [rect_section(a, b, w0, w1, c, cw) for a, b in zip(vlo, vhi)])
 
 
 def prism_l(poly_dv, w0, w1):
@@ -245,38 +249,63 @@ def both_faces(items):
 
 # ================================================================ Nightblaze scabbard
 
-def scabbard_sword(upper):
-    """Path of the big scabbard.  Pixel axis of the visible part: centre line
-    through (65.7, 662.5) at 40 deg (down-left), d = 0 at the end cap."""
-    ang = np.radians(40.0)
+# Pixel axis of the visible part: centre line through (65.7, 662.5) at 40 deg
+# (down-left), d = 0 at the end cap.  The scabbard is ONE straight rigid
+# piece: a straight 3D line projects to a straight 2D line, so it keeps the
+# visible 40 degree axis in the front view while its depth grows linearly
+# from the tip (a little in front of her plane) to the mouth behind her
+# back-left hip.  It passes ~9 cm behind the loosely hanging right hand, then
+# behind the coat and the buttocks (clearance checked against the cached
+# body / coat / shorts meshes) and ends in the hip mount housing.
+SCAB_ANG = 40.0
+SCAB_E = np.array([65.7, 662.5])
+SCAB_Y_TIP, SCAB_Y_FAR, SCAB_D_FAR = 0.02, 0.215, 485.0
+SCAB_D_TIP, SCAB_D_HAND, SCAB_D_END = -8.0, 240.0, 428.0
+
+
+def scab_Y(d):
+    return SCAB_Y_TIP + (SCAB_Y_FAR - SCAB_Y_TIP) * (d - SCAB_D_TIP) / (SCAB_D_FAR - SCAB_D_TIP)
+
+
+def scab_axis():
+    ang = np.radians(SCAB_ANG)
     u = np.array([np.cos(ang), -np.sin(ang)])          # towards the hand (px)
     n_out = np.array([-np.sin(ang), -np.cos(ang)])     # outer side (px, up-left)
-    E = np.array([65.7, 662.5])
-    Y_tip, Y_hand = -0.130, 0.015
-    d_tip, d_hand = -8.0, 240.0
-    p_tip = P(*(E + u * d_tip), Y_tip)
-    p_hand = P(*(E + u * d_hand), Y_hand)
-    # behind the hand: bend backwards, cross the lower back, end in the mount
-    mouth, mdir = upper['mouth'], upper['dir']
-    pts = [p_hand,
-           P(284, 481, 0.105),
-           P(330, 452, 0.180),
-           P(372, 420, 0.178),
-           mouth]
-    curve = hermite_path(pts, p_hand - p_tip, mdir, n=160)
-    nvis = 40
-    straight = [p_tip + (p_hand - p_tip) * t for t in np.linspace(0, 1, nvis, endpoint=False)]
-    pts = np.concatenate([np.array(straight), curve])
+    return u, n_out
+
+
+def scabbard_sword():
+    u, n_out = scab_axis()
+    E = SCAB_E
+    p_tip = P(*(E + u * SCAB_D_TIP), scab_Y(SCAB_D_TIP))
+    p_far = P(*(E + u * SCAB_D_FAR), scab_Y(SCAB_D_FAR))
+    p_hand = P(*(E + u * SCAB_D_HAND), scab_Y(SCAB_D_HAND))
+    T = unit(p_far - p_tip)
+    # pixel scale measured over the visible part (tip -> hand)
+    k = np.linalg.norm(p_hand - p_tip) / (SCAB_D_HAND - SCAB_D_TIP)
+    L = (SCAB_D_END - SCAB_D_TIP + 4.0) * k
+    pts = np.array([p_tip + T * s for s in np.linspace(0.0, L, 24)])
     v_hint = unit([n_out[0], 0.0, -n_out[1]])
     path = Path(pts, v_hint)
-    k = np.linalg.norm(p_hand - p_tip) / (d_hand - d_tip)
-    sw = Sword(path, k, d0=d_tip, n0=2.0)
-    sw.d_end = d_tip + path.length / k            # pixel d of the mouth
+    sw = Sword(path, k, d0=SCAB_D_TIP, n0=2.0)
+    sw.d_end = SCAB_D_END
     return sw
 
 
-def nightblaze(upper):
-    sw = scabbard_sword(upper)
+def edge_strip(a, b, inward, w0, w1, off=0.3, wid=1.6):
+    """Thin highlight strip along the polygon edge a-b (pixel units), set
+    ``off`` px inside the edge and ``wid`` px wide, extruded w0..w1."""
+    a, b = np.asarray(a, dtype=np.float64), np.asarray(b, dtype=np.float64)
+    t = (b - a) / np.linalg.norm(b - a)
+    nr = np.array([-t[1], t[0]])
+    if nr @ np.asarray(inward, dtype=np.float64) < 0:
+        nr = -nr
+    poly = [a + nr * off, b + nr * off, b + nr * (off + wid), a + nr * (off + wid)]
+    return prism_l(poly, w0, w1)
+
+
+def nightblaze():
+    sw = scabbard_sword()
     k = sw.k
     out = {}
     D2 = 0.011               # half thickness of the scabbard body
@@ -284,56 +313,67 @@ def nightblaze(upper):
     d_end = sw.d_end
     cpx = 0.0012 / k         # 1.2 mm chamfer in pixels
 
-    # ---- red core (full width), from under the end cap to the mount
-    ds = np.concatenate([np.linspace(6, d_end, 90)])
+    # ---- red core (full width): one straight loft from under the end cap to
+    # the mouth, so the cross-section stays constant all the way
+    ds = np.linspace(6, d_end, 40)
     core = band(ds, np.full(len(ds), N_IN), np.full(len(ds), N_OUT), -D2, D2, c=cpx)
     out['SwordNightblaze_Body'] = sw.mesh([core], 'swords_red', bevel=0.0007, outline_w=0.9)
 
+    # ---- bright bevel highlight line along the outer (upper) edge, both faces
+    hi = [prism_l([(19.0, N_OUT - 2.6), (d_end - 14, N_OUT - 2.6), (d_end - 14, N_OUT - 0.9),
+                   (19.0, N_OUT - 0.9)], D2 - 0.0002, D2 + 0.0004)]
+    out['SwordNightblaze_Edge'] = sw.mesh(both_faces(hi), 'swords_red_hi', bevel=0.0,
+                                          outline=False)
+
     # ---- black rail along the inner edge (wraps the edge, whole length)
-    ds = np.linspace(14, d_end - 2, 60)
+    ds = np.linspace(14, d_end - 2, 30)
     rail = band(ds, np.full(len(ds), N_IN - 0.25), np.full(len(ds), N_IN + 3.2),
                 -D2 - 0.0006, D2 + 0.0006, c=cpx * 0.8)
     # ---- black inner region near the end (d 14..86), on both faces
     blk = prism_l([(14, N_IN + 1), (80, N_IN + 1), (88, N_IN + 2.6), (88, N_IN + 3.0),
                    (60, 3.4), (14, 3.4)], D2 - 0.0003, D2 + 0.0006)
-    # ---- black sawtooth band (outer side of the white plate)
+    # ---- black sawtooth band (outer side of the white plate), ending in a
+    # clean angled lead-out past the last tooth
     teeth = [124.0 + 31.4 * i for i in range(6)]
-    pts = [(84.0, 5.5)]
+    pts = [(84.0, -1.0), (84.0, 5.5)]
     for t0 in teeth:
         pts += [(t0 - 0.01, 5.5), (t0 + 1.6, 11.2), (t0 + 6.0, 11.2), (t0 + 29.0, 5.6)]
-    d_band_end = teeth[-1] + 34
-    pts += [(d_band_end, 5.5)]
-    bd = np.array([p[0] for p in pts])
-    bn = np.array([p[1] for p in pts])
-    # insert extra samples on the long straight parts (for the bend)
-    dd = np.unique(np.concatenate([bd, np.linspace(84, d_band_end, 40)]))
-    nb = np.interp(dd, bd, bn)
-    saw = band(dd, np.full(len(dd), -1.0), nb, D2 - 0.0003, D2 + 0.0006)
-    # end of the black band: short angled lead into the plain red part
+    d_band_end = teeth[-1] + 40
+    pts += [(d_band_end - 4, 5.5), (d_band_end, -1.0)]
+    saw = prism_l(pts, D2 - 0.0003, D2 + 0.0006)
     black_items = [rail] + both_faces([blk, saw])
     out['SwordNightblaze_Black'] = sw.mesh(black_items, 'black', bevel=0.0004, outline_w=0.45)
 
-    # ---- raised white plate: pointed tip, step near the hand
-    d_plate_end = d_end - 30
-    key = [(41.0, -1.2, -0.6), (52.0, -2.8, 2.0), (85.0, -10.4, 2.0), (165.0, -10.4, 2.0),
-           (171.0, -5.4, -0.6), (d_plate_end - 8, -5.4, -0.6), (d_plate_end, -5.4, -4.0)]
+    # ---- raised white plate: pointed tip that wraps under the glow slot,
+    # step near the hand, bevelled end well before the mouth
+    d_plate_end = d_end - 40
+    key = [(40.0, -4.4, -3.2), (47.0, -6.4, -1.8), (69.0, -8.6, -1.8), (73.0, -9.0, 2.0),
+           (85.0, -10.4, 2.0), (165.0, -10.4, 2.0), (171.0, -5.4, -0.6),
+           (d_plate_end - 8, -5.4, -0.6), (d_plate_end, -5.4, -4.0)]
     kd = np.array([p[0] for p in key])
-    dd = np.unique(np.concatenate([kd, np.linspace(41, d_plate_end, 50)]))
-    lo = np.interp(dd, kd, [p[1] for p in key])
-    hi = np.interp(dd, kd, [p[2] for p in key])
-    plate = band(dd, lo, hi, D2 - 0.0003, D2 + 0.0017, c=0.0)
+    lo = np.array([p[1] for p in key])
+    hi_ = np.array([p[2] for p in key])
+    plate_poly = list(zip(kd, lo)) + list(zip(kd[::-1], hi_[::-1]))
+    plate = prism_l(plate_poly, D2 - 0.0003, D2 + 0.0017)
     out['SwordNightblaze_Plate'] = sw.mesh(both_faces([plate]), 'white', bevel=0.0005,
                                            outline_w=0.45)
 
-    # ---- glow slot on the plate (pink-red light) with a dark frame
-    slot = prism_l(rrect_dn(59.5, 0.4, 23.0, 2.6, r=1.2, seg=3), D2 + 0.0012, D2 + 0.0021)
+    # ---- glow slot on the red just above the plate tip: dark recess frame,
+    # pink light, near-white hot core
+    frame = prism_l(rrect_dn(58.5, 1.6, 27.0, 7.6, r=2.8, seg=3), D2 - 0.0003, D2 + 0.0007)
+    slot = prism_l(rrect_dn(58.5, 1.6, 24.0, 5.2, r=2.3, seg=3), D2 + 0.0004, D2 + 0.0011)
+    core = prism_l(rrect_dn(59.0, 1.7, 19.5, 2.4, r=1.1, seg=2), D2 + 0.0008, D2 + 0.0014)
+    out['SwordNightblaze_SlotFrame'] = sw.mesh(both_faces([frame]), 'black', bevel=0.0002,
+                                               outline_w=0.3)
     out['SwordNightblaze_Glow'] = sw.mesh(both_faces([slot]), 'glow_pink', bevel=0.0,
                                           outline=False)
+    out['SwordNightblaze_GlowCore'] = sw.mesh(both_faces([core]), 'swords_glow_core', bevel=0.0,
+                                              outline=False)
 
     # ---- white marks in the tooth notches + small pale text dashes on the red
     marks, text = [], []
     for t0 in teeth:
-        marks.append(prism_l(rrect_dn(t0 + 9.0, 8.9, 6.0, 3.6, r=0.5), D2 + 0.0004, D2 + 0.0010))
+        marks.append(prism_l(rrect_dn(t0 + 9.2, 8.6, 6.6, 4.6, r=0.5), D2 + 0.0004, D2 + 0.0010))
         text.append(prism_l(rect_dn(t0 + 2.5, 14.2, 4.2, 0.9), D2 - 0.0002, D2 + 0.0003))
         text.append(prism_l(rect_dn(t0 + 3.2, 15.8, 2.6, 0.9), D2 - 0.0002, D2 + 0.0003))
     # marks near the end cap
@@ -345,13 +385,14 @@ def nightblaze(upper):
     out['SwordNightblaze_Text'] = sw.mesh(both_faces(text), 'swords_mark', bevel=0.0,
                                           outline=False)
 
-    # ---- brass pins lying across the plate, sticking out past the inner edge
+    # ---- brass pins: straight ferrules with a barrel bulge and flat caps,
+    # standing across the plate and sticking out past its inner edge
     pins = []
-    for dp in (95.5, 111.0):
-        L = 13.5 * k
-        r = 0.0041
-        prof = [(0, 0), (r, 0), (r, L * 0.18), (r * 0.78, L * 0.24), (r * 0.78, L * 0.70),
-                (r, L * 0.76), (r, L), (0, L)]
+    for dp in (93.0, 111.5):
+        L = 11.5 * k
+        r = 0.0047
+        prof = [(0, 0), (r * 0.9, 0), (r, L * 0.07), (r, L * 0.32), (r * 1.1, L * 0.40),
+                (r * 1.1, L * 0.60), (r, L * 0.68), (r, L * 0.93), (r * 0.9, L), (0, L)]
         Vp, Fp = hs.lathe(prof, seg=12)
         # local cylinder axis z -> sword +n, starting at n = -16.5
         Vl = np.c_[Vp[:, 0] / k + dp, Vp[:, 2] / k - 16.5, Vp[:, 1] + D2 + 0.0010]
@@ -362,8 +403,14 @@ def nightblaze(upper):
     cap_poly = [(9.5, 19.6), (1.0, 19.8), (-5.5, 17.0), (-8.0, -21.0), (-6.0, -27.6),
                 (4.5, -28.6), (10.5, -18.0), (18.0, -15.2), (18.0, 3.8)]
     cap = prism_l(cap_poly, -D2 - 0.0016, D2 + 0.0016)
-    # a lip where the cap meets the red body (slanted, slightly raised)
     out['SwordNightblaze_Cap'] = sw.mesh([cap], 'black', bevel=0.0009, outline_w=0.9)
+    # light grey rim lines on the cap's upper and outer edges (both faces)
+    Wc = D2 + 0.0016
+    rim = [edge_strip((9.5, 19.6), (1.0, 19.8), (0, -1), Wc - 0.0002, Wc + 0.0004),
+           edge_strip((1.0, 19.8), (-5.5, 17.0), (1, -1), Wc - 0.0002, Wc + 0.0004),
+           edge_strip((-5.5, 17.0), (-8.0, -21.0), (1, 0), Wc - 0.0002, Wc + 0.0004)]
+    out['SwordNightblaze_CapRim'] = sw.mesh(both_faces(rim), 'swords_rim', bevel=0.0,
+                                            outline=False)
     lights = [prism_l(rrect_dn(13.6, 8.3, 4.6, 6.0, r=0.6), D2 + 0.0010, D2 + 0.0024)]
     out['SwordNightblaze_CapLight'] = sw.mesh(both_faces(lights), 'decal_white', bevel=0.0003,
                                               outline_w=0.3)
@@ -375,13 +422,33 @@ def nightblaze(upper):
 
 # ================================================================ upper sword (katana hilt)
 
+# depth of the hip ends of the two hip-hung swords (inside the mount housing
+# behind her back-left hip); both trail BACKWARDS towards their far ends
+UP_Y0, UP_DY = 0.180, 0.050
+KO_Y0, KO_DY = 0.186, 0.030
+
+
+def screw_hole(d, n, wf, r=1.5, rim=0.45):
+    """Dark recessed screw hole with a thin light rim, on both faces.  Returns
+    (V, F, tag) triples, tag 'r' (rim ring) or 'h' (dark hole)."""
+    out = []
+    ring = hs.lathe([(r, 0.0), (r + rim, 0.0), (r + rim, 0.0007), (r, 0.0007)], seg=14)
+    hole = hs.lathe([(0, 0.0), (r, 0.0), (r, 0.0005), (0, 0.0005)], seg=14)
+    for (V, F), tag in ((ring, 'r'), (hole, 'h')):
+        Vl = np.c_[V[:, 0] + d, V[:, 1] + n, V[:, 2] + wf - 0.0003]
+        out.append((Vl, F, tag))
+        Vm, Fm = mirror_w((Vl, F))
+        out.append((Vm, Fm, tag))
+    return out
+
+
 def upper_axis():
     ang = np.radians(21.8)
     u = np.array([np.cos(ang), -np.sin(ang)])
     n = np.array([-np.sin(ang), -np.cos(ang)])
     E = np.array([460.0, 370.5]) + n * (-0.5)
-    Yd = lambda d: 0.128 - 0.068 * (d / 243.0)
     d_a, d_b = -56.0, 246.0
+    Yd = lambda d: UP_Y0 + UP_DY * (d - d_a) / (d_b - d_a)
     pa, pb = P(*(E + u * d_a), Yd(d_a)), P(*(E + u * d_b), Yd(d_b))
     v_hint = unit([n[0], 0.0, -n[1]])
     path = Path(np.array([pa + (pb - pa) * t for t in np.linspace(0, 1, 8)]), v_hint)
@@ -389,7 +456,7 @@ def upper_axis():
     sw = Sword(path, k, d0=d_a, n0=0.0)
     d_m = -52.0
     return sw, dict(mouth=P(*(E + u * d_m), Yd(d_m)), dir=unit(pb - pa), E=E, u=u, n=n,
-                    Yd=Yd)
+                    Yd=Yd, sw=sw)
 
 
 def upper_sword():
@@ -402,13 +469,25 @@ def upper_sword():
                  (-56, 10.2)]
     body = prism_l(body_poly, -W2, W2)
     out['SwordUpper_Body'] = sw.mesh([body], 'swords_red', bevel=0.0007, outline_w=0.85)
-    # dark grey strip along the lower edge (proud on both faces, wraps the edge)
+    # bright bevel highlight line along the top edge (both faces)
+    hi = [edge_strip((-50, 10.2), (129, 10.2), (0, -1), W2 - 0.0002, W2 + 0.0004, off=0.4,
+                     wid=2.0),
+          edge_strip((151, 10.2), (188, 10.2), (0, -1), W2 - 0.0002, W2 + 0.0004, off=0.4,
+                     wid=2.0),
+          edge_strip((188, 10.2), (211, 8.9), (0, -1), W2 - 0.0002, W2 + 0.0004, off=0.4,
+                     wid=2.0)]
+    out['SwordUpper_Edge'] = sw.mesh(both_faces(hi), 'swords_red_hi', bevel=0.0, outline=False)
+    # grey strip along the lower edge (proud on both faces, wraps the edge),
+    # plus the short strip on the handle part left of the forearm
     strip_poly = [(14, -10.8), (155.5, -10.8), (159.5, -5.8), (14, -5.8)]
     strip = prism_l(strip_poly, -W2 - 0.0005, W2 + 0.0005)
+    hstrip = prism_l([(-50, -8.6), (-22, -8.6), (-19, -5.4), (-50, -5.4)], W2 - 0.0003,
+                     W2 + 0.0005)
     # dark recess in the notch of the top edge
     notch = prism_l([(130.5, 6.8), (149.5, 6.8), (149.5, 9.4), (130.5, 9.4)], -W2 + 0.002,
                     W2 - 0.002)
-    out['SwordUpper_Strip'] = sw.mesh([strip], 'gunmetal', bevel=0.0004, outline_w=0.5)
+    out['SwordUpper_Strip'] = sw.mesh([strip] + both_faces([hstrip]), 'gray', bevel=0.0004,
+                                      outline_w=0.5)
     out['SwordUpper_Notch'] = sw.mesh([notch], 'black', bevel=0.0, outline_w=0.3)
     # white stripe + red block cap at the far end
     stripe = prism_l([(211.5, -11.0), (215.0, -11.6), (215.0, 9.0), (211.5, 9.2)],
@@ -418,26 +497,35 @@ def upper_sword():
                 (233.5, 8.2), (215.0, 8.2)]
     cap = prism_l(cap_poly, -W2 - 0.0018, W2 + 0.0018)
     out['SwordUpper_Cap'] = sw.mesh([cap], 'swords_red', bevel=0.0008, outline_w=0.85)
-    # brass screws (both faces) and small marks
-    scr = []
     Wc = W2 + 0.0018
-    for d, n, wf in ((82, 2.0, W2), (158, 0.5, W2), (196, 1.5, W2), (12, -6.5, 0.0133),
-                     (226, -4.0, Wc), (236.5, -9.5, Wc)):
-        scr += screw(d, n, wf, k)
-    out['SwordUpper_Screws'] = sw.mesh([x for x in scr if x[2] == 'h'], 'brass', bevel=0.0,
-                                       outline=False)
-    out['SwordUpper_ScrewHoles'] = sw.mesh([x for x in scr if x[2] == 'r'], 'black',
+    cap_hi = [edge_strip((215.5, 8.2), (233.5, 8.2), (0, -1), Wc - 0.0002, Wc + 0.0004,
+                         off=0.4),
+              edge_strip((233.5, 8.2), (239.0, 6.0), (-1, -1), Wc - 0.0002, Wc + 0.0004,
+                         off=0.4)]
+    out['SwordUpper_CapEdge'] = sw.mesh(both_faces(cap_hi), 'swords_red_hi', bevel=0.0,
+                                        outline=False)
+    # screw holes: dark recesses with light rims (both faces), the row of six
+    # small holes near the tip, and two on the cap
+    scr = []
+    for d, n, wf, r in ((82, 2.0, W2, 1.5), (163.5, 1.0, W2, 1.6), (175.5, 0.4, W2, 1.6),
+                        (12, -6.5, 0.0133, 1.5), (226, -3.5, Wc, 1.6), (234, -11.0, Wc, 1.6)):
+        scr += screw_hole(d, n, wf, r=r)
+    for d, n in ((188, 2.2), (195, 2.0), (202, 1.8), (190.5, -2.6), (197.5, -2.8), (204.5, -3.0)):
+        scr += screw_hole(d, n, W2, r=0.85, rim=0.35)
+    out['SwordUpper_ScrewHoles'] = sw.mesh([x[:2] for x in scr if x[2] == 'h'], 'black',
                                            bevel=0.0, outline=False)
+    out['SwordUpper_ScrewRims'] = sw.mesh([x[:2] for x in scr if x[2] == 'r'], 'swords_steel',
+                                          bevel=0.0, outline=False)
     marks = [prism_l(rect_dn(60, 4.0, 7.0, 0.8), W2 - 0.0002, W2 + 0.0003),
              prism_l(rect_dn(58.5, 2.2, 4.0, 0.8), W2 - 0.0002, W2 + 0.0003),
-             prism_l(rect_dn(176, 4.2, 6.0, 0.8), W2 - 0.0002, W2 + 0.0003),
-             prism_l(rect_dn(174.5, 2.4, 3.0, 0.8), W2 - 0.0002, W2 + 0.0003),
-             prism_l([(201, 2.0), (205.5, 2.0), (203.25, 5.6)], W2 - 0.0002, W2 + 0.0003)]
-    for i in range(3):
-        marks.append(prism_l(rect_dn(184 + 3.0 * i, -2.0, 1.8, 1.8), W2 - 0.0002, W2 + 0.0003))
+             prism_l(rect_dn(176, 4.6, 6.0, 0.8), W2 - 0.0002, W2 + 0.0003),
+             prism_l(rect_dn(174.5, 6.0, 3.0, 0.8), W2 - 0.0002, W2 + 0.0003),
+             # pale text on the handle part left of the forearm
+             prism_l(rect_dn(-36, -2.4, 9.0, 0.9), W2 - 0.0002, W2 + 0.0003),
+             prism_l(rect_dn(-38, -0.6, 5.0, 0.9), W2 - 0.0002, W2 + 0.0003)]
     out['SwordUpper_Marks'] = sw.mesh(both_faces(marks), 'swords_mark', bevel=0.0,
                                       outline=False)
-    # hip end: red angular guard plate, white pivot boss, black spike
+    # hip end: red angular guard plate, metal pivot boss, black trigger spike
     guard_poly = [(6.0, -5.0), (13.0, -12.5), (21.0, -18.0), (31.0, -18.0), (36.5, -11.5),
                   (36.5, 10.6), (27.0, 10.6), (17.0, 6.0), (6.0, 3.0)]
     guard = prism_l(guard_poly, -0.0122, 0.0122)
@@ -446,8 +534,10 @@ def upper_sword():
     boss_in = cyl_l(16.0, 6.8, -0.0150, 0.0150, 1.6, seg=12)
     out['SwordUpper_Pivot'] = sw.mesh([boss], 'metal', bevel=0.0005, outline_w=0.5)
     out['SwordUpper_PivotPin'] = sw.mesh([boss_in], 'gunmetal', bevel=0.0, outline_w=0.3)
-    spike_poly = [(1.0, 4.0), (11.5, 4.0), (13.0, 11.0), (17.5, 16.0), (22.0, 18.4),
-                  (20.5, 21.0), (14.5, 19.4), (9.5, 15.6), (4.5, 10.0)]
+    # bent trigger spike rising up-right above the forearm (tip ~ px 481,338)
+    spike_poly = [(3.0, 4.0), (12.5, 4.0), (14.5, 9.5), (19.5, 14.5), (25.5, 18.0),
+                  (31.5, 20.5), (31.0, 23.6), (25.0, 22.4), (18.0, 19.6), (11.5, 15.0),
+                  (6.0, 9.5)]
     spike = prism_l(spike_poly, -0.0055, 0.0055)
     out['SwordUpper_Spike'] = sw.mesh([spike], 'black', bevel=0.0006, outline_w=0.7)
     return out, info
@@ -460,13 +550,14 @@ def kodachi_axis():
     u = np.array([np.cos(ang), -np.sin(ang)])
     n = np.array([-np.sin(ang), -np.cos(ang)])
     E = np.array([480.0, 423.8]) + n * 2.5
-    Yd = lambda d: 0.126 - 0.040 * (d / 123.0)
     d_a, d_b = -58.0, 126.0
+    Yd = lambda d: KO_Y0 + KO_DY * (d - d_a) / (d_b - d_a)
     pa, pb = P(*(E + u * d_a), Yd(d_a)), P(*(E + u * d_b), Yd(d_b))
     v_hint = unit([n[0], 0.0, -n[1]])
     path = Path(np.array([pa + (pb - pa) * t for t in np.linspace(0, 1, 6)]), v_hint)
     k = np.linalg.norm(pb - pa) / (d_b - d_a)
-    return Sword(path, k, d0=d_a, n0=0.0), dict(E=E, u=u, n=n, Yd=Yd)
+    sw = Sword(path, k, d0=d_a, n0=0.0)
+    return sw, dict(E=E, u=u, n=n, Yd=Yd, sw=sw)
 
 
 def kodachi():
@@ -474,10 +565,18 @@ def kodachi():
     k = sw.k
     out = {}
     W2 = 0.0080
-    body_poly = [(8.0, -11.5), (24.0, -11.5), (27.0, -10.4), (91.0, -10.4), (91.0, 10.5),
+    # stepped lower profile: deeper block next to the connector, step up at d 25
+    body_poly = [(8.0, -14.0), (22.5, -14.0), (26.0, -10.4), (91.0, -10.4), (91.0, 10.5),
                  (20.0, 10.5), (17.0, 12.5), (8.0, 12.5)]
     body = prism_l(body_poly, -W2, W2)
-    out['SwordKodachi_Body'] = sw.mesh([body], 'black', bevel=0.0007, outline_w=0.85)
+    # small raised block on the stepped part (carries the red light)
+    blockp = prism_l([(9.5, -12.6), (21.0, -12.6), (21.0, 6.0), (9.5, 6.0)], W2 - 0.0003,
+                     W2 + 0.0011)
+    out['SwordKodachi_Body'] = sw.mesh([body] + both_faces([blockp]), 'black', bevel=0.0007,
+                                       outline_w=0.85)
+    # light grey rim line along the top edge (both faces)
+    rim = [edge_strip((20.5, 10.5), (90.5, 10.5), (0, -1), W2 - 0.0002, W2 + 0.0004, off=0.4,
+                      wid=1.4)]
     # grey inset strip (both faces)
     strip = prism_l(rrect_dn(45.0, -6.9, 38.0, 4.6, r=2.0, seg=3), W2 - 0.0003, W2 + 0.0006)
     out['SwordKodachi_Strip'] = sw.mesh(both_faces([strip]), 'gray', bevel=0.0003,
@@ -496,18 +595,23 @@ def kodachi():
                 (119.5, 10.5), (97.0, 10.5)]
     cap = prism_l(cap_poly, -W2 - 0.0012, W2 + 0.0012)
     out['SwordKodachi_Cap'] = sw.mesh([cap], 'black', bevel=0.0008, outline_w=0.85)
-    # screws: brass on the body, red lights on the cap and near the connector
     Wc = W2 + 0.0012
+    rim += [edge_strip((97.5, 10.5), (119.5, 10.5), (0, -1), Wc - 0.0002, Wc + 0.0004,
+                       off=0.4, wid=1.4),
+            edge_strip((119.5, 10.5), (124.5, 5.5), (-1, -1), Wc - 0.0002, Wc + 0.0004,
+                       off=0.4, wid=1.4)]
+    out['SwordKodachi_Rim'] = sw.mesh(both_faces(rim), 'swords_rim', bevel=0.0, outline=False)
+    # screws: dark holes with light rims; red lights on the cap and the block
     scr, red_dots = [], []
-    for d, n, wf in ((5.0, 2.0, W2 + 0.0035), (68.0, 0.5, W2), (108.0, 2.5, Wc)):
-        scr += screw(d, n, wf, k)
-    for d, n, wf in ((116.0, -7.5, Wc), (13.5, -1.0, W2)):
+    for d, n, wf in ((6.0, 4.0, W2 + 0.0035), (68.0, 0.5, W2), (108.0, 2.5, Wc)):
+        scr += screw_hole(d, n, wf, r=1.5)
+    for d, n, wf in ((116.0, -7.5, Wc), (15.0, 2.0, W2 + 0.0011)):
         red_dots.append(cyl_l(d, n, wf - 0.0004, wf + 0.0010, 1.4, seg=10))
         red_dots.append(mirror_w(cyl_l(d, n, wf - 0.0004, wf + 0.0010, 1.4, seg=10)))
-    out['SwordKodachi_Screws'] = sw.mesh([x for x in scr if x[2] == 'h'], 'brass', bevel=0.0,
-                                         outline=False)
-    out['SwordKodachi_ScrewHoles'] = sw.mesh([x for x in scr if x[2] == 'r'], 'gunmetal',
+    out['SwordKodachi_ScrewHoles'] = sw.mesh([x[:2] for x in scr if x[2] == 'h'], 'black',
                                              bevel=0.0, outline=False)
+    out['SwordKodachi_ScrewRims'] = sw.mesh([x[:2] for x in scr if x[2] == 'r'],
+                                            'swords_steel', bevel=0.0, outline=False)
     out['SwordKodachi_Lights'] = sw.mesh(red_dots, 'glow_red', bevel=0.0, outline=False)
     # small red text + three red blocks (both faces)
     txt = [prism_l(rect_dn(74.0, 4.5, 12.0, 0.8), W2 - 0.0002, W2 + 0.0003),
@@ -552,101 +656,104 @@ def kodachi():
 
 # ================================================================ mount at the back-left hip
 
-def mount(up, ko):
-    """White / grey housing joining the scabbard mouth, the upper sword and the
-    kodachi, with the round black drum connector (gold + light-blue rings)."""
+MOUNT_Y0, MOUNT_Y1 = 0.167, 0.219      # depth range of the housing block
+
+
+def mount(up, ko, sc):
+    """One solid bracket behind her back-left hip: a white housing block that
+    swallows the scabbard mouth, the root of the upper sword and the kodachi
+    housing; a shaded steel hanger under the upper guard; a gunmetal clamp
+    arm that reaches forward to the belt; the black drum connector with gold
+    and light-blue rings on the back face.  Hidden in the front view behind
+    the coat and the left forearm (except the hanger right of the forearm)."""
     out = {}
-    # mount frame: w faces the camera (-Y, tilted like the swords)
-    a = up['mouth']
-    E2, u2, Yd2 = ko['E'], ko['u'], ko['Yd']
-    b = P(*(E2 + u2 * -40.0), Yd2(-40.0))
-    c = (a + b) / 2
-    x_ax = unit(up['dir'] + unit(P(*(E2 + u2 * 50), Yd2(50)) - P(*E2, Yd2(0))))
-    up_v = unit(a - b)
-    R = hs.frame_from(x=x_ax, y=up_v)            # x along the swords, y up, z to camera
-    span = np.linalg.norm(a - b)
-    items_white, items_grey, items_black = [], [], []
-    # main housing plate between the two swords (angular outline)
-    h = span / 2
-    poly = [(-0.050, -h - 0.016), (0.022, -h - 0.016), (0.034, -h + 0.002), (0.030, h - 0.004),
-            (0.012, h + 0.016), (-0.040, h + 0.016), (-0.058, h - 0.010), (-0.062, -h + 0.004)]
-    pc = c + R[:, 2] * -0.006
-    items_white.append(hs.prism(poly, 0.030, origin=pc, R=R))
-    # face details on both sides of the plate: grey inset panel, red bars, screws
-    deco_grey, deco_red, deco_black = [], [], []
-    for sg in (1, -1):
-        Rf = R.copy()
-        if sg < 0:
-            Rf[:, 2] *= -1
-            Rf[:, 0] *= -1
-        zf = 0.015
-        panel = [(-0.044, -h - 0.006), (0.014, -h - 0.006), (0.022, -h + 0.006),
-                 (0.022, -h + 0.020), (-0.044, -h + 0.020)]
-        if sg < 0:
-            panel = [(-x, y) for x, y in panel]
-        deco_grey.append(hs.prism(panel, 0.0016, origin=pc, R=Rf, z0=zf - 0.0006))
-        for i in range(2):
-            xb = (0.004 + 0.007 * i) * sg
-            deco_red.append(hs.prism(hs.chamfer_rect(0.0035, 0.024, 0.0008), 0.0014,
-                                     origin=pc + R[:, 0] * xb + R[:, 1] * (h - 0.006),
-                                     R=Rf, z0=zf - 0.0006))
-        for xs, ys in ((-0.050, h + 0.004), (0.022, -h - 0.008), (-0.052, -h - 0.004)):
-            deco_black.append(hs.cylinder(0.0021, 0.0018, seg=10,
-                                          origin=pc + R[:, 0] * xs + R[:, 1] * ys, R=Rf,
-                                          z0=zf - 0.0006))
-    # kodachi housing (white box running along the kodachi into the plate)
-    kd_a = P(*(E2 + u2 * -58.0), Yd2(-58.0))
-    kd_b = P(*(E2 + u2 * -20.0), Yd2(-20.0))
-    Rk = hs.frame_from(x=unit(kd_b - kd_a), y=R[:, 1])
-    Rk[:, 2] = np.cross(Rk[:, 0], Rk[:, 1])
-    lk = np.linalg.norm(kd_b - kd_a)
-    items_white.append(hs.prism(hs.chamfer_rect(lk, 0.036, 0.005), 0.026,
-                                origin=(kd_a + kd_b) / 2, R=Rk))
-    # collar around the scabbard mouth / upper sword root
-    m_a = up['mouth'] - up['dir'] * 0.012
-    Ru = hs.frame_from(x=up['dir'], y=R[:, 1])
-    Ru[:, 2] = np.cross(Ru[:, 0], Ru[:, 1])
-    items_grey.append(hs.prism(hs.chamfer_rect(0.034, 0.068, 0.006), 0.030,
-                               origin=m_a, R=Ru))
-    # grey arm reaching down to the hanging block under the guard
-    # drum connector: on the camera side of the plate (and visible from the back)
-    dc = c + R[:, 0] * -0.018 + R[:, 1] * 0.004
-    rd = 0.0235
-    hd = 0.040
-    Rd = R                                         # drum axis = local z (depth)
-    drum = hs.cylinder(rd, hd, seg=32, origin=dc, R=Rd)
-    items_black.append(drum)
-    gold = _ring(rd - 0.001, rd + 0.0015, -0.009, 0.002, dc, Rd)
-    blue = _ring(rd - 0.001, rd + 0.0012, 0.0065, 0.0110, dc, Rd)
-    blue_b = _ring(rd - 0.001, rd + 0.0012, -0.0185, -0.0140, dc, Rd)
-    # face disc with four screws on both ends
-    faces_g = []
-    for sgn in (1, -1):
-        zc = sgn * hd / 2
-        faces_g.append(_ring(0.0, rd * 0.78, zc - 0.001 * sgn if sgn > 0 else zc - 0.0012,
-                             zc + 0.0012 if sgn > 0 else zc + 0.001, dc, Rd))
-        for ang in (45, 135, 225, 315):
-            p = dc + Rd @ np.array([np.cos(np.radians(ang)) * rd * 0.56,
-                                    np.sin(np.radians(ang)) * rd * 0.56, zc + sgn * 0.0012])
-            items_black.append(hs.cylinder(0.0022, 0.0014, seg=8, origin=p, R=Rd))
-        # cross bar on the face
-        items_black.append(hs.box((rd * 1.5, 0.004, 0.0014),
-                                  origin=dc + Rd[:, 2] * (zc + sgn * 0.0016), R=Rd))
-    # grey arm seen between the upper guard and the kodachi connector
-    arm_px = [(461, 361), (477, 358), (491, 396), (489, 405), (472, 407), (462, 380)]
-    items_grey.append(px_prism(arm_px, 0.122, 0.020))
-    out['SwordMount_Housing'] = hs.hard_mesh(items_white, 'white', bevel=0.0009, outline_w=0.8)
-    out['SwordMount_Panel'] = hs.hard_mesh(deco_grey, 'gray', bevel=0.0004, outline_w=0.4)
-    out['SwordMount_Stripes'] = hs.hard_mesh(deco_red, 'swords_red', bevel=0.0003,
-                                             outline_w=0.3)
-    out['SwordMount_Screws'] = hs.hard_mesh(deco_black, 'gunmetal', bevel=0.0, outline=False)
-    out['SwordMount_Collar'] = hs.hard_mesh(items_grey, 'metal', bevel=0.0008, outline_w=0.8)
-    out['SwordMount_Drum'] = hs.hard_mesh(items_black, 'black', bevel=0.0006, outline_w=0.7)
-    out['SwordMount_DrumGold'] = hs.hard_mesh([gold], 'gold', bevel=0.0003, outline_w=0.4)
-    out['SwordMount_DrumBlue'] = hs.hard_mesh([blue, blue_b], 'glow_blue', bevel=0.0,
-                                              outline=False)
-    out['SwordMount_DrumFace'] = hs.hard_mesh(faces_g, 'gray', bevel=0.0003, outline_w=0.4)
+    Yc = (MOUNT_Y0 + MOUNT_Y1) / 2
+    Yt = MOUNT_Y1 - MOUNT_Y0
+    white, grey, red, dark, steel, gun = [], [], [], [], [], []
+    # main housing block (pixel outline extruded in depth).  The notch at the
+    # top right keeps the red handle of the upper sword visible between the
+    # coat edge and the forearm, as in the reference.
+    house_px = [(372, 372), (402, 361), (407, 399), (420, 405), (440, 401), (452, 384),
+                (464, 380), (466, 424), (454, 446), (438, 460), (398, 460), (376, 436)]
+    white.append(px_prism(house_px, Yc, Yt))
+    # kodachi housing: white box around the kodachi root, merged into the block
+    skd = ko['sw']
+    gun += skd.world([prism_l(hs.chamfer_rect(36.0, 33.0, 3.0) + [-41.0, 0.25],
+                              -0.0135, 0.0135)])
+    # scabbard mouth collar (steel) where the scabbard enters the block
+    ssc = sc
+    collar = band(np.array([412.0, 415.0, 426.0, 429.0]),
+                  np.array([-15.0, -16.2, -16.2, -15.6]), np.array([19.0, 20.2, 20.2, 19.6]),
+                  -0.0140, 0.0140, c=1.2)
+    steel += ssc.world([collar])
+    # steel hanger under the upper guard (visible right of the forearm) with a
+    # darker grey face panel, joined to the block and to the kodachi connector
+    Yh = up['Yd'](12.0) + 0.004
+    hanger_px = [(463, 368), (481, 362), (490, 398), (487, 406), (474, 407), (468, 388)]
+    steel.append(px_prism(hanger_px, Yh, 0.018))
+    panel_px = [(467, 372), (474, 370), (480, 402), (476, 404)]
+    grey.append(px_prism(panel_px, Yh - 0.0095, 0.0016))
+    # clamp arm reaching forward from the block to her belt (hidden in front)
+    arm_px = [(392, 412), (412, 412), (412, 436), (392, 436)]
+    gun.append(px_prism(arm_px, (0.060 + MOUNT_Y0 + 0.004) / 2, MOUNT_Y0 + 0.004 - 0.060))
+    clamp_px = [(388, 408), (416, 408), (416, 440), (388, 440)]
+    gun.append(px_prism(clamp_px, 0.071, 0.014))
+    # dark front cover on the lower part of the block (the reference shows
+    # only dark machinery left of the wrist cuff) and the front end of the
+    # drum axle: a short black cylinder with a gold ring
+    front_px = [(407, 402), (420, 407), (440, 403), (452, 388), (464, 384), (465, 424),
+                (453, 445), (438, 458), (408, 458)]
+    dark_front = [px_prism(front_px, MOUNT_Y0 - 0.0010, 0.0024)]
+    Rf = hs.frame_from(z=[0.0, -1.0, 0.0], x=[1.0, 0.0, 0.0])
+    af = P(431, 413, MOUNT_Y0 - 0.002)
+    dark_front.append(hs.cylinder(0.0125, 0.024, seg=24, origin=af, R=Rf, z0=0.0))
+    dark_front.append(hs.cylinder(0.0060, 0.0262, seg=16, origin=af, R=Rf, z0=0.0))
+    gold_front = _ring(0.0118, 0.0138, 0.010, 0.014, af, Rf, seg=24)
+    # back face details: grey inset panel, red bars, screws
+    yb = MOUNT_Y1
+    grey.append(px_prism([(382, 378), (400, 372), (403, 430), (396, 448), (384, 432)],
+                         yb + 0.0006, 0.0016))
+    for x0 in (441.0, 447.0):
+        red.append(px_prism([(x0, 404), (x0 + 3, 403), (x0 + 3, 440), (x0, 441)],
+                            yb + 0.0006, 0.0016))
+    for (xs, ys) in ((380, 380), (402, 366), (385, 438), (458, 388), (456, 436)):
+        dark.append(cyl_y(P(xs, ys, yb), 0.0021, 0.0018))
+    # drum connector on the back face: axis along depth (Y)
+    dc = P(424, 425, yb + 0.015)
+    rd, hd = 0.0235, 0.030
+    Rd = hs.frame_from(z=[0.0, 1.0, 0.0], x=[1.0, 0.0, 0.0])
+    drum_black = [hs.cylinder(rd, hd, seg=32, origin=dc, R=Rd)]
+    gold = _ring(rd - 0.001, rd + 0.0015, -0.009, -0.003, dc, Rd)
+    blue = [_ring(rd - 0.001, rd + 0.0012, 0.0015, 0.0055, dc, Rd),
+            _ring(rd - 0.001, rd + 0.0012, -0.0145, -0.0115, dc, Rd)]
+    zc = hd / 2
+    face = [_ring(0.0, rd * 0.78, zc - 0.001, zc + 0.0012, dc, Rd)]
+    for ang in (45, 135, 225, 315):
+        p = dc + Rd @ np.array([np.cos(np.radians(ang)) * rd * 0.56,
+                                np.sin(np.radians(ang)) * rd * 0.56, zc + 0.0012])
+        drum_black.append(hs.cylinder(0.0022, 0.0014, seg=8, origin=p, R=Rd))
+    drum_black.append(hs.box((rd * 1.5, 0.004, 0.0014), origin=dc + Rd[:, 2] * (zc + 0.0016),
+                             R=Rd))
+    out['SwordMount_Housing'] = hs.hard_mesh(white, 'white', bevel=0.0009, outline_w=0.8)
+    out['SwordMount_Panel'] = hs.hard_mesh(grey, 'gray', bevel=0.0004, outline_w=0.4)
+    out['SwordMount_Stripes'] = hs.hard_mesh(red, 'swords_red', bevel=0.0003, outline_w=0.3)
+    out['SwordMount_Screws'] = hs.hard_mesh(dark, 'gunmetal', bevel=0.0, outline=False)
+    out['SwordMount_Collar'] = hs.hard_mesh(steel, 'swords_steel', bevel=0.0008, outline_w=0.8)
+    out['SwordMount_Arm'] = hs.hard_mesh(gun, 'gunmetal', bevel=0.0008, outline_w=0.8)
+    out['SwordMount_Drum'] = hs.hard_mesh(drum_black, 'black', bevel=0.0006, outline_w=0.7)
+    out['SwordMount_DrumGold'] = hs.hard_mesh([gold, gold_front], 'gold', bevel=0.0003,
+                                              outline_w=0.4)
+    out['SwordMount_Front'] = hs.hard_mesh(dark_front, 'black', bevel=0.0006, outline_w=0.6)
+    out['SwordMount_DrumBlue'] = hs.hard_mesh(blue, 'glow_blue', bevel=0.0, outline=False)
+    out['SwordMount_DrumFace'] = hs.hard_mesh(face, 'gray', bevel=0.0003, outline_w=0.4)
     return out
+
+
+def cyl_y(p, r, h, seg=10):
+    """Short cylinder with its axis along +Y starting at p (screw heads on the
+    back face of the housing)."""
+    R = hs.frame_from(z=[0.0, 1.0, 0.0], x=[1.0, 0.0, 0.0])
+    return hs.cylinder(r, h, seg=seg, origin=p, R=R, z0=-0.0006)
 
 
 def px_prism(poly_px, Y, t):
@@ -677,9 +784,9 @@ def build():
     out = {}
     up, info_u = upper_sword()
     ko, info_k = kodachi()
-    nb, _ = nightblaze(info_u)
+    nb, sc = nightblaze()
     out.update(nb)
     out.update(up)
     out.update(ko)
-    out.update(mount(info_u, info_k))
+    out.update(mount(info_u, info_k, sc))
     return out

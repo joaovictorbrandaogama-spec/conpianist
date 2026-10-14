@@ -107,7 +107,7 @@ COAT_T = 0.0040            # cloth thickness (Solidify)
 HEM_Z = 1.190              # cropped hem at the sides / back (lower ribs)
 STRIP_Z = 1.030            # front panels fall to below the belt
 DRAPE_K = 0.06             # drape: recedes 0.6 mm per cm below the bust
-PULL_Z = (1.255, 1.105)    # drape -> body offset blend below the bust
+PULL_Z = (1.262, 1.165)    # drape -> body offset blend below the bust
 JACKET_H = 0.0023          # jacket field grid step
 BUST_PAD = 0.0030          # extra room over the bikini cups
 
@@ -480,14 +480,17 @@ def largest_components(V, F, min_frac=0.02):
 
 # ------------------------------------------------------------ lapels
 
-LAPEL_LIFT = 0.0033        # lapel mid-surface above the jacket mid-surface
+LAPEL_LIFT = 0.0029        # lapel mid-surface above the jacket mid-surface
+LAPEL_LIFT_TIP = 0.0011    # ... at the lower tip of the lapels
 LAPEL_T = 0.0032
+LAPEL_OVER = 1.2           # degrees the lapel roll may pass the front edge
 LAPEL_RED_PX = 2.4         # red fold edge seen along the inner edge
 # notched lapels traced on the reference (px).  The first points form the
 # inner (fold) edge, slightly over the jacket opening.
 LAPEL_L = [(371, 249), (362, 232), (355, 217), (347.5, 203.5), (370, 191.5),
            (377, 198), (388, 194.5), (394, 206), (392, 221), (383, 236)]
 LAPEL_L_FOLD = 4           # number of fold-edge points at the start
+LAPEL_L_RED_Y = 213.0      # her left lapel's red fold edge stops below this (px)
 LAPEL_R = [(289.5, 241.5), (294, 225), (304, 210.5), (316, 198.5), (322, 191.5),
            (311, 188), (306, 193.5), (298, 191.5), (293, 201), (290.5, 214), (290.5, 229)]
 LAPEL_R_FOLD = 5
@@ -605,20 +608,35 @@ def split_vec(V, F, s):
 
 def lapels():
     g = jacket_grid()
+    E = jacket_edges()
     out_w, out_r, pipes = [], [], []
-    for poly, nfold in ((LAPEL_L, LAPEL_L_FOLD), (LAPEL_R, LAPEL_R_FOLD)):
+    for poly, nfold, ry in ((LAPEL_L, LAPEL_L_FOLD, LAPEL_L_RED_Y), (LAPEL_R, LAPEL_R_FOLD, 1e9)):
         V, F, xy = px_sheet(g, poly, LAPEL_LIFT)
+        # no overhang past the jacket's front edge at the bust (at grazing
+        # angles the ray-cast sheet ran off the edge as a floating flap)
+        thv, zv = torso_angle(V), V[:, 2]
+        over = np.where(thv < 0, E['R'](zv) - thv, thv - E['L'](zv)) + LAPEL_OVER
+        V6, F = clip_vec(np.concatenate([V, xy], 1), F, np.where(zv < 1.385, -over, -1.0))
+        V, xy = V6[:, :3], V6[:, 3:]
+        # the lapel tip settles onto the jacket (no floating red strip at the
+        # bust side): lift tapers from LAPEL_LIFT to LAPEL_LIFT_TIP
+        lift = LAPEL_LIFT_TIP + (LAPEL_LIFT - LAPEL_LIFT_TIP) * sstep(V[:, 2], 1.315, 1.365)
+        V = V - grid_normals(g, V) * (LAPEL_LIFT - lift)[:, None]
         F = orient_outward(V, F, jacket_centre)
         d = dist_to_polyline(xy[:, 0], xy[:, 1], poly[:nfold])
-        V5, F5, red = split_vec(np.concatenate([V, xy], 1), F, d - LAPEL_RED_PX)
+        # her left lapel: red only at the top by the collar, a plain light
+        # edge along the bikini (as in the art)
+        V5, F5, red = split_vec(np.concatenate([V, xy], 1), F,
+                                np.maximum(d - LAPEL_RED_PX, xy[:, 1] - ry))
         out_w.append((V5[:, :3], F5[~red]))
         out_r.append((V5[:, :3], F5[red]))
         # piping on the outer (notched) edges, not on the roll line
         fold = poly[:nfold]
 
-        def keep(Q, fold=fold):
+        def keep(Q, fold=fold, ry=ry):
             p = project(Q)
-            return dist_to_polyline(p[:, 0], p[:, 1], fold) - LAPEL_RED_PX - 0.6
+            return np.maximum(dist_to_polyline(p[:, 0], p[:, 1], fold) - LAPEL_RED_PX - 0.6,
+                              p[:, 1] - ry - 1.5)
         pipes += piping(V, F, keep, width=0.0026, height=LAPEL_T + 0.0014, step=0.0025)
 
     def pack(parts, mat):
@@ -717,6 +735,11 @@ def body_grid_fine():
             g.union(prim, k)
         _BODY_FINE = g
     return _BODY_FINE
+
+
+def grid_normals(g, P, eps=0.0015):
+    n = np.stack([g.sample(P + e) - g.sample(P - e) for e in np.eye(3) * eps], 1)
+    return n / np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-12)
 
 
 def jacket_normal(g, p, eps=0.0015):
@@ -946,8 +969,8 @@ def fold_field(U, Vv):
         prof = -np.cos(2 * np.pi * n * ph) * 0.5 + 0.15
         fade = np.sin(np.pi * np.clip(ph, 0, 1)) ** 0.7
         d += np.where(inside, prof * amp * A * fade, 0.0)
-    for uc in (0.385, 0.615):
-        d += 0.011 * A * np.exp(-((U - uc) / 0.035) ** 2)
+    for uc, a in ((0.300, 0.013), (0.385, 0.016), (0.615, 0.016), (0.700, 0.013)):
+        d += a * A * np.exp(-((U - uc) / 0.032) ** 2)
     return d
 
 

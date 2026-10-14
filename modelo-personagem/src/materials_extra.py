@@ -48,3 +48,12 @@ EXTRA['acc_red'] = ('#D2282D', '#8E1519', '#3A0508', dict(thr=0.40))
 # hands: matte red of the left glove's finger ends and graphic panels (reference ~#D54D4C,
 # shadow ~#971B19), no glossy highlight so the claws read as printed glove fabric
 EXTRA['hands_red'] = ('#D8484A', '#9A1F22', '#480A0C', dict(thr=0.40))
+# swords: bright bevel highlight line on the top / outer edges of the red sheaths (~#D45A56)
+EXTRA['swords_red_hi'] = ('#DE6460', '#A8302C', '#3A0606', dict(thr=0.40))
+# swords: light grey rim line on the black kodachi / end cap edges (~#898C98)
+EXTRA['swords_rim'] = ('#9A9DA8', '#6A6D78', '#202228', dict(thr=0.40))
+# swords: shaded light-grey steel of the hip fittings (guard hanger, mount)
+EXTRA['swords_steel'] = ('#C4C7CF', '#83878F', '#33363D', dict(thr=0.45, spec=0.6, gloss=0.2,
+                                                              spec_col='#FFFFFF'))
+# swords: near-white hot core of the scabbard glow slot
+EXTRA['swords_glow_core'] = ('#FFE2E8', '#FFC6D0', '#7A1424', dict(emit=1.0))
