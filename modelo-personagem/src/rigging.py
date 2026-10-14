@@ -191,7 +191,7 @@ def rule(name):
                 else 'Hips')
     if 'Goggle' in base:
         return ('rigid', 'UpperChest')
-    if 'Collar' in base and not base.startswith('Coat'):
+    if base.startswith('AccCollar'):
         return ('rigid', 'Neck')
     if 'HangingStrap' in base or 'Pouch' in base:
         return ('rigid', 'Hips')
