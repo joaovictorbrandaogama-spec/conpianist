@@ -1,0 +1,786 @@
+{
+ "refs": {
+  "images": [
+   {
+    "path": "reference/extra/cw_gacha_splash.png",
+    "shows": "Official gacha splash, 1200x1200, front full body. Same pose and colours as reference.png (reference.png looks like a crop or resize of it): the upper sword is RED. It is the cleanest high-resolution front view of the target outfit.",
+    "source_url": "https://patchwiki.biligame.com/images/zspms/2/24/tdeu0c385chzz8cbk1sk65yfcyjyg2j.png"
+   },
+   {
+    "path": "reference/extra/cw_coating_generic_modified.png",
+    "shows": "Official coating art, 2000x3240, for the 'Generic (Modified)' coating, which is the exact target outfit in the same pose. This is the best image for close-ups: hair ornaments, collar, goggles, belt, zippers, buckles, boots, bandaged forearm. Only difference from the reference: the upper sheathed sword is WHITE with a red end cap instead of red.",
+    "source_url": "https://static.wikia.nocookie.net/punishing-gray-raven/images/6/62/Coating-CrimsonWeave-GenericModified.png/revision/latest?cb=20230101102544&format=original"
+   },
+   {
+    "path": "reference/extra/cw_coating_generic.png",
+    "shows": "Official base-form coating art, 2000x3240, same pose. Same coat, top and swords, but no goggles and no leg armor: her left thigh has only two black buckle straps. Useful to see what sits under the armor and for a second view of the coat and swords.",
+    "source_url": "https://static.wikia.nocookie.net/punishing-gray-raven/images/9/97/Coating-CrimsonWeave-Generic.png/revision/latest?cb=20230101102222&format=original"
+   },
+   {
+    "path": "reference/extra/cw_coating_generic_final.png",
+    "shows": "Official final-form coating art, 2000x3240. Variant of the target: torn black pantyhose on her right leg and a red streak in her bangs. Otherwise identical; useful only for cross-checking.",
+    "source_url": "https://static.wikia.nocookie.net/punishing-gray-raven/images/3/39/Coating-CrimsonWeave-GenericFinal.png/revision/latest?cb=20230101103434&format=original"
+   },
+   {
+    "path": "reference/extra/cw_portrait_fandom.png",
+    "shows": "Official half-body portrait, 1014x1080, drawn more painterly than the 3D renders. Detailed face and heterochromatic eyes, high ponytail with the red crescent, tall black collar, red-lens goggles, coat lapels with two snaps, red lining, bikini top with a red X mark and silver clasp, right sleeve with red stripes.",
+    "source_url": "https://static.wikia.nocookie.net/punishing-gray-raven/images/6/6f/Lucia_-_Crimson_Weave.png/revision/latest?cb=20221229133740&format=original"
+   },
+   {
+    "path": "reference/extra/cw_event_banner.png",
+    "shows": "Official event banner, 1286x286. Top half: skill-introduction art. Bottom right: in-game-style close-up of the face with the white fin clips, red ribbons, collar and goggles.",
+    "source_url": "https://patchwiki.biligame.com/images/zspms/a/ad/61ohnomxaqa0qqrdajfhx3xpl4r7pwi.png"
+   },
+   {
+    "path": "reference/extra/nightblaze_icon.png",
+    "shows": "Official 256x256 icon of the signature weapon Nightblaze: the long red katana in its scabbard combined with the shorter black/white sword and the round connector.",
+    "source_url": "https://static.wikia.nocookie.net/punishing-gray-raven/images/8/80/Weapon-Nightblaze-Icon.png/revision/latest?cb=20240224064051&format=original"
+   },
+   {
+    "path": "reference/extra/ingame_cutscene_back_side.jpg",
+    "shows": "In-game cutscene frame, 1280x720, seen from behind and the side. Best single back reference: ponytail falling down the back with pink-red tips, the long white coat skirt with a black belt and white sword mount across the lower back, the left leg armor from behind with its ladder of rectangular skin cutouts, and the red katana blade with its sawtooth spine.",
+    "source_url": "https://i.ytimg.com/vi/V_ylt8GOPGk/maxresdefault.jpg"
+   },
+   {
+    "path": "reference/extra/gamemodel_back_views_sheet.jpg",
+    "shows": "Sheet of 10 low-resolution frames I assembled from bilibili video-preview sprites of two MMD dance videos (BV1hP4y1r7EP, BV1324y1U7B4) that use the ripped in-game model. Shows the full back, 3/4 back and side views: ponytail length and red tips, the coat-back black graphic (strap ladder plus chevron), ragged back hem, bare waist at the sides, white hip pouch, and the cutouts on the back of the left leg armor. The coloured stage lighting changes the hues.",
+    "source_url": "https://www.bilibili.com/video/BV1hP4y1r7EP (videoshot sprite https://bimp.hdslb.com/videoshotpvhdboss/976611394_f9dsmb-0001.jpg) + https://www.bilibili.com/video/BV1324y1U7B4"
+   },
+   {
+    "path": "reference/extra/ingame_moveset_frames_sheet.jpg",
+    "shows": "8 in-game frames from the 4K moveset showcase (bilibili BV1m3411S7AX). Shows side and back of the model in combat, a close-up of the back of the head, ponytail and red katana (mv_67), a face close-up with collar, goggles and the red side clip (mv_72), and her riding the motorbike (mv_01).",
+    "source_url": "https://www.bilibili.com/video/BV1m3411S7AX (sprite https://bimp.hdslb.com/videoshotpvhdboss/952396397_05c2fb-0001.jpg)"
+   },
+   {
+    "path": "reference/extra/nightblaze_cad_replica_sheet.jpg",
+    "shows": "20 frames of a fan-made CAD model for a physical prop replica of Nightblaze (bilibili BV1LK411k7zB). Detailed sword shapes: the sawtooth pattern on the red scabbard, the L-shaped black end cap, the katana blade with red teeth, the short sword's black/white blade and pink-red guard block, the white box housing, the round black drum connector with gold and light-blue rings, and an exploded assembly view.",
+    "source_url": "https://www.bilibili.com/video/BV1LK411k7zB (sprite https://bimp.hdslb.com/videoshotpvhdboss/972526083_badd6b-0001.jpg)"
+   },
+   {
+    "path": "reference/extra/gamemodel_front_blender_thumb.jpg",
+    "shows": "YouTube thumbnail, 1280x720, of the ripped in-game 3D model standing in T-ish pose in Blender, front view. Useful for real 3D proportions; low detail, and it shows the final-form variant.",
+    "source_url": "https://i.ytimg.com/vi/zGhrf0pT9YQ/maxresdefault.jpg"
+   }
+  ],
+  "details": [
+   {
+    "region": "hair front",
+    "description": "Silver-white hair with cool grey shading. Long, asymmetric, side-swept bangs: one thick lock falls between the eyes over the nose bridge and partly covers her right eye. Bang tips are pointed and reach the cheekbones and jaw. Two long side locks hang in front of the shoulders and outside the arms down to about crotch or upper-thigh level, roughly 45-50% of body height measured from the crown. Each lock splits into 3-5 thin pointed strands. In the 2D art the lower third darkens into a mauve-grey; in-game the tips turn pinkish red.",
+    "colors_hex": [
+     "#E7E7E9",
+     "#C5BDC4",
+     "#A3A3A5",
+     "#6F6F70",
+     "#87555F"
+    ]
+   },
+   {
+    "region": "hair back/ponytail",
+    "description": "One very high ponytail tied at the back-top of the crown. From behind, the hair is pulled smoothly from the temples to the tie with no part (moveset frame mv_67). The ponytail is very voluminous: about head width at the tie, widening to shoulder width or more lower down. It hangs straight down the back and covers the whole upper back of the coat. Tips reach buttock or upper-thigh level, about the coat belt line plus 1 head. It is built from about 10-14 layered, pointed clumps; a few loose strands swing out sideways. The bottom 30-35% fades to pink and then red at the tips. This is strong on the in-game model (MMD frames, cutscene) and subtle mauve in the 2D art. A short white looped strand (ahoge) sticks up at the tie.",
+    "colors_hex": [
+     "#E5E3E4",
+     "#C5BDC4",
+     "#D48A96",
+     "#B8404C"
+    ]
+   },
+   {
+    "region": "hair ornament",
+    "description": "(1) A red crescent or sickle ornament rises from the ponytail tie. It is about 0.7-0.8 head tall and curves up and forward like a thin crescent moon or flame, tapering to a sharp tip. The base is about a finger wide. It is red with a dark-red shaded side and a thin white edge highlight. (2) Two white angular fin clips, one on each side of the head just above and behind the ears. Each is a thin wedge or blade about 0.35-0.4 head long, pointing backward-outward and slightly up at about 25-30\u00b0, with grey shading and dark outline. (3) Two narrow, stiff red ribbons, one per side, hang straight down from behind the ears and fins to about chin or collar level (about 0.5 head long, roughly 1 cm wide). In-game, the clip on her left side reads as a red blade-shaped piece next to the white fin.",
+    "colors_hex": [
+     "#AD322A",
+     "#5A1512",
+     "#9B4340",
+     "#662C2F",
+     "#E5E3E4",
+     "#A6A2A3"
+    ]
+   },
+   {
+    "region": "face/eyes",
+    "description": "Pale skin, sharp, narrow almond-shaped eyes and a stern, neutral expression. Heterochromia: her RIGHT eye (viewer's left) is red-orange with a dark red rim and a light orange highlight; her LEFT eye (viewer's right) is teal or cyan with a dark teal rim and a pale highlight. Thick black upper lash line. Both eyes have a small red eyeliner wing at the lower outer corner. Thin brows, mostly hidden by the bangs. Small nose with only a shadow line, small closed mouth, slim pointed chin.",
+    "colors_hex": [
+     "#E2CAC8",
+     "#CDB1AB",
+     "#C0503A",
+     "#7A2420",
+     "#4FA3A6",
+     "#1F4F55",
+     "#251818"
+    ]
+   },
+   {
+    "region": "collar+goggles",
+    "description": "A tall matte-black tech collar covers the whole neck from jaw to collarbone, about 0.6 head tall. In-game it is ribbed into 3-4 horizontal segments, with grey edge highlights and a small white text label at the front. A vertical red stripe runs down the front centre. The goggles hang at the base of the collar, resting on the upper chest and collarbones. They have two rounded-rectangle lenses, each about 1.5 eye-widths wide, in glossy translucent red with white highlights, set in a thick black rubber frame. A silver triangular bridge or clasp sits between the lenses, pointing down; the goggle strap wraps behind the collar. The base form (cw_coating_generic) has no goggles, only a silver dog-tag pendant.",
+    "colors_hex": [
+     "#1C2129",
+     "#2B2828",
+     "#444650",
+     "#A64C49",
+     "#A6504D",
+     "#B06262",
+     "#201515",
+     "#B3B1B5"
+    ]
+   },
+   {
+    "region": "top",
+    "description": "Black triangle bikini or sports top, halter style, with its straps running up into the collar. The upper inner edges of the cups have a white lining or trim. A horizontal black under-bust band about 3 cm wide has a white lower trim line and a silver ridged rectangular clasp at the centre front. The portrait art adds a painted red X on her right cup and small white text on her left cup. The midriff is bare, with defined abs and navel.",
+    "colors_hex": [
+     "#262727",
+     "#555959",
+     "#E8D8D7",
+     "#6F1C1C",
+     "#B3B1B5"
+    ]
+   },
+   {
+    "region": "coat front",
+    "description": "White long coat worn fully open. Tall stand-up collar with notched lapels standing behind the goggles; crimson lining shows along the inner collar and the front edges. Two black snap buttons and a small white tab sit on her LEFT lapel, plus a small text patch on her left chest. The front panels fall as fairly narrow straight strips past the hips. Her RIGHT side (viewer's left): a wide panel with a lot of red lining showing, ending in a ragged, notched hem at about mid-calf. A white rectangular flap or pouch hangs at the right hip, and two loose white straps hang from the right hip to about knee level. Her LEFT side (viewer's right): a long, narrow white tail that tapers to a sharp, slightly curved, blade-like point at ankle level, with red lining on the inside. Seen from the front, red cross-straps form a rough X lattice behind and between the legs at knee height; this is the inside of the back panel. Two black straps also hang between the legs to knee level.",
+    "colors_hex": [
+     "#E3E3E5",
+     "#C0BEC2",
+     "#A2A1A3",
+     "#636263",
+     "#A83A39",
+     "#751C18"
+    ]
+   },
+   {
+    "region": "coat back",
+    "description": "NOT visible in the front art; taken from the in-game model frames, so treat as approximate. Torso: from the side and back, the jacket body seems cropped at about the lower ribs, leaving a bare waist band visible at the sides and lower back (mmd_01, 02, 10, 17). The upper back is white with black strap bands at the shoulder blades but is mostly hidden by the hair. Skirt: a long white skirt hangs from the belt line to about ankle length. A black harness block sits at the belt, with 3-4 short vertical black straps (a ladder or barcode look) about 1/4 of the skirt length; the white and grey sword mount and the scabbard cross the lower back horizontally here. Small red tags sit on her right side near the belt. About halfway down, near knee height, a large black chevron or V shape, like a downward arrowhead or crown, crosses the back with white showing in its centre. A black vertical stripe continues from it down the centre to the hem. There is a centre-back vent or split; the hem is ragged, torn and notched; and the crimson inside shows at the vent and side splits. Overall the back panel is white with bold black graphic blocks.",
+    "colors_hex": [
+     "#E3E3E5",
+     "#C0BEC2",
+     "#1C1C22",
+     "#751C18",
+     "#A83A39"
+    ]
+   },
+   {
+    "region": "coat sleeves",
+    "description": "The sleeves are asymmetric. Her RIGHT arm: full-length white sleeve to the wrist; 2-3 black strap bands on the upper arm and above the elbow (about 2 cm wide, with small silver or white tags); the forearm has a white panel with 3 vertical red stripes plus small black text tags; a black wristband at the cuff. Her LEFT arm: the sleeve is cut just above the elbow. It has a wide black armband with a silver label, and a small white ring segment where the bandaged forearm begins.",
+    "colors_hex": [
+     "#E3E3E5",
+     "#C0BEC2",
+     "#D5585A",
+     "#2B2828"
+    ]
+   },
+   {
+    "region": "belt",
+    "description": "Two belts. (1) A black base belt, horizontal at the top of the shorts. (2) A white belt slung diagonally, lower on her right hip, with a large silver rectangular buckle at her right front hip and the belt tongue hanging free. Toward her left side it becomes a red strap segment with small white text and ends in a black vertical clip or holder with a silver rivet at the left hip. A white triangular flap or loincloth hangs over the right front of the shorts. At the back, the sword harness and mount attach to this belt line.",
+    "colors_hex": [
+     "#DBD6D9",
+     "#ADA8A9",
+     "#BA4E4A",
+     "#1C2129",
+     "#58585C"
+    ]
+   },
+   {
+    "region": "shorts",
+    "description": "Very short, low-rise black glossy leather micro-shorts, with the hem at the top of the thigh. A sheer, dark-grey see-through mesh panel covers the upper front, from the belt down about 1/3 of the shorts' height. Two diagonal silver zippers sit side by side on her left front hip and thigh. On her left side the shorts merge into the black leg armor.",
+    "colors_hex": [
+     "#3C404B",
+     "#8A8F9A",
+     "#6A6670",
+     "#C8C8CC"
+    ]
+   },
+   {
+    "region": "left leg armor",
+    "description": "On her LEFT leg (viewer's right): a glossy black armored thigh-high or chap running from the shorts to inside the boot. At the upper thigh, two horizontal black straps about 8 cm apart, each with a big silver rectangular buckle. A vertical black holster strip on the outer thigh. Small white text at mid-thigh and a small white emblem on the knee plate. A row of 4-5 small black and silver tabs runs down the outer seam. A white band about 2 cm wide circles the leg at mid-calf, just above the boot. Back view (cutscene and MMD frames): a vertical ladder of about 6-8 rectangular cut-out windows with white trim showing skin, running from the upper thigh to the calf.",
+    "colors_hex": [
+     "#25272F",
+     "#524C54",
+     "#ADA8A9",
+     "#D9D4D7",
+     "#E2CAC8"
+    ]
+   },
+   {
+    "region": "right leg",
+    "description": "Her RIGHT leg (viewer's left) is bare from the shorts down. A flat white garter band, about 3 cm wide, sits at upper to mid thigh, about 1/3 of the way down from crotch to knee, with 2-3 segment seams and a small buckle on the outside. Nothing else until the boot. In the final-form variant only, a torn black pantyhose covers this leg.",
+    "colors_hex": [
+     "#E2CAC8",
+     "#D9D4D7",
+     "#C4B9BF"
+    ]
+   },
+   {
+    "region": "boots",
+    "description": "An identical pair of mid-calf, high-top sneaker-boots, about 1.3 heads tall. The top cuff is a silver metal nameplate between two red bands. Below it, 3 horizontal black wrap straps. The shin and front have a white inverted-U panel with a black centre strip. A wide black velcro strap with tiny white text crosses the instep, and a second, thinner strap sits at the ankle. Black toe cap. A chunky white-grey sole, about 2 cm thick with a heel of about 3 cm, wraps up at the toe and heel, with a grey rubber band.",
+    "colors_hex": [
+     "#14151B",
+     "#CAC3CC",
+     "#A43F39",
+     "#ADA8A9",
+     "#1D2128"
+    ]
+   },
+   {
+    "region": "gloves/hands",
+    "description": "RIGHT hand: a white fingerless glove with bandage-style wraps around the palm and lower fingers, and a black wristband. LEFT hand: a white glove with red graphic stripes on the back of the hand; the fingers are red from about the second knuckle to the tips, so they read as red claws. A silver ring sits at the wrist. Hands are slender, with the fingers relaxed.",
+    "colors_hex": [
+     "#F1EFF1",
+     "#B6AFB4",
+     "#C03E3C",
+     "#1C2129"
+    ]
+   },
+   {
+    "region": "left forearm",
+    "description": "From elbow to wrist, the forearm is wrapped in crossing bandages: a red base covered by wide black strips wound diagonally in an X pattern, about 6-8 visible wraps, with small white text printed on some strips. Two thick silver metal rings or bracelets, one at the elbow just below the sleeve and one at the wrist. Each is flanged and about 1.3 times the forearm's diameter, with a glowing light-blue light band around it. The wrist ring has a white or silver cuff underneath.",
+    "colors_hex": [
+     "#B63934",
+     "#31282B",
+     "#B8BCC6",
+     "#A9C4FF"
+    ]
+   },
+   {
+    "region": "sword 1: big red scabbard (Nightblaze katana)",
+    "description": "The longest piece, about 0.6 of her height in visible length. It hangs from a white and grey mechanical mount at her back-left hip, runs diagonally behind her body, and comes out at her right side, ending near knee height in front of and outside the right leg. It is thick (about 2 forearm widths) and slightly curved. Glossy red. The outer edge has a black sawtooth band of 5-6 teeth, each with a small white rectangular mark; the CAD replica shows cyan windows in these teeth. The inner face is a flat white plate with 2 brass cylinder pins and a glowing pink-red slot light. The end cap is a black, angular L or hook shape with a small white light. The drawn katana blade (in-game and CAD): a long, slightly curved single-edged blade with a red spine carrying a white and black sawtooth pattern and a silver edge. The blade glows red in combat.",
+    "colors_hex": [
+     "#AE2D25",
+     "#E05A50",
+     "#191C22",
+     "#F8F7F8",
+     "#B08A40",
+     "#7FE0F0"
+    ]
+   },
+   {
+    "region": "sword 2: upper sheathed sword (red in reference; white in coating art)",
+    "description": "Sticks forward and up at about 20\u00b0 from the left-hip mount, past her bandaged forearm. About 0.45 of her height long. Flat, rectangular, slightly tapered profile. Red, with a dark-grey strip along the lower edge, 3-4 brass screws, and small white or red text with a small triangle mark. The far end has a red block cap with a white stripe. At the hip end there is a black angled spike guard and a red angular guard plate. The coating art shows the same part in white with a red cap.",
+    "colors_hex": [
+     "#AE2D25",
+     "#4A4E58",
+     "#B08A40",
+     "#191C22",
+     "#E3E3E5"
+    ]
+   },
+   {
+    "region": "sword 3: lower sheathed short sword (kodachi)",
+    "description": "Sits parallel to and just below sword 2, sticking forward from the left hip; shorter, about 0.33 of her height. Black body with a grey or white strip along the lower edge, 2 brass screws and small red text, a red and white band near the tip, and a red angled tip cap. The hip end is a white and silver connector with a round badge (a red and black hourglass emblem in a circle). CAD replica: the kodachi blade is black on one face and white on the other, with a silver tang and a pink-red guard block. A white box housing and a round black drum connector with gold and light-blue rings join it to the big scabbard.",
+    "colors_hex": [
+     "#393C43",
+     "#E3E3E5",
+     "#AE2D25",
+     "#B08A40",
+     "#C9A04A",
+     "#8EC8E8"
+    ]
+   }
+  ],
+  "notes": "Identity check: the target outfit is the default coating, form 'Generic (Modified)', of Lucia: Crimson Weave (Alpha) \u2014 Chinese name \u9732\u897f\u4e9a\u00b7\u6df1\u7ea2\u56da\u5f71, signature weapon Nightblaze (\u591c\u714c). reference.png matches the bilibili-wiki gacha splash (cw_gacha_splash.png) exactly. The official coating art differs only in the upper sword's colour (white instead of red). The bilibili wiki page \u9732\u897f\u4e9a\u00b7\u8a93\u7130 is a DIFFERENT newer frame (black twin-tails), so I deleted the images from it after viewing them. I also deleted the chibi model render and the PV banner as not useful.\n\nHow the sources were reached: fandom pages are behind a Cloudflare challenge, but the MediaWiki API and static.wikia.nocookie.net work with a Referer header plus &format=original. YouTube watch and player pages return a captcha, so only i.ytimg.com thumbnails could be fetched. Bilibili search and the videoshot API worked; I cut sheets of real video frames (480x270 each) from its sprites.\n\nNo official back-view turnaround exists online that I could find. The back-of-coat graphic (strap ladder plus chevron), the bare waist at the sides and the leg-armor cutouts come from low-resolution in-game and ripped-model frames, so build them as close approximations. All colours were sampled from the official 2D art unless noted. In-game hair tips look more saturated pink-red than in the 2D art.\n\nProportions: about 8 heads tall. Hair tips sit at about 45-50% of height from the crown. The coat hem is at mid-calf to ankle. Boots are about 1.3 heads tall.\n\nAll kept files are in reference/extra/. Extra close-up crops I made while checking details (not deliverables) are in the scratchpad: crop_head.png, crop_torso.png, crop_boots.png, crop_mod_rhs.png (swords), crop_eyes.png."
+ },
+ "crit": {
+  "issues": [
+   {
+    "region": "shading (terminator and specular on all materials)",
+    "problem": "The cel-shade terminator and the specular band follow marching-cubes surface noise. The boots, leg armor, shorts, glove, collar stripe and sword scabbard all show torn, ragged grey or white blotches and stair-stepped light/shadow edges, for example the chalky smears on the boot toes, the grey speckles on the shorts, the ripped edge on the choker's red stripe, and the smudged grey patches on the left glove. The shared threshold blend (+/-0.02) and the glossy spec mapped by SMOOTHSTEP 0.55-0.62 turn every tiny normal wobble into a visible stain.",
+    "why_it_looks_like_clay": "Irregular, fingerprint-like light patches are what pressed plasticine looks like under light. A game toon model has one or two large, clean, deliberate shadow shapes per part, so mottling reads as hand-squeezed material.",
+    "concrete_fix": "(1) Hard-surface parts (boots, armor, buckles, collar, goggles, swords, cuffs) should not take shading normals from the MC mesh. Rebuild them as explicit low-poly meshes, or at minimum transfer normals from a clean proxy (cylinder, box or ellipsoid) with a DataTransfer modifier, the way normals.py already does for the face. (2) Raise normal diffusion iters from 8 to 25-40 on cloth and leather, then apply Weighted Normal plus Auto Smooth at 35 degrees. (3) Drop the BSDF Glossy spec on black and leather. Replace it with a painted, texture-space highlight strip (one long white streak per tube-like part) or a matcap lookup with a hard 2-step ramp. (4) Widen the terminator blend only on skin (0.02 to 0.06) and keep it hard on cloth.",
+    "severity": 5
+   },
+   {
+    "region": "geometry construction (whole model, especially hard-surface parts)",
+    "problem": "Every part is an SDF iso-surface: marching cubes at voxel size h, smin smooth unions and decimation. Every edge therefore has the same small rounded fillet and there is no hard crease anywhere. Belt edges, buckle frames, armor plate seams, boot soles, sword cross-sections, cuff rims and goggle rims all have identical soft, rounded corners.",
+    "why_it_looks_like_clay": "A uniform rounded fillet on every edge is the strongest clay and toy-vinyl signal. Real PGR assets mix razor-sharp chamfers with soft organic forms. When nothing is sharp, everything reads as rolled dough.",
+    "concrete_fix": "Keep SDF and MC only for organic skin (body, face). Build cloth panels as thickened sheets (Solidify 2-4 mm, hard rim). Build hard-surface pieces from polygon primitives (bmesh cubes and cylinders, or 2D profile curves extruded) with a Bevel modifier of 0.3-1 mm, 1-2 segments, harden normals on, and mark sharp edges at 30-40 degrees. Set k=0 in smin wherever two separate garment pieces meet so the seam stays a crisp line.",
+    "severity": 5
+   },
+   {
+    "region": "boots",
+    "problem": "The boots are bulbous, rounded duck-feet. The toes are ball-shaped, sole and upper merge into one rubbery lump, the shafts are plain tubes, and grey highlight smears sit on the toe and heel. The reference boots have an angular toe box, a thick flat white sole with a visible tread band, a wedge heel, 3-4 overlapping straps with silver plates, red accent tabs, and a tall segmented shaft.",
+    "why_it_looks_like_clay": "Round blobs at the end of the legs, with no flat underside and no hard sole line, look like clay feet squeezed onto the model.",
+    "concrete_fix": "Rebuild: (a) Make the sole a separate extruded outline with a flat bottom, a 4-6 mm vertical wall, a hard top edge, and a white/grey material with tread grooves as dark lines in the texture. (b) Make the toe box a lofted shape with a flat top plane and a 1 mm chamfered edge, not a sphere. (c) Add 3 straps as Solidify'd bands, 3 mm thick and raised 1.5 mm, each with a metal plate and a red tab as in the reference. (d) Add vertical panel seams on the shaft. (e) Use one clean vertical spec strip instead of blotches.",
+    "severity": 5
+   },
+   {
+    "region": "texture detail (all clothing and props)",
+    "problem": "Every surface is a single flat color. The reference is packed with surface information: dashed stitching along the coat edges and lapels, small printed tech text on the belt, sleeve, leg armor and swords, panel grooves, rivets and holes on the blades, a zipper on the shorts, buckle prongs, red glowing stripes on the left forearm, and a red/white pattern on the glove. The model has none of these.",
+    "why_it_looks_like_clay": "Without texture detail the eye reads only the form and the base color, which is exactly what an untextured sculpt or a clay maquette looks like. Crisp game models rely on 1-2 px painted detail to read as manufactured material.",
+    "concrete_fix": "Add a UV-mapped albedo atlas per material group (even 1024 px is enough) and paint procedurally in Python/PIL: dashed stitch lines 3 mm inside every garment border (coat, lapel, shorts hem); dark 1 px panel-line grooves; small white text blocks (pseudo-text rectangles) on the belt, upper arm band, thigh plate and sword flats; holes and rivets as dark circles with a light lower-rim highlight. Multiply the painted line layer into both lit and shadow colors so it survives the toon ramp.",
+    "severity": 5
+   },
+   {
+    "region": "goggles",
+    "problem": "The goggles are a puffy dumbbell: two thick torus rims joined by a fat rounded bar, floating flat on the upper chest. The reference goggles hang tilted around the neck on a strap, with angular, chamfered, rounded-rect frames, a thin bezel and a translucent red lens with an inner rim and reflection.",
+    "why_it_looks_like_clay": "Inflated toroidal rims with soft highlights look like rolled clay snakes formed into rings, and it is the most toy-like element on the model.",
+    "concrete_fix": "Make each frame a rounded-rect profile extruded 4 mm with a 0.5 mm bevel and a flat face. Bezel width should be about 15% of lens width, not 40%. Use a dark gunmetal material with a hard rim highlight. Give the lens a vertical gradient texture (dark red top to bright red bottom), a white diagonal reflection streak and an inner dark ring. Add the elastic strap going around the neck and tilt the goggles about 20 degrees as in the reference.",
+    "severity": 4
+   },
+   {
+    "region": "hands",
+    "problem": "The right hand is red, glossy, sausage-tube fingers of uniform thickness, splayed like a rubber glove, with no knuckles, no palm plane and no tapering. A white rectangular box sits where the wrist cuff should be. The left glove is a lumpy white mitten with smudged grey shading and no readable fingers wrapped around the hilt.",
+    "why_it_looks_like_clay": "Fingers made as capsules with smooth unions and noisy shading are the classic clay-figure hand.",
+    "concrete_fix": "Build fingers as 3-segment boxy loft chains, each about 15% narrower than the one before, with a squarish cross-section (wider than deep). Add slight knuckle breaks between segments, a flat back-of-hand plane and a thumb pad. Pose them curled around the grip with each finger at a slightly different angle. Glove texture: white base with red diagonal panels per the reference. Replace the wrist box with a cylindrical metal cuff: stepped profile, glowing blue ring, 0.5 mm bevels.",
+    "severity": 4
+   },
+   {
+    "region": "hair top / crown",
+    "problem": "The crown is a smooth dome cap with soft clumps that merge into a helmet. In side view it is a single smooth mushroom with no strand separation. A little ruffled seam sits at the parting, and the white spiky tuft next to the red ornament in the reference (two pointed fox-ear-like tufts) is missing.",
+    "why_it_looks_like_clay": "A smooth hair helmet with lines scribbled onto it is how clay figurines do hair. Anime game hair is built from distinct ribbon clumps with sharp tips and visible gaps.",
+    "concrete_fix": "Build the crown from 10-14 strand ribbons radiating from the parting, each with a slight ridge (triangular or V cross-section) so the toon ramp splits each clump into lit and shadow halves. Let ribbons overlap with 2-4 mm gaps showing a darker underlayer (hair_dark). Add the two pointed white tufts beside the red ornament. Add the anime 'angel ring' highlight as a jagged zig-zag white band in hair.png at about 30% from the top, following the curve of the head.",
+    "severity": 4
+   },
+   {
+    "region": "hair shading and color",
+    "problem": "The hair is almost uniformly #F3F2F6, nearly pure white, and the shadow tone rarely appears in the front views, so the whole mass reads as one bright plaster shape outlined in grey. The reference hair is a soft grey-lavender with darker roots and inner layers, shadowed gaps between clumps, and bright highlights only on top surfaces.",
+    "why_it_looks_like_clay": "A monochrome white mass with only contour lines reads as unpainted white modeling clay. The value variation is what makes it read as hair.",
+    "concrete_fix": "Lower the lit color to about #E4E3EA and the shadow to about #ABA8BD, and raise the threshold to 0.45 so more shadow appears. Paint a vertical gradient in hair.png: 15% darker at the roots and in the inner underlayer, lighter at the tips. Add an AO-style darkening where clumps overlap (bake AO or use vertex color by depth layer). Keep the spec ring as a hard-edged white shape.",
+    "severity": 4
+   },
+   {
+    "region": "bangs",
+    "problem": "The bangs are many thin, uniform-width sticks of nearly equal length that taper only at the very tip, so they look like comb teeth or pen strokes over the forehead. The forehead under them is flat, bright skin with no cast shadow, so the bangs look pasted on. The reference has 3-5 thick primary clumps (one prominent strand between the eyes), thin secondary wisps, and a clear hair shadow over the upper face.",
+    "why_it_looks_like_clay": "With no cast shadow and uniform stick shapes, the bangs read as clay strings pressed onto a clay face, not as volumetric hair hovering in front of it.",
+    "concrete_fix": "Restructure into 4 main clumps 15-25 mm wide at the root with a taper curve (width = root*(1-t)^1.5), plus 4-6 thin 3-5 mm wisps. Vary lengths by about 30%: the center strand reaches the nose, the side ones the cheekbone. Add a forehead hair-shadow: either a shadow-catcher mask painted into face.png (a jagged shadow band about 15-20 mm below the hairline, following the clump tips) or a shadow-only duplicate of the bangs offset onto the face.",
+    "severity": 4
+   },
+   {
+    "region": "leg armor (right leg)",
+    "problem": "The right leg armor is a straight, nearly cylindrical tube of almost constant width. It has no knee shape and no thigh-to-calf curvature, only a couple of faint horizontal segment lines and grey speckle noise. It is nearly one flat dark value. The reference has a defined knee plate with a beveled outline, calf curvature, side clips, a printed text decal, and one long, sharp, glossy highlight running down the front of the leg.",
+    "why_it_looks_like_clay": "A smooth dark sausage with dull, mottled sheen looks like a rolled clay log. Glossy latex or armor needs one crisp, continuous highlight that follows the form.",
+    "concrete_fix": "Reshape the profile: thigh taper, a 6-8 mm knee bulge, a calf swell, and an ankle pinch. Add a separate knee plate (shield-shaped, Solidify 3 mm, 0.5 mm bevel, outlined). Replace the noisy spec with a UV-space vertical highlight stripe, 2 tones (white core, grey falloff), offset slightly from the center line. Add the side clip boxes and a decal text block above the knee.",
+    "severity": 4
+   },
+   {
+    "region": "skin (legs, belly, chest)",
+    "problem": "The bare left leg is a straight cone with one hard vertical shadow stripe running its whole length: no knee, no calf, no ankle. The belly has a big wavy pink under-bust shadow blob, no navel and no abdominal line. The skin color (#FCE9E3, rendered about 252,233,227) is much brighter and more peach-saturated than the reference (about 223,201,201), with no value variation.",
+    "why_it_looks_like_clay": "High-key peach with a single flat shadow shape and no anatomical landmarks is exactly the look of skin-tone polymer clay.",
+    "concrete_fix": "Shape the leg silhouette in body.py: inner knee bump, outer calf swell, narrow ankle, and a slight inward knee angle. Paint landmarks into a body texture: navel (small dark crescent), linea alba (faint vertical line), collarbone strokes, knee crease lines. Desaturate and darken skin to about #EAD7D3 lit / #D3A9A6 shadow with a warmer reddish band at the terminator (simulated SSS: a third ramp step 0.05 wide in #E8A49C). Smooth the under-bust shadow with stronger normal diffusion or a painted shadow mask.",
+    "severity": 4
+   },
+   {
+    "region": "face",
+    "problem": "The face is wide and round at the cheek and jaw with a broad chin, tilted slightly up, with a soft slight-smile expression. A thick brown shadow edge runs along one jawline. The forehead is bright and empty. The reference face is a narrower V-shape tilted slightly down, with a stern, heavy-lidded look and the face partly shadowed by hair.",
+    "why_it_looks_like_clay": "A round, evenly lit face with a big smooth jaw surface reads as a soft sculpted ball. Anime faces read as crisp because the jaw is a sharp V and the skin shading is driven by the hair shadow, not the sculpt.",
+    "concrete_fix": "Narrow the cheek and jaw by about 8-10% and sharpen the chin into a V with a small flat at the tip. Tilt the head about 5 degrees down. Lighten the jaw outline (thinner and lighter, #C88A82) except at the chin. Add the hair cast shadow (see bangs). Set the mouth neutral to slightly down-turned. Keep the ellipsoid normal trick but shift the shadow so only a narrow sliver appears on the far cheek.",
+    "severity": 4
+   },
+   {
+    "region": "coat body (jacket)",
+    "problem": "The cropped jacket is a smooth white shell with a big rounded shoulder mound. It has no lapel thickness, no collar flap, no seams, no folds at the elbow or armpit, and no stitching. The reference jacket has wide folded lapels, a raised collar, panel seams and stitch lines, and red trim inside.",
+    "why_it_looks_like_clay": "A seamless, evenly rounded white form is a plaster cast or white clay. Fabric reads through seams, thickness at edges and fold shapes.",
+    "concrete_fix": "Model the lapels as a separate folded flap (Solidify 3-4 mm, hard rim, visible red lining edge). Add a raised stand collar. Draw seam lines (dark 1 px plus dashed stitch) at the shoulder, sleeve cap and side seam. Add 3-4 painted or geometry fold shapes at the elbow and armpit (sharp-ended triangular shadow shapes, the anime way). Give the shoulder a slightly squarer profile.",
+    "severity": 4
+   },
+   {
+    "region": "bikini top",
+    "problem": "The bikini is a single black trapezoid with a triangular skin notch: the cups don't wrap around the breast volume and have no separation or side strap. The only highlight is a grey oval blob in the middle of each cup like a thumbprint. The underband is a ragged grey line. The reference has two wrapping cups, a center gap, a white underband with a buckle, and a light rim highlight along the cup edges.",
+    "why_it_looks_like_clay": "A soft, centered oval highlight on a flat black shape is the signature of a smooth clay or vinyl lump. Fabric cups need edge definition.",
+    "concrete_fix": "Model two cups as separate thickened shells, 1.5 mm, with a hard border, following the breast curvature and wrapping to the sides. Add a center connector and side straps. Replace the oval spec with a thin crescent rim highlight along the upper-outer edge (a texture stripe or a fresnel-rim limited to the lit side). Make the underband a separate white band with a small buckle.",
+    "severity": 4
+   },
+   {
+    "region": "outlines",
+    "problem": "The inverted-hull outlines are very thin and inconsistent. Hair gets a clear grey-purple line while the body, boots and leg armor get almost invisible lines, because the dark outline disappears on dark materials. There are no interior lines at creases, plate seams, garment overlaps or fold edges, and outline width does not vary.",
+    "why_it_looks_like_clay": "Without interior linework, overlapping parts merge into one continuous surface, like pieces of clay pressed together. The hair looks drawn while the body looks sculpted, so the style is inconsistent.",
+    "concrete_fix": "(1) Scale hull width by camera distance and add a vertex-color mask: thicker on outer silhouettes (1.5-2 px), thinner on tips and the face (0.7 px). (2) Add interior lines: Blender Line Art or Freestyle with crease angle 120-140 degrees plus material-boundary and intersection edges, line color per material (darker than shadow color). (3) On black materials use a slightly lighter blue-grey outline (#3A4150) so edges stay readable against black.",
+    "severity": 3
+   },
+   {
+    "region": "coat tails",
+    "problem": "The coat tails are flat, rigid, uniform-thickness sheets with straight edges, like cardboard triangles. The back view shows one enormous flat grey panel. The lining is a uniform dark red. The reference tails have flowing vertical folds, flare, a split into 2-3 sections with slits, red ribbon straps, a hem trim, and a lining that darkens toward the top.",
+    "why_it_looks_like_clay": "Even, rubbery thickness everywhere with no folds or hem detail reads as a flattened slab of clay rather than cloth.",
+    "concrete_fix": "Add 3-5 sinusoidal vertical folds that grow in amplitude toward the hem (amplitude 0 at the waist, 15-25 mm at the hem). Split into 2-3 panels with a back slit. Add a 6 mm hem trim band with stitching. Add a vertical gradient on the red lining (darker under the jacket, brighter at the hem). Keep thickness thin (2 mm) with a hard rim edge.",
+    "severity": 3
+   },
+   {
+    "region": "shading (contact shadows / ambient occlusion)",
+    "problem": "There are no contact shadows where parts meet: belt on hips, thigh strap on skin, choker on neck, jacket on body, hair on shoulders, straps on the leg armor. Parts sit on each other with no darkening line, and the white thigh strap floats without compressing the flesh.",
+    "why_it_looks_like_clay": "Parts that touch without an occlusion line look like separate clay pieces stuck on top of the body.",
+    "concrete_fix": "Bake AO per mesh (or compute vertex AO in Python by ray sampling) and multiply it into the toon lit color as a hard 2-step ramp (AO < 0.6 gives the shadow color), so contact areas get crisp shadow lines. Add a 1-2 mm indentation in the thigh where the strap sits, and a thin painted shadow line under every strap and belt edge.",
+    "severity": 3
+   },
+   {
+    "region": "shading (color palette / value range)",
+    "problem": "The palette is high-key and saturated: pure white hair and coat, bright peach skin, pure red #D9262C. The shadow colors are only about 15% darker. The reference is slightly desaturated with greyed whites, cooler shadows, red bloom near the red parts, and a wider value range from bright highlights to deep shadow.",
+    "why_it_looks_like_clay": "Flat, candy-bright, low-contrast color is how commercial modeling clay looks. Game toon shading uses tinted, desaturated shadows and controlled highlights.",
+    "concrete_fix": "Shift lit colors down 5-8% in value (coat #E6E7EC, hair #E4E3EA, skin #EAD7D3, red #C8202A). Make shadows cooler and 25-35% darker (coat shadow #A9ABBE). Add a third 'highlight' step only on glossy materials. Optionally add a subtle full-screen bloom on the emissive red and blue strips.",
+    "severity": 3
+   },
+   {
+    "region": "sleeves / forearm wraps",
+    "problem": "The right forearm is a glossy red tube wrapped in thin, wiggly black lines that look like licorice strings, with blotchy red highlights. The cuffs are plain cylinders. In the reference the forearm is wrapped in wide, flat black straps crossing in an X pattern, with crisp edges, stepped metal cuffs and glowing blue rings, and a white upper sleeve with a black band. The left forearm should have glowing red vertical stripes.",
+    "why_it_looks_like_clay": "Thin wavy lines on a smooth tube read as clay snakes wrapped around a clay roll.",
+    "concrete_fix": "Make the straps flat bands 8-12 mm wide and 1 mm thick, with a hard edge and an outline, crossing diagonally in an X/criss-cross pattern 5-6 times along the forearm. Make the cuffs a stepped lathe profile (3 rings, 0.4 mm bevels, metal material) with an emissive blue ring. Add the white sleeve end with a black band. On the left forearm add 4-6 thin emissive red vertical stripes.",
+    "severity": 3
+   },
+   {
+    "region": "eyes",
+    "problem": "The eyes read reasonably well but are too soft: the upper lash line is thin with no heavy outer wing, there is no lower lash, and the lids are too open, giving a gentle, sleepy look. The eyebrows are thin grey lines floating high above the eyes. The reference eyes are sharper and heavy-lidded, with a thick upper lash wedge, slanted lids and lowered, inward-angled brows.",
+    "why_it_looks_like_clay": "Soft, thin linework on the eyes lowers contrast in the face's focal point, so the face reads as a smooth sculpt instead of an illustration.",
+    "concrete_fix": "In face_texture.py, double the upper lash thickness and add a flick at the outer corner. Lower the top lid curve about 10% so the iris top is cut off. Add a short lower-lash stroke on the outer third. Move the brows down 30% closer to the eyes and angle them down toward the nose. Add an iris gradient: dark top quarter, bright lower crescent.",
+    "severity": 3
+   },
+   {
+    "region": "side locks",
+    "problem": "The long side locks are many very thin, uniform tubes that drape over the jacket and arms like wires or spaghetti. The red hair clips at cheek level in the reference (one on each side) are only a small sliver on one side.",
+    "why_it_looks_like_clay": "Thin, round, uniform tubes look like rolled clay strings. Anime locks are flat, wide ribbons that taper.",
+    "concrete_fix": "Replace with 2-3 flat ribbons per side, 12-20 mm wide at the top, with a strong taper and twist toward the tips and sharp points. Add a few 2-3 mm wisps for breakup. Add the red elongated hair clip on both sides at cheek level (flat, 3 mm thick, beveled, with a highlight strip).",
+    "severity": 3
+   },
+   {
+    "region": "back hair",
+    "problem": "From behind, the hair is one huge flat lavender sheet with many parallel lines and about 30 uniform zig-zag teeth at the hem. It has no layering, depth or shading variation, and it looks like a curtain or a comb.",
+    "why_it_looks_like_clay": "A large uniform slab scored with lines is how hair is indicated on a clay sculpture.",
+    "concrete_fix": "Build 2-3 layers: a darker inner layer and an outer layer of 6-9 large clumps with different lengths, so the hem forms a V or uneven fan with 5-7 dominant points plus small secondary points. Each clump gets a ridge so the light/shadow split runs along it. Darken toward the nape and add the angel-ring highlight on the back of the head.",
+    "severity": 3
+   },
+   {
+    "region": "collar (choker)",
+    "problem": "The choker is a plain black cylinder band with a red stripe whose edges are torn and speckled by shading noise. The reference collar is a taller tech collar: layered plates, a front clasp, red light accents and metal edges.",
+    "why_it_looks_like_clay": "A plain round band with ragged color edges looks like a clay ring pressed around the neck.",
+    "concrete_fix": "Make it taller, about 25-30 mm, built from 2-3 stacked rings with a stepped profile and hard bevels. Add a front clasp block with a red emissive slit and metal side screws. Set the red stripe as a separate emissive or unshaded material so it doesn't get noisy terminator edges.",
+    "severity": 3
+   },
+   {
+    "region": "shorts",
+    "problem": "The sheer panel at the front is a flat brown blob with no edge, so it reads as a stain. The shorts surface has random grey speckles, and there are no seams, zipper, pocket or hem line. The reference shorts are glossy black with a silver zipper, seams, a hem band, and a mesh panel that fades in transparency with a trim edge.",
+    "why_it_looks_like_clay": "Smudges and a stain-like shape on a featureless dark form look like a dirty clay surface.",
+    "concrete_fix": "Make the sheer panel an alpha gradient (opaque at the bottom, about 40% at the top) with a 2 mm black trim border and a mesh texture (fine diagonal grid). Add a silver zipper strip and pull, hem stitching, and 1-2 seam lines. Replace the speckled spec with one clean curved highlight per buttock and thigh opening.",
+    "severity": 3
+   },
+   {
+    "region": "thigh straps and buckles",
+    "problem": "The straps on the leg armor are thin black bands with tiny square grey rings for buckles. The reference has wide straps with large chrome buckles (frame plus prong) and visible strap tails. The white strap on the bare thigh is a flat floating band with no thickness and no compression of the flesh.",
+    "why_it_looks_like_clay": "Small, soft, underscaled details melt into the base form, like detail pinched into clay.",
+    "concrete_fix": "Make the straps about 25 mm wide and 2 mm thick with a hard rim. Make the buckles chrome rectangular frames about 30x22 mm with a 0.5 mm bevel, a center bar, a prong, and a metal material with a hard white highlight. Leave a short strap tail through the buckle. Indent the thigh 1-2 mm under the white strap and add a contact shadow line.",
+    "severity": 3
+   },
+   {
+    "region": "swords",
+    "problem": "The swords are plain rectangular boxes: a red bar with two yellow bands and a black end cap, and a black bar with a white tip. There is no blade profile, no sawtooth back, no holes or cut-outs, no silver edge, no hilt or guard, and no emissive lights. The red surface has blotchy shading patches.",
+    "why_it_looks_like_clay": "Unarticulated primitive bars with soft edges and mottled color look like a clay prop rather than a manufactured weapon.",
+    "concrete_fix": "Draw the 2D silhouette as a polygon (cleaver shape with a stepped back, angled tip and notches), extrude it 8-12 mm, bevel 0.5 mm, and inset a separate silver blade edge strip. Boolean or cut 4-6 round holes along the flat. Add an emissive red slit, a white text decal and a hilt with a trigger-like guard. Use flat toon shading with one spec strip along the bevel.",
+    "severity": 3
+   },
+   {
+    "region": "belt",
+    "problem": "The belt is a thin flat white strip with a simple double-square buckle and a red segment. It has no thickness, holes or stitching, and the second belt and hanging strap of the reference are missing.",
+    "why_it_looks_like_clay": "A thin, edge-less strip just painted onto the body reads as part of the sculpt, not a separate accessory.",
+    "concrete_fix": "Make it 3 mm thick with a hard rim and offset 1-2 mm from the body. Add a proper buckle (frame plus prong), a row of punched holes, stitch lines along both edges, and a text decal on the red segment. Add the second angled belt and the hanging strap tail from the reference.",
+    "severity": 2
+   },
+   {
+    "region": "head ornament",
+    "problem": "The red crescent ornament is a smooth, glossy, round tube like a red balloon worm with a soft highlight. The reference ornament is a flat blade-like crescent with sharp tips, paired with a white spiky piece.",
+    "why_it_looks_like_clay": "A round, uniformly thick curve with a soft specular is a rolled clay snake.",
+    "concrete_fix": "Make it a flat crescent blade, about 4 mm thick, with a central ridge and tips that taper to a point. Use a matte red material with a hard 1-step highlight on the ridge. Add the white tuft or piece beside it.",
+    "severity": 2
+   },
+   {
+    "region": "nose and mouth",
+    "problem": "The nose is drawn as a pink hook stroke plus a filled bump, which reads like a sculpted nose bump. The mouth is a wide line with a slight upward curve and a lip shadow, which reads gentle and doll-like rather than stern.",
+    "why_it_looks_like_clay": "An obvious nose stroke and a wide soft smile push the face toward a hand-made doll or figurine.",
+    "concrete_fix": "Reduce the nose to a tiny 2-3 px shadow wedge on the shadow side at the nose tip, with no hook outline. Shorten the mouth about 30%, make it flat or slightly down-turned, and add only a faint short lower-lip shadow below.",
+    "severity": 2
+   },
+   {
+    "region": "proportions and pose",
+    "problem": "The overall proportions are close to the reference, but the figure stands rigid and symmetric, with no hip tilt or contrapposto and straight legs. The neck reads thick in the face view, the legs lack knee breaks, and the head is held upright and frontal where the reference is slightly lowered.",
+    "why_it_looks_like_clay": "A stiff, straight-limbed, evenly weighted pose with tube legs is the look of a clay figure standing on its base.",
+    "concrete_fix": "Pose with the weight on one leg: pelvis tilted about 5 degrees, shoulders counter-tilted about 3 degrees, the free knee slightly bent and turned in, and the head tilted down about 5 degrees and turned slightly. Slim the neck by about 10% at the front. Make sure both legs show a knee silhouette break.",
+    "severity": 2
+   }
+  ]
+ },
+ "tech": {
+  "techniques": [
+   {
+    "name": "Crisp, anti-aliased shadow edge computed from an explicit light vector (half-Lambert + fwidth step)",
+    "problem_it_solves": "This is the biggest single cause of the soft, clay-like look in the current pipeline. In viewer/index.html the FRAG shader uses smoothstep(uThr-0.02, uThr+0.02, max(dot(n,l),0)*0.955), a band of fixed width in N\u00b7L units. On broad, gently curved areas (thighs, coat back, cheeks) N\u00b7L changes slowly, so that band smears into a soft gradient several centimetres wide and the surface reads as Lambert-shaded clay. On tight curvature the same band is smaller than a pixel and aliases. In Blender the ToonShade group thresholds Diffuse BSDF -> Shader to RGB, so the edge also depends on sun energy, Lambert scaling and EEVEE shadow filtering, and the Blender renders can never match the web viewer. In the Guilty Gear Xrd talk the cel shader is just a step on (threshold, light vector, normal), and the team stresses that you must take full control of all three.",
+    "how_to_implement_in_python_blender": "Rewrite materials._toon_group() to compute N\u00b7L itself instead of going through Diffuse BSDF -> Shader to RGB. (1) Take the normal from ShaderNodeNewGeometry.outputs['Normal']; EEVEE uses the custom split normals here. (2) Add a group input socket 'LightDir' (io.new_socket('LightDir', in_out='INPUT', socket_type='NodeSocketVector')). Before each render, set it on every toon material from the same view-space vector the viewer uses: L = (cam.matrix_world.to_3x3() @ Vector((-0.42, 0.62, 0.66))).normalized(); then group_node.inputs['LightDir'].default_value = L. This follows GGXrd, where each character has its own dedicated light vector chosen to flatter it, not a scene light. (3) Node chain: ShaderNodeVectorMath(operation='DOT_PRODUCT') -> ShaderNodeMath(operation='MULTIPLY_ADD', inputs 0.5, 0.5) for half-Lambert -> ShaderNodeMath MULTIPLY by 2 x the shading-control attribute (see the per-vertex control technique) -> ShaderNodeMapRange(interpolation_type='SMOOTHSTEP', From Min = thr-0.004, From Max = thr+0.004) -> ShaderNodeMix(data_type='RGBA', shade, lit) -> Emission. Blender nodes have no fwidth, so keep the band tiny and let render AA handle it: scene.render.filter_size = 1.0 and scene.eevee.taa_render_samples >= 16. (4) Keep sun.use_shadow = False (already set) and also set ob.visible_shadow = False on toon objects, so shadow-map acne on marching-cubes surfaces never reaches the threshold. Designed occlusion comes from the control attribute and the hair-shadow techniques instead. (5) Optionally add a second, lower threshold (thr2 about 0.15 below thr) that switches to a darker second shade colour, as in UTS DoubleShadeWithFeather.",
+    "how_to_reproduce_in_threejs": "In FRAG replace the fixed band with a derivative-based edge about one pixel wide (fwidth is built in under WebGL2, which three r150+ uses): float hl = dot(n,l)*0.5+0.5; float x = hl * 2.0 * vCtrl.r; float aa = max(fwidth(x), 1e-4); float lit = smoothstep(uThr - aa, uThr + aa, x); float lit2 = smoothstep(uThr2 - aa, uThr2 + aa, x); vec3 col = mix(mix(shade2, shade1, lit2), litCol, lit). Convert the existing per-material uThr values to half-Lambert space (thr_hl = thr*0.5 + 0.5), because the old values were on clamped N\u00b7L. Keep WebGLRenderer({antialias:true}) and pixelRatio <= 2 (both already set). Apply the same fwidth pattern to every other hard mask (specular, rim, angel ring, face SDF, line masks), so every edge stays equally crisp at any zoom level.",
+    "impact": "high",
+    "sources": [
+     "https://www.ggxrd.com/Motomura_Junya_GuiltyGearXrd.pdf",
+     "https://gdcvault.com/play/1022031/GuiltyGearXrd-s-Art-Style-The",
+     "https://prideout.net/blog/old/blog/index.html@p=22.html",
+     "https://github.com/unity3d-jp/UnityChanToonShaderVer2_Project/blob/release/legacy/2.0/Assets/Toon/Shader/UCTS_ShadingGradeMap.cginc",
+     "https://github.com/vrm-c/vrm-specification/blob/master/specification/VRMC_materials_mtoon-1.0/README.md",
+     "https://godotshaders.com/?p=3695"
+    ]
+   },
+   {
+    "name": "Intentional shading normals: proxy-SDF gradient normals blended per region, applied after the last topology change",
+    "problem_it_solves": "Marching cubes plus collapse decimation leaves micro-bumps and irregular triangles, and under a hard threshold every bump becomes a blotch or a wobbly shadow edge. The GGXrd handout says 'the slightest difference in the surface normal may end up as a huge blotch', and the team modified normals on every major feature, with faces hand-crafted. The BLUE PROTOCOL team tunes normals so lighting produces the triangular cheek shadow, and avoids normal maps because compression noise breaks shadow edges. src/normals.py already diffuses normals and uses an ellipsoid on the face, but two problems remain. (a) export.py adds a WebDecimate modifier after normals.apply, so the web model gets re-interpolated custom normals. (b) Body and clothes only get Laplacian diffusion, which still follows small anatomical and cloth bumps.",
+    "how_to_implement_in_python_blender": "Build a simplified 'shading SDF' per part from the same primitives used for the geometry: raise the smooth-union radius 3-4x (smin k about 0.03-0.05 m), drop small features (nose, lips, collarbones, navel, nails, cloth-fold displacement), use capsules (RoundCone) along the limb bones, the FACE_PROXY ellipsoid for the head, a mitten capsule for each hand, and the outward-offset cap for hair. Compute n_proxy = sdf.gradient(shade_fn, V, eps=1e-3) (the function already exists in src/sdf.py). Blend with the current diffused normal using a per-vertex weight: n = normalize(n_geo*(1-w) + n_proxy*w). Suggested weights: face 1.0 on cheeks, forehead and jaw, 0.5 on the nose bridge, 0 on lips, ears and eye sockets; body 0.6; cloth 0.5; hands 0.7; hair 0.75. Then write it with me.normals_split_custom_set_from_vertices(n); since 4.1 no auto smooth is needed, and me.has_custom_normals confirms it. Non-destructive alternative: m = ob.modifiers.new('NrmProxy', 'DATA_TRANSFER'); m.object = proxy_mesh; m.use_loop_data = True; m.data_types_loops = {'CUSTOM_NORMAL'}; m.loop_mapping = 'POLYINTERP_NEAREST'; m.mix_mode = 'REPLACE'; m.mix_factor = 0.8; m.vertex_group = 'NrmW'; m.use_object_transform = True. Keep it last in the modifier stack. A 4.5 Geometry Nodes alternative: Sample Nearest Surface (proxy normal) -> Mix -> the new Set Mesh Normal node (Free mode on the Point domain; Tangent Space if the mesh deforms afterwards). Order matters: Decimate, Remesh and Subsurf must come before the normal pass. For the web copy, either decimate first and then rerun normals.apply, or add a final DATA_TRANSFER (CUSTOM_NORMAL, POLYINTERP_NEAREST, mix 1.0) from the full-resolution object. On the face, keep the ellipsoid centre well behind the face so the cheeks turn sideways faster than a real face does, and keep nose normals pointing forward (the BNPR guide places the sphere so the nose points straight ahead). Light at 30-45 degrees then gives a clean diagonal cheek shadow.",
+    "how_to_reproduce_in_threejs": "Nothing to compute at runtime. The normals arrive as the glTF NORMAL attribute and the vertex shader already transforms them with skinning. Make sure nothing destroys them: never call computeVertexNormals() or mergeVertices(), and keep Draco normal quantization at 12 bits or more. Add a debug toggle gl_FragColor = vec4(normalize(vN)*0.5+0.5, 1.0) to find remaining blotches. Optional runtime face proxy, which stays correct under future blendshapes: store the face weight in ctrl.a and, before the skinning includes, do objectNormal = normalize(mix(objectNormal, normalize((position - uHeadC)/(uHeadR*uHeadR)), ctrl.a)).",
+    "impact": "high",
+    "sources": [
+     "https://www.ggxrd.com/Motomura_Junya_GuiltyGearXrd.pdf",
+     "https://www.gamebusiness.jp/article/2021/09/13/19051.html",
+     "https://cgworld.jp/feature/202011-cedec2020-bluep.html",
+     "https://bnpr.gitbook.io/bnpr/shaders/toon-shading-nbpr-abnormal-normal-sphering",
+     "https://80.lv/articles/get-clean-normals-for-stylized-shading-with-this-free-blender-tool/",
+     "https://trungduyng.substack.com/p/tutorial-blender-anime-foliage-pipeline",
+     "https://docs.blender.org/api/4.5/bpy.types.DataTransferModifier.html",
+     "https://docs.blender.org/manual/en/4.5/modeling/geometry_nodes/mesh/write/set_mesh_normal.html",
+     "https://developer.blender.org/docs/release_notes/4.1/modeling/",
+     "https://docs.blender.org/api/4.5/bpy.types.Mesh.html",
+     "https://arxiv.org/pdf/1802.07710"
+    ]
+   },
+   {
+    "name": "Per-vertex shading-control channel (AO, threshold offset, forced shadow and forced light), as in the GGXrd vertex colour and the Genshin/Star Rail lightmap G channel",
+    "problem_it_solves": "With N\u00b7L alone nothing is ever occluded. The neck under the chin, the inside of the collar and sleeves, the forehead under the bangs, the armpits and the gap between coat and body all light up like outer surfaces, so the character reads as one inflated blob. Anime draws these as fixed, designed shadows. In GGXrd a vertex-colour channel offsets the threshold, and a value of 0 means always shaded. Star Rail computes shadow = min(1, NoL01*2*ao), never lights areas with ao < 0.05, and always lights areas with ao > 0.95.",
+    "how_to_implement_in_python_blender": "Compute ao per vertex from the full-character SDF (body, clothes, hair and props combined) with the classic 5-tap distance-field AO: occ = sum over i=1..5 of (i*h - f(p + n*i*h)) / 2**i with h about 0.01 m, then ao = clip(1 - 2.5*occ/h, 0, 1). It is cheap in numpy on the cached vertex arrays and consistent with the geometry. Alternatives: a Cycles bake with bpy.ops.object.bake(type='AO', target='VERTEX_COLORS') (writes to the active colour attribute, needs scene.render.engine='CYCLES'), or cavity via bpy.ops.paint.vertex_color_dirt(blur_strength=1.0, blur_iterations=3, clean_angle=3.14159, dirt_angle=0.0, dirt_only=True, normalize=True). Remap so 0.5 is neutral, then apply art rules in head or body local space: a V-shaped chin shadow on the neck (z < chin_z - 0.35*|x| on the front of the neck -> 0.0); coat lining, sleeve and collar interiors (faces whose normal points toward the body axis) -> 0.15; a band under the fringe, within about 1.5 cm below the hairline -> 0.25; cheekbones and shoulder tops -> 0.65 (stay lit). Store all per-vertex controls in one attribute: a = me.attributes.new('_CTRL', 'FLOAT_COLOR', 'POINT'); a.data.foreach_set('color', rgba.ravel()), with R = shading control, G = outline width, B = outline depth offset, A = specular/rim mask. For the Blender preview, use ShaderNodeAttribute(attribute_name='_CTRL') -> Separate Color and feed R into the half-Lambert multiply.",
+    "how_to_reproduce_in_threejs": "After loading, geo.setAttribute('ctrl', geo.getAttribute('_ctrl')). In the vertex shader: attribute vec4 ctrl; varying vec4 vCtrl;. In the fragment shader, following Star Rail GetRampUV: float ao = vCtrl.r; float x = min(1.0, (dot(n,l)*0.5+0.5) * 2.0 * ao); x = ao < 0.05 ? 0.0 : (ao > 0.95 ? 1.0 : x); then apply the fwidth threshold. Values interpolate linearly between vertices, so like GGXrd's vertex colours they stay clean at any zoom without texture pixelation.",
+    "impact": "high",
+    "sources": [
+     "https://www.ggxrd.com/Motomura_Junya_GuiltyGearXrd.pdf",
+     "https://github.com/stalomeow/StarRailNPRShader/blob/main/Shaders/Character/Shared/CharRenderingHelpers.hlsl",
+     "https://github.com/Melioli/HoyoToon/wiki/Using-the-Genshin-Shader",
+     "https://docswell.com/s/UnityJapan/KWLQP5-unite-tokyo-20183rd",
+     "https://github.com/unity3d-jp/UnityChanToonShaderVer2_Project/blob/release/legacy/2.0/Assets/Toon/Shader/UCTS_ShadingGradeMap.cginc",
+     "https://docs.blender.org/api/4.5/bpy.ops.object.html",
+     "https://docs.blender.org/api/4.5/bpy_types_enum_items/bake_target_items.html",
+     "https://docs.blender.org/api/4.5/bpy.ops.paint.html",
+     "https://gamedev.net/shaderlab/32-soft-shadows-and-ambient-occlusion/"
+    ]
+   },
+   {
+    "name": "Designed shadow colours: hue-shifted tints, two shade levels, a saturated band at the shadow edge, and a per-material ramp texture",
+    "problem_it_solves": "A shadow that is just a darker or grey multiple of the base colour reads as clay under grey light. Anime colour design picks the shadow hue per material. GGXrd multiplies the base by a tint texture, gives skin a red tint because of the flesh underneath, and gives less solid materials lighter shadows. BLUE PROTOCOL stores shadow colours separately, with different hues and separate tables for skin and clothing. Genshin uses hand-made ramps with an artificial subsurface band at the shadow edge. Star Rail uses ramp rows per material plus warm and cool ramp variants.",
+    "how_to_implement_in_python_blender": "Derive tints from materials.PALETTE / export/palette.json with colorsys. shade1: hue shifted 4-8 degrees toward red/magenta for warm materials (skin, red cloth, leather) or toward blue/violet for whites and greys, saturation x1.2-1.4 (add +0.05 for near-white so it turns lavender rather than grey), value x0.72-0.85. shade2 (occluded): shade1 with value x0.8 and saturation x1.1. Edge band: halfway between lit and shade1 with saturation x1.5 (reddish on skin), spanning about 3-4% of the ramp. Write a 256 x rows ramp in numpy (one row per material): img = bpy.data.images.new('ToonRamp', 256, rows, alpha=False); img.pixels.foreach_set(px.ravel()); img.filepath_raw = path; img.file_format = 'PNG'; img.save(). Store the ramp as a multiplier of the base colour (lit = 1.0), so the same ramp works with textured albedo. Material: ShaderNodeTexImage(interpolation='Linear', extension='EXTEND') sampled at ShaderNodeCombineXYZ(x = shading value, y = (row+0.5)/rows), then multiplied by the base colour.",
+    "how_to_reproduce_in_threejs": "Load the ramp PNG with ramp.colorSpace = THREE.SRGBColorSpace, ramp.minFilter = ramp.magFilter = THREE.LinearFilter, ramp.generateMipmaps = false, and give each material a uRow uniform. For the crispest result keep the hard edges analytic (fwidth) and use the ramp only for colours: vec3 s1 = texture2D(uRamp, vec2(0.30, uRow)).rgb; vec3 s2 = texture2D(uRamp, vec2(0.10, uRow)).rgb; vec3 band = texture2D(uRamp, vec2(0.49, uRow)).rgb; vec3 col = base * mix(mix(s2, s1, lit2), vec3(1.0), lit); float edge = lit * (1.0 - smoothstep(uThr, uThr + 0.035, x)); col = mix(col, base*band, edge). The simpler version, col = base * texture2D(uRamp, vec2(x, uRow)).rgb, is fine when the ramp is 256 px wide. The existing uLit/uShade palette pairs can be regenerated from the same Python script, so Blender and the web viewer share one source of truth.",
+    "impact": "high",
+    "sources": [
+     "https://www.ggxrd.com/Motomura_Junya_GuiltyGearXrd.pdf",
+     "https://www.gamebusiness.jp/article/2021/09/13/19051.html",
+     "https://bjayers.artstation.com/blog/category/5",
+     "https://github.com/stalomeow/StarRailNPRShader/blob/main/Shaders/Character/Shared/CharRenderingHelpers.hlsl",
+     "https://github.com/unity3d-jp/UnityChanToonShaderVer2_Project/blob/release/legacy/2.0/Assets/Toon/Shader/UCTS_ShadingGradeMap.cginc",
+     "https://github.com/vrm-c/vrm-specification/blob/master/specification/VRMC_materials_mtoon-1.0/README.md",
+     "https://docswell.com/s/UnityJapan/KWLQP5-unite-tokyo-20183rd"
+    ]
+   },
+   {
+    "name": "Outline v2: smoothed-normal attribute, constant screen-space width, per-vertex width and depth offset, coloured lines",
+    "problem_it_solves": "The current OVERT shader moves vertices along objectNormal * uWidth in object-space metres, which causes four problems. (1) Vertices split by custom normals, UV seams or material borders (glTF duplicates them) open gaps in the hull. (2) Line width changes with camera distance and FOV: fat in full-body shots, thin in close-ups. (3) There is no per-region control, so lines appear on eyelids, lips and inner surfaces, and as 'floating lines' in fold valleys. (4) Every line is one flat colour per material. Arc System Works' toon-line deck puts width in vertex-colour alpha (0 = none, 0.5 = standard, 1 = double), uses colour B to push the backface hull away from the camera, stores separate outline normals, and scales width as distance x tan(FOV/2). Star Rail flattens normalVS.z to -0.1, multiplies width by vertex alpha, compensates for FOV and distance with a clamp, and adds a z offset. UTS has a baked-normal option and near/far distance fading. MToon offers a screen-coordinate width mode and lighting mix for outlines.",
+    "how_to_implement_in_python_blender": "Smoothed outline normals keyed by position (welds UV/normal splits): co = positions (N,3); _, grp = np.unique(np.round(co/1e-5).astype(np.int64), axis=0, return_inverse=True); read face normals and areas with me.polygons.foreach_get('normal'/'area'), loop vertex indices with me.loops.foreach_get('vertex_index'), and expand to a loop->face index with np.repeat(np.arange(nf), loop_totals); acc = np.zeros((grp.max()+1, 3)); np.add.at(acc, grp[loop_vert], fn[loop_face]*area[loop_face, None]); sn = acc[grp]; sn /= np.linalg.norm(sn, axis=1, keepdims=True); me.attributes.new('_OUTLINE_N', 'FLOAT_VECTOR', 'POINT').data.foreach_set('vector', sn.ravel()). Run it on the final topology, per hair lock. Width and depth offset go into _CTRL.g and _CTRL.b. Defaults: 0.5 everywhere; 0 on eyes, lashes, mouth, lenses and coat lining; 0.1 on concave fold-valley vertices (the deck's floating-line fix); hair 0.9 at the root falling to 0.3 at the tip; depth offset 0.3-1.0 on hair and on inner layers that should only show their outer rim. For a Blender preview that matches the web exactly, use a Geometry Nodes 'Outline' group: Named Attribute('_OUTLINE_N') x Named Attribute('_CTRL').g x width -> Set Position offset -> Flip Faces -> Set Material(outline) -> Join Geometry with the original. Or keep the SOLIDIFY outline with vertex_group='LineW' and thickness_vertex_group=0.0 (zero weight means no line), offset=1.0, use_flip_normals=True, use_rim=False, and outline material use_backface_culling=True. Outline colour: base hue, value x0.35-0.45, saturation x1.2 (the palette's 3rd colour already does this); skin outlines should be reddish brown, never black.",
+    "how_to_reproduce_in_threejs": "Replace OVERT with a skinned clip-space version: attribute vec3 outlineNormal; attribute vec4 ctrl; uniform vec2 uRes; uniform float uPx; uniform float uZ; void main(){ vec3 objectNormal = outlineNormal; #include <skinbase_vertex> #include <skinnormal_vertex> #include <begin_vertex> #include <skinning_vertex> vec4 mv = modelViewMatrix * vec4(transformed, 1.0); mv.z -= uZ * ctrl.b; vec3 nv = normalize(normalMatrix * objectNormal); nv.z = -0.1; nv = normalize(nv); vec4 clip = projectionMatrix * mv; vec2 dirPx = normalize((projectionMatrix * vec4(nv, 0.0)).xy * uRes); float px = uPx * ctrl.g * 2.0 * clamp(1.6 / -mv.z, 0.6, 1.3); clip.xy += dirPx * px * 2.0 / uRes * clip.w; gl_Position = clip; }. Do not include beginnormal_vertex, because objectNormal is declared manually. Use side: THREE.BackSide and set uRes from renderer.getDrawingBufferSize() on resize. A typical uPx is 1.5-2.5 at 1080p. In the fragment shader, optionally mix the line colour toward the lit/shade result (MToon outlineLightingMixFactor about 0.3), so outlines on the lit side are slightly lighter.",
+    "impact": "high",
+    "sources": [
+     "https://docswell.com/s/ASW_Academy/5LVY67-GG-Toonline-Eng",
+     "https://www.ggxrd.com/Motomura_Junya_GuiltyGearXrd.pdf",
+     "https://github.com/stalomeow/StarRailNPRShader/blob/main/Shaders/Character/Shared/CharOutline.hlsl",
+     "https://github.com/unity3d-jp/UnityChanToonShaderVer2_Project/blob/release/legacy/2.0/Assets/Toon/Shader/UCTS_Outline.cginc",
+     "https://github.com/vrm-c/vrm-specification/blob/master/specification/VRMC_materials_mtoon-1.0/README.md",
+     "https://docswell.com/s/UnityJapan/KWLQP5-unite-tokyo-20183rd",
+     "https://github.com/mrdoob/three.js/blob/r170/examples/jsm/effects/OutlineEffect.js",
+     "https://docs.blender.org/api/4.5/bpy.types.SolidifyModifier.html"
+    ]
+   },
+   {
+    "name": "Carrying toon data through glTF: custom attributes, loose edges, Draco settings, normals after decimation",
+    "problem_it_solves": "Most techniques here need extra per-vertex data (outline normals, control channels, hair parameters, surface IDs) and intact custom normals in three.js. In the current export.py, export_attributes is not set, so custom data is dropped. WebDecimate is added after the custom normals are written, so the web model's normals get re-interpolated. The viewer also builds outlines from clones that carry no line data.",
+    "how_to_implement_in_python_blender": "Call bpy.ops.export_scene.gltf(..., export_normals=True, export_attributes=True, use_mesh_edges=True, export_vertex_color='NONE'). use_mesh_edges exports loose edges as glTF LINES using the first material slot. export_vertex_color='NONE' keeps three.js from treating COLOR_0 as an albedo multiplier; carry the controls in '_' attributes instead. Behaviour verified in the glTF-Blender-IO 4.5 source: only attributes whose names start with '_' are exported, EDGE-domain attributes are skipped, and names are upper-cased ('_ctrl' becomes '_CTRL'). With Draco, every attribute, custom ones included, is encoded and quantized with export_draco_generic_quantization (default 12). Raise export_draco_normal_quantization from 10 to 12-14 and generic quantization to 14 for outline normals. LINES primitives are not Draco-compressed. Order in export.py: apply WebDecimate and Subsurf first, then recompute custom normals (normals.apply plus the proxy pass) and all attributes on the final topology. Alternatively, append a final DATA_TRANSFER (use_loop_data=True, data_types_loops={'CUSTOM_NORMAL'}, loop_mapping='POLYINTERP_NEAREST', mix_factor=1.0) from the full-resolution object. For line or decal meshes that need skin weights, add use_vert_data=True, data_types_verts={'VGROUP_WEIGHTS'}, layers_vgroup_select_src='ALL', layers_vgroup_select_dst='NAME'.",
+    "how_to_reproduce_in_threejs": "GLTFLoader maps standard names (COLOR_0 -> color, TEXCOORD_1 -> uv1) and lower-cases all other attribute names, Draco-decoded ones included, so '_CTRL' arrives as geometry.attributes._ctrl. Rename for clarity: geo.setAttribute('ctrl', geo.getAttribute('_ctrl')); geo.setAttribute('outlineNormal', geo.getAttribute('_outline_n')). Then declare attribute vec4 ctrl; attribute vec3 outlineNormal; in the ShaderMaterial vertex shader; ShaderMaterial only injects the built-in attributes (position, normal, uv, skinIndex, skinWeight). Never run computeVertexNormals() or mergeVertices() on these meshes. A debug view that outputs n*0.5+0.5 and ctrl as colour confirms the data survived export.",
+    "impact": "high",
+    "sources": [
+     "https://docs.blender.org/manual/en/4.5/addons/import_export/scene_gltf2.html",
+     "https://github.com/KhronosGroup/glTF-Blender-IO/blob/blender-v4.5-release/addons/io_scene_gltf2/__init__.py",
+     "https://github.com/KhronosGroup/glTF-Blender-IO/blob/blender-v4.5-release/addons/io_scene_gltf2/blender/exp/primitive_extract.py",
+     "https://github.com/KhronosGroup/glTF-Blender-IO/blob/blender-v4.5-release/addons/io_scene_gltf2/io/exp/draco.py",
+     "https://github.com/mrdoob/three.js/blob/r170/examples/jsm/loaders/GLTFLoader.js",
+     "https://docs.blender.org/api/4.5/bpy.types.DataTransferModifier.html"
+    ]
+   },
+   {
+    "name": "Inner line art: feature edges (hems, material seams, creases, fold valleys) as skinned ribbons, or a screen-space ID/normal/depth edge pass",
+    "problem_it_solves": "Silhouette-only outlines leave the inside of the character as smoothly shaded volumes. Drawings separate surfaces with lines; the GGXrd handout says inner lines show 'where one surface ends and another starts', and the inverted hull cannot draw them. Missing lines at coat/skin borders, hems, collar, belt, glove cuffs, between hair locks and in fold valleys are a large part of the 3D clay look.",
+    "how_to_implement_in_python_blender": "Option A, geometry that exports and skins (works with the 22-bone rig). After final topology, per part: bm = bmesh.new(); bm.from_mesh(me); bm.normal_update(); keep an edge if e.is_boundary (clipped cloth edges, hems, lock edges), or if it has two faces with different material_index (material seam), or if ang = e.calc_face_angle(0.0) > radians(40), or if (not e.is_convex and ang > radians(20)) (a valley). Chain the kept edges and drop chains shorter than about 1 cm to remove marching-cubes noise. Turn each chain into a ribbon on the surface: at each point p with surface normal n and chain tangent t, side = normalize(cross(t, n))*0.0004, and emit p \u00b1 side + n*0.0003 (0.8 mm wide). Build an object 'InkLines_<part>' with me.from_pydata(verts, [], quads), one unlit 'ink' material (Emission set to the part's outline colour), then copy skin weights with a DATA_TRANSFER modifier (use_vert_data=True, data_types_verts={'VGROUP_WEIGHTS'}, vert_mapping='NEAREST', layers_vgroup_select_src='ALL', layers_vgroup_select_dst='NAME') plus an Armature modifier, and apply. Plain glTF LINES (use_mesh_edges) are only suitable for static props, because three.js lines are not skinned. Option B, Blender renders only: bpy.ops.object.grease_pencil_add(type='LINEART_COLLECTION', stroke_depth_offset=0.05); on the GreasePencilLineartModifier set use_contour=True, use_crease=True, crease_threshold=radians(140) (angles below this count as creases), use_material=True, use_edge_mark=True, use_intersection=True, thickness 2-3, stroke_depth_offset=0.05; mark extra lines by selecting edges and calling bpy.ops.mesh.mark_freestyle_edge(clear=False). Option C: write a surface-ID attribute ('_SURF', FLOAT, POINT, unique per cloth piece, hair lock and material) for the screen-space pass.",
+    "how_to_reproduce_in_threejs": "For ribbons, use an unlit ShaderMaterial with the skinning includes, depthTest true, and polygonOffset=true with polygonOffsetFactor=-1 and polygonOffsetUnits=-4, so the ink sits on the surface without z-fighting. Fade it out where the surface turns away: alpha = smoothstep(0.0, 0.15, dot(nView, viewDir)). For static LINES: new LineSegments2(new LineSegmentsGeometry().fromLineSegments(lines), new LineMaterial({color, linewidth: 1.5, worldUnits: false})), updating material.resolution on resize for constant pixel width. The screen-space alternative (used by BLUE PROTOCOL and by Omar Shehata's surface-ID outlines) keeps lines at a constant pixel width and handles skinning automatically. Render the character once into a WebGLRenderTarget with {count: 2} (multiple render targets in r163+), writing the surface ID (from the surf attribute) into one target and view normal plus depth into the other. A fullscreen pass then marks a pixel as ink if any 4-neighbour 1 px away has a different ID, |\u0394depth| > 0.02*depth, or dot(n, nNeighbour) < 0.75, and multiplies the ink colour over the image. Exclude IDs whose borders you do not want; BLUE PROTOCOL masks the eyebrow region, for example.",
+    "impact": "high",
+    "sources": [
+     "https://www.ggxrd.com/Motomura_Junya_GuiltyGearXrd.pdf",
+     "https://cgworld.jp/feature/202011-cedec2020-bluep.html",
+     "https://www.gamebusiness.jp/article/2021/09/13/19051.html",
+     "https://omar-shehata.medium.com/better-outline-rendering-using-surface-ids-with-webgl-e13cdab1fd94",
+     "https://docs.blender.org/api/4.5/bpy.types.GreasePencilLineartModifier.html",
+     "https://docs.blender.org/api/4.5/bpy.ops.object.html",
+     "https://github.com/mrdoob/three.js/blob/r170/examples/jsm/lines/LineSegmentsGeometry.js",
+     "https://docswell.com/s/UnityJapan/KWLQP5-unite-tokyo-20183rd"
+    ]
+   },
+   {
+    "name": "Anime hair construction: shell plus large locks with crescent/V cross-sections, sharp tapered tips, root-to-tip UVs, and normals from the hair mass",
+    "problem_it_solves": "Lofted lens-shaped tubes that each keep their own geometric normals shade like spaghetti. Every lock gets its own shadow edge and highlight, outlines appear everywhere, intersections create noisy self-occlusion, and lock silhouettes are round. Anime hair reads as one big mass split into a few large, sharp-edged locks. The flat-modelling approach aims for minimal intersections and no overlaps or self-shading. There is also no strand parameter yet, which the hair highlight and colour gradient need.",
+    "how_to_implement_in_python_blender": "In src/hair.py keep the cap and locks but change the profile, taper, UVs and normals. (1) Crescent cross-section via loft_tube(shape=...): def crescent(ph, k=0.5): x = cos(ph); s = sin(ph); return (x, s) if s >= 0 else (x, k*(1 - x*x)). The outer side is an arc and the inner side bulges the same way, so the section is thick in the middle and razor-thin at both edges, which gives sharp silhouettes and clean outlines. For ridge locks use outer y = (1-|x|)**0.8 and inner y = k*(1-|x|). Use n_ring 12-16 so ph=0 and ph=pi land exactly on vertices. (2) Taper: w(t) = w0*(1-t)**0.6*(1 + 0.15*sin(pi*t)) and th(t) = th0*(1-t)**0.9, ending in a point (drop cap_end and collapse the last ring). Split big locks at the tip: for t > 0.75, duplicate into two half-width sub-locks diverging by \u00b10.5*w and 6-10 degrees. Rhythm: big-small-big widths, 7-11 locks across the bangs, 2-4 per side, 10-16 large back locks, tips curling alternately in and out. (3) UVs per lock: u = (x+1)/2 across the outer side, v = t (0 at root, 1 at tip), written to me.uv_layers.new(name='HairUV'). Also write '_HAIR' (FLOAT_COLOR, POINT) = (t, u, lock_random, inner_flag). (4) Normals: n = normalize(0.25*n_geo + 0.75*n_mass), where n_mass = sdf.gradient of a smooth 'hair mass' SDF: cap_d offset outward by about 1 cm, smooth-unioned (k about 0.03) with an ellipsoid or loft that encloses the long back hair. Write it with me.normals_split_custom_set_from_vertices. The whole hairstyle then shades as one volume with one clean shadow edge, while lock edges, outlines and inner lines show the separation. (5) Set _CTRL.r to about 0.3 on the inner half (sin(ph) < 0) to get the dark underside line along each lock.",
+    "how_to_reproduce_in_threejs": "Pass the hair attribute as vHair (t, u, rand, inner). Base colour: mix(uRootCol, uTipCol, smoothstep(0.35, 1.0, vHair.x)), with the root slightly darker and cooler and the tips lighter or tinted. if (!gl_FrontFacing) col = shadeCol, so lock interiors are always in shadow. Outline width already tapers via ctrl.g. Shading uses the mass normals from the file, so there is no runtime cost.",
+    "impact": "high",
+    "sources": [
+     "https://www.blendernation.com/2020/02/01/flat-modeling-anime-hair/",
+     "https://blenderartists.org/t/ongoing-updates-geometry-nodes-based-flat-modeled-toon-anime-hair/1367168",
+     "https://bnpr.gitbook.io/bnpr/shaders/toon-shading-nbpr-abnormal-normal-sphering",
+     "https://trungduyng.substack.com/p/tutorial-blender-anime-foliage-pipeline",
+     "https://www.ggxrd.com/Motomura_Junya_GuiltyGearXrd.pdf",
+     "https://docs.blender.org/api/4.5/bpy.types.Mesh.html"
+    ]
+   },
+   {
+    "name": "Hair highlight: view-locked 'angel ring' band in strand space, or a thresholded view-dependent specular",
+    "problem_it_solves": "Without the angel-ring band, anime hair reads as plastic or clay, and a Blinn highlight on lofted tubes produces one dot per lock. Anime hair uses a jagged band that runs across all locks at a height fixed relative to the camera; the UTS docs say the effect 'always appears in a fixed position as seen from the camera'.",
+    "how_to_implement_in_python_blender": "This needs the per-lock strand parameter t from HairUV.v or '_HAIR'.x (see the hair-construction technique). Generate the ring texture in numpy (512x256 RGBA): band centre v0 = 0.28; half-width per column hw(u) = 0.025 + 0.02*abs(sin(u*pi*18 + 3*noise(u))); downward comb teeth by extending the lower edge by 0.04 where fract(u*23) < 0.4; fade alpha for u < 0.12 and u > 0.88; save as textures/angel_ring.png. Blender preview: ShaderNodeNewGeometry Normal -> ShaderNodeVectorTransform(vector_type='NORMAL', convert_from='WORLD', convert_to='CAMERA') -> Separate XYZ -> u = x*0.5 + 0.5, v = mix(t, y*0.5 + 0.5, 0.3) (the UTS AR_OffsetV blend) -> Combine XYZ -> Image Texture(angel_ring) -> add onto the toon colour, masked by the lit factor. Kajiya-Kay variant: store the strand tangent as '_HAIR_T' (FLOAT_VECTOR, POINT; the loft's d position/dt) and compute spec = pow(sqrt(1 - dot(T,H)^2), 80), with T shifted along N by 0.1*(rand - 0.5) per lock, then a SMOOTHSTEP Map Range for a hard band.",
+    "how_to_reproduce_in_threejs": "UTS formula (UCTS_ShadingGradeMap.cginc): vec3 nV = normalize(vN); vec2 arUV = vec2(nV.x*0.5 + 0.5, mix(vHair.x, nV.y*0.5 + 0.5, uOffsetV)); vec4 ar = texture2D(uAngelRing, arUV); col = mix(col, col + ar.rgb*uRingCol, ar.a*litMask). Texture-free version: float c = 0.28 + 0.10*nV.y; float teeth = 0.02*abs(sin(vHair.y*56.0 + vHair.z*40.0)); float d = abs(vHair.x - c) - (0.025 + teeth); float aa = fwidth(d); float band = 1.0 - smoothstep(-aa, aa, d); col = mix(col, uRingCol, band*litMask*0.85). Star Rail's hair specular uses NoV instead of NoH, masked by NoL > 0, so the highlight flows with the view: spec = smoothstep(thr - r, thr + r, pow(max(0.01, dot(n,v)), shininess)) * step(0.0, dot(n,l)). Use one of these as the main highlight, not both at full strength.",
+    "impact": "high",
+    "sources": [
+     "https://docs.unity3d.com/Packages/com.unity.toonshader@0.13/manual/AngelRing.html",
+     "https://github.com/unity3d-jp/UnityChanToonShaderVer2_Project/blob/release/legacy/2.0/Assets/Toon/Shader/UCTS_ShadingGradeMap.cginc",
+     "https://github.com/stalomeow/StarRailNPRShader/blob/main/Shaders/Character/CharHairCore.hlsl",
+     "https://docswell.com/s/UnityJapan/KWLQP5-unite-tokyo-20183rd",
+     "https://web.engr.oregonstate.edu/~mjb/cs557/Projects/Papers/HairRendering.pdf"
+    ]
+   },
+   {
+    "name": "SDF face-shadow threshold map (Genshin/Star Rail style) driven by head forward/right vectors",
+    "problem_it_solves": "Normals alone cannot produce the designed anime face shadow. As the light rotates, the shadow edge on the face should sweep as one clean curve (nose-side shadow, lit triangle on the cheek) and never break up around the eyes, nose and mouth. An SDF face map stores, per texel, the light angle at which that texel goes dark; the shader compares it with the head-relative light angle, giving a stable, art-directed shadow independent of the mesh.",
+    "how_to_implement_in_python_blender": "The face UV must be mirror-symmetric about the face midline (u = 0.5). The current 'face_proj' frontal projection works if it is centred on the midline; otherwise make a separate UV map 'FaceSDF'. Steps in numpy/scipy inside Blender: (1) Rasterize face positions P and stylised normals Nf (the ellipsoid proxy normals, in head space) into a 1024x1024 UV grid with scipy.interpolate.LinearNDInterpolator(uv_per_vertex, np.c_[P, Nf])(gu, gv). (2) For K = 24 light angles a_k = k*180/K swept from the front toward one side: L_k = cos(a_k)*forward + sin(a_k)*side, and lit_k = (Nf\u00b7L_k > 0). Add style rules: force dark on the far side of the nose bridge below the bridge when a_k > 15 degrees (nose shadow); keep a lit triangle under the far eye while a_k < 60 degrees (Rembrandt triangle); keep the eye and brow region always lit. Make the masks shrink monotonically: lit_k &= lit_{k-1}. (3) Signed distance per mask: sd_k = ndimage.distance_transform_edt(lit_k) - ndimage.distance_transform_edt(~lit_k). (4) For a texel lit at k and dark at k+1: t = sd_k/(sd_k - sd_{k+1}); a* = a_k + t*(a_{k+1} - a_k); store thr = (1 - cos a*)/2 (never-dark texels = 1, never-lit = 0). Apply ndimage.gaussian_filter with sigma = 1 and save as an 8-bit Non-Color PNG. (5) Pack extra masks into the other channels: G = 1 where the face SDF applies (neck and ears use N\u00b7L), B = nose-line mask, A = eye mask (always lit). The Blender preview uses the same math in nodes: Lp = L - (L\u00b7up)up via Vector Math, a DOT_PRODUCT side test against head-right driving a Mix between u and 1-u, Image Texture, then a SMOOTHSTEP Map Range comparing against FoL01.",
+    "how_to_reproduce_in_threejs": "Each frame, read the head vectors from the Head bone and move them to view space, because the viewer's light is in view space. At load: q0inv = head.getWorldQuaternion(new THREE.Quaternion()).invert(); fwdL = new THREE.Vector3(0,0,1).applyQuaternion(q0inv) (Blender -Y forward becomes +Z after the Y-up export); rightL = new THREE.Vector3(-1,0,0).applyQuaternion(q0inv) (check against the Hand.R position); upL = (0,1,0) the same way. Per frame: uFwd = fwdL.clone().applyQuaternion(head.getWorldQuaternion(q)).transformDirection(camera.matrixWorldInverse), and likewise for right and up. Fragment shader, following Star Rail CharFaceCore: vec3 Lp = normalize(l - dot(l, uUp)*uUp); bool isRight = dot(Lp, uRight) > 0.0; vec2 suv = isRight ? vec2(1.0 - vUv.x, vUv.y) : vUv; vec4 fm = texture2D(uFaceMap, suv); float FoL01 = dot(uFwd, Lp)*0.5 + 0.5; float aa = max(fwidth(fm.r), 1e-4); float litFace = smoothstep(-aa, aa, FoL01 - (1.0 - fm.r)); float lit = mix(litNdotL, litFace, fm.g); lit = max(lit, fm.a). Texture settings: LinearFilter, colorSpace = THREE.NoColorSpace, generateMipmaps = false.",
+    "impact": "high",
+    "sources": [
+     "https://github.com/stalomeow/StarRailNPRShader/blob/main/Shaders/Character/CharFaceCore.hlsl",
+     "https://godotshaders.com/shader/anime-style-face-shader/",
+     "https://github.com/NoiRC256/URPSimpleGenshinShaders",
+     "https://github.com/Melioli/HoyoToon/wiki/Using-the-Genshin-Shader",
+     "https://bjayers.artstation.com/blog/category/5"
+    ]
+   },
+   {
+    "name": "Layered anime eyes, brows and lashes visible through the bangs (stencil), plus a view-dependent nose line",
+    "problem_it_solves": "Painting eyes and brows into the face texture and letting hair occlude them hides the most expressive features behind the bangs, and makes the eyes look like printed decals. Anime keeps brows and eyes readable through hair. BLUE PROTOCOL masks the eyebrow region; Star Rail writes an eye stencil and draws the top hair layer semi-transparent over it, with the strength depending on view angle. Eyes are drawn as layered graphic shapes: a thick dark upper-lash wedge, an iris going from dark at the top to bright at the bottom, a shadow band under the upper lid on the eye white, and fixed white highlights.",
+    "how_to_implement_in_python_blender": "(1) Split the decals into overlay meshes: copy the face polygons inside the eye and brow masks from face_texture.py (select by UV region) into objects 'EyeL/R', 'BrowL/R' and 'LashL/R'. Offset them 0.2-0.4 mm along the normal so they never z-fight, and give them materials named 'eye', 'brow' and 'lash' (the viewer keys off names). (2) Generate the iris texture in numpy (512^2): base = mix(dark_top, bright_bottom, smoothstep(-0.6, 0.7, -y)); darken the limbal ring for r > 0.86; add a darker pupil ellipse (0.28 x 0.36); add faint spokes 0.06*sin(atan2(y,x)*24) on the lower half only. The eye white gets a soft blue-grey band under the upper lid. Put the highlights on a separate tiny unlit mesh 'EyeHi': one large ellipse top-left and one small one bottom-right. (3) Upper lash: a thick wedge mesh along the upper lid, 2-3x the outline width, flicking up at the outer corner; the lower lash is thin and short. (4) Nose: no geometric shading (it is covered by the face proxy normals); draw a small tick only in three-quarter views, using the face map B mask. For Blender renders, render the brow/eye collection on a second view layer and composite it with Alpha Over at about 70% where the hair mask covers it.",
+    "how_to_reproduce_in_threejs": "Use render order and the stencil buffer (WebGLRenderer has one by default). Face, eyes and brows render normally at renderOrder 0. Hair materials use renderOrder = 1, stencilWrite = true, stencilRef = 1, stencilFunc = THREE.AlwaysStencilFunc, stencilZPass = THREE.ReplaceStencilOp. Then draw a duplicate of the brows and eye lines at renderOrder = 2 with depthTest = false, transparent = true, opacity 0.6-0.75, stencilWrite = true, stencilRef = 1, stencilFunc = THREE.EqualStencilFunc, stencilZPass = THREE.KeepStencilOp, so it only shows where hair covers it. Multiply its alpha by smoothstep(0.55, 0.85, dot(headFwd, viewDir)) so it fades out in profile; Star Rail limits the effect with 70 degree horizontal and 45 degree vertical angles. Eyes ignore N\u00b7L (always lit, as in Star Rail's _EyeAlwaysLit), and highlights use a plain white MeshBasic material. Nose line from Star Rail: float FdotV = pow(abs(dot(uFwd, v)), uNosePow); col = mix(col, col*uNoseCol, step(1.03 - fm.b, FdotV)).",
+    "impact": "high",
+    "sources": [
+     "https://github.com/stalomeow/StarRailNPRShader/blob/main/Shaders/Character/CharFaceCore.hlsl",
+     "https://github.com/stalomeow/StarRailNPRShader/blob/main/Shaders/Character/CharHairCore.hlsl",
+     "https://www.gamebusiness.jp/article/2021/09/13/19051.html"
+    ]
+   },
+   {
+    "name": "Screen-space depth-offset rim light (thin, constant-width silhouette rim)",
+    "problem_it_solves": "The current Fresnel rim, smoothstep(0.55, 0.68, 1 - dot(n,v)), lights every surface that turns away from the camera: inner folds, the nose, under the chin. The result is smudgy bright blobs that read as soft clay specular. An anime rim light is a thin, constant-width sliver that appears only on the outer silhouette, where something far behind is visible. Star Rail samples scene depth at a pixel offset and draws rim where the neighbouring depth is much farther away.",
+    "how_to_implement_in_python_blender": "EEVEE materials cannot read scene depth, so for Blender renders do it in the compositor. Enable view_layer.use_pass_z = True and view_layer.use_pass_object_index = True, and set ob.pass_index = 1 on character objects. Compositor: Render Layers Depth -> Translate (\u00b13 px toward the light side) -> Math SUBTRACT (shifted - original) -> Math GREATER_THAN 0.05 -> multiply by ID Mask (index 1) and by a light-side mask written as an AOV (view_layer.aovs.add(), with ShaderNodeOutputAOV 'rimmask' set to the lit factor) -> Mix (Add) the rim colour over the image. Bake a per-vertex rim mask into _CTRL.a; Star Rail multiplies rim width by lightMap.r so some areas never get rim.",
+    "how_to_reproduce_in_threejs": "Depth pre-pass each frame: const rt = new THREE.WebGLRenderTarget(w, h); rt.depthTexture = new THREE.DepthTexture(w, h); rt.depthTexture.type = THREE.UnsignedIntType. Render only the character (via camera.layers) into rt, then render normally with uniforms uDepth, uRes, uNear and uFar. Fragment, ported from GetRimLightMask: #include <packing> float lin(float z){ return -perspectiveDepthToViewZ(z, uNear, uFar); } float d0 = lin(gl_FragCoord.z); vec2 dir = normalize(nView.xy + 1e-5); float w = uRimPx * (uRes.y/1080.0) / max(d0, 0.3); float d1 = lin(texture2D(uDepth, (gl_FragCoord.xy + dir*w)/uRes).x); float rim = smoothstep(0.03, 0.06, d1 - d0) * pow(1.0 - max(dot(n,v), 0.0), uSoft) * vCtrl.a * smoothstep(-0.1, 0.25, dot(n,l)); col += uRimCol*rim. Star Rail uses smoothstep(0.12, 0.18, (offsetDepth - depth)/modelScale) and scales width by resolution, FOV and 1/sqrt(depth). BLUE PROTOCOL keeps its rim at a uniform thickness by extracting edges with a Sobel filter.",
+    "impact": "medium",
+    "sources": [
+     "https://github.com/stalomeow/StarRailNPRShader/blob/main/Shaders/Character/Shared/CharRenderingHelpers.hlsl",
+     "https://www.gamebusiness.jp/article/2021/09/13/19051.html",
+     "https://github.com/unity3d-jp/UnityChanToonShaderVer2_Project/blob/release/legacy/2.0/Assets/Toon/Shader/UCTS_ShadingGradeMap.cginc",
+     "https://github.com/vrm-c/vrm-specification/blob/master/specification/VRMC_materials_mtoon-1.0/README.md"
+    ]
+   },
+   {
+    "name": "Stylized specular with hard masks, and banded matcaps for metal, leather and lenses",
+    "problem_it_solves": "A soft Blinn lobe on everything looks like plastic. Anime specular is a hard-edged shape that appears only where a mask allows it; the Genshin lightmap uses R for specular intensity and B for specular threshold. Anime metal reads through two or three hard light/dark reflection bands rather than a physically based reflection. Rounded SDF-generated buckles, swords and goggles look like clay when they only get diffuse toon shading.",
+    "how_to_implement_in_python_blender": "Bake a per-vertex specular mask into _CTRL.a (or a dedicated '_SPEC' FLOAT attribute): 1 on sword blades, buckles, goggles, leather ridges and lips; 0 on cloth and skin. Generate a matcap in numpy (256^2, sRGB) for each hard material. Metal: a dark band at v in [0.45, 0.55], a hard bright band at v in [0.72, 0.82], a thin horizon line, and a bright edge where r > 0.92. Leather: one soft broad band. Lens: one sharp diagonal glint. Blender node chain: ShaderNodeNewGeometry Normal -> ShaderNodeVectorTransform(vector_type='NORMAL', convert_from='WORLD', convert_to='CAMERA') -> ShaderNodeMapping (scale 0.5, location 0.5) -> ShaderNodeTexImage(matcap) -> multiply or add onto the toon result, masked by the spec attribute.",
+    "how_to_reproduce_in_threejs": "Specular, ported from Star Rail GetSpecular: float blinn = pow(max(0.01, dot(n,h)), uShininess); float thr = 1.03 - uSpecThr; float aa = fwidth(blinn); float spec = smoothstep(thr - uRough - aa, thr + uRough + aa, blinn) * vCtrl.a; col += uSpecCol * base * spec. Matcap UV from the MToon spec: vec3 vx = normalize(viewMatrix[0].xyz)... In practice, with view-space normals already in vN: vec2 muv = nV.xy*0.495 + 0.5; col = mix(col, col*texture2D(uMatcap, muv).rgb*2.0, vCtrl.a). UTS adds a camera-roll stabilizer if the camera rolls.",
+    "impact": "medium",
+    "sources": [
+     "https://github.com/stalomeow/StarRailNPRShader/blob/main/Shaders/Character/Shared/CharRenderingHelpers.hlsl",
+     "https://github.com/Melioli/HoyoToon/wiki/Using-the-Genshin-Shader",
+     "https://github.com/vrm-c/vrm-specification/blob/master/specification/VRMC_materials_mtoon-1.0/README.md",
+     "https://github.com/unity3d-jp/UnityChanToonShaderVer2_Project/blob/release/legacy/2.0/Assets/Toon/Shader/UCTS_ShadingGradeMap.cginc",
+     "https://www.gamebusiness.jp/article/2021/09/13/19051.html"
+    ]
+   },
+   {
+    "name": "Hard-surface parts (armour, buckles, sword guards, goggles) built as polygons with small bevels and hardened/weighted normals",
+    "problem_it_solves": "Marching cubes rounds every edge and makes flat faces wobble, so on armour, buckles and blades the toon shadow edge wanders, outlines wobble, and crisp mechanical design reads as melted clay. Illustrated hard surfaces have flat planes, very small bevels that catch a highlight line, and perfectly flat shading per plane.",
+    "how_to_implement_in_python_blender": "Generate these parts with bmesh instead of SDF: bmesh.ops.create_cube / create_cone / create_circle, then extrude_face_region, inset_region and bisect_plane, then bm.to_mesh(me). Modifiers: b = ob.modifiers.new('Bevel', 'BEVEL'); b.width = 0.0015-0.003; b.segments = 2-3; b.limit_method = 'ANGLE'; b.angle_limit = radians(30); b.profile = 0.7; b.harden_normals = True; b.miter_outer = 'MITER_ARC'; b.use_clamp_overlap = True; b.face_strength_mode = 'FSTR_AFFECTED'. Then w = ob.modifiers.new('WN', 'WEIGHTED_NORMAL'); w.mode = 'FACE_AREA'; w.weight = 50; w.keep_sharp = True; w.use_face_influence = True. Mark sharp edges with me.set_sharp_from_angle(angle=radians(30)) (4.1+). If a part must stay SDF-generated: bpy.ops.mesh.dissolve_limited(angle_limit=radians(5)), or a DECIMATE modifier with decimate_type = 'DISSOLVE' and angle_limit = radians(3), to recover flat planes, then bevel. Because split normals will break an inverted hull, the outline must use the smoothed _OUTLINE_N attribute from the outline technique. Give the bevel faces a spec/matcap mask of 1 so they read as highlight lines.",
+    "how_to_reproduce_in_threejs": "No special code: hardened split normals export as duplicated vertices in glTF, and the toon shader keeps each plane flat. The outline pass must read outlineNormal instead of normal, or the hull will tear at every hard edge. Combine with the banded metal matcap and fwidth specular so bevels produce thin, crisp highlight lines.",
+    "impact": "medium",
+    "sources": [
+     "https://docs.blender.org/api/4.5/bpy.types.BevelModifier.html",
+     "https://docs.blender.org/api/4.5/bpy.types.WeightedNormalModifier.html",
+     "https://docs.blender.org/api/4.5/bpy.types.Mesh.html",
+     "https://docswell.com/s/ASW_Academy/5LVY67-GG-Toonline-Eng"
+    ]
+   },
+   {
+    "name": "Toon-friendly topology: relaxed or remeshed surfaces reprojected onto the SDF, with a sane triangle budget",
+    "problem_it_solves": "Raw marching cubes plus collapse decimation produces slivers and fans. Normal interpolation across badly shaped triangles makes the shadow edge zig-zag even with good normals, makes feature-edge and crease detection noisy, and costs a lot: 885k triangles, 609k in the web copy, against roughly 60-150k for a typical game character. That weight also doubles in the outline pass and in any depth pre-pass.",
+    "how_to_implement_in_python_blender": "After marching cubes: (1) Relax and reproject. A few Taubin/Laplacian iterations (or a CORRECTIVE_SMOOTH modifier with smooth_type = 'LENGTH_WEIGHTED', use_only_smooth = True, iterations = 5, factor = 0.5), then snap back to the exact surface with 1-2 Newton steps p -= f(p)*grad f(p)/|grad f(p)|^2 using the part's SDF. Triangle shape improves while the surface stays exact. (2) Or remesh: bpy.ops.object.quadriflow_remesh(mode='FACES', target_faces=N, use_mesh_symmetry=True, use_preserve_boundary=True, preserve_attributes=False, seed=0). It needs a manifold mesh and loses data layers, so run it before writing attributes and normals, and reproject afterwards. (3) Budgets: head 10-15k, body 15-25k, coat 15-25k, hair 20-30k, hands about 4k each, props about 10k, for roughly 120k total. Protect silhouette-critical areas (fingers, face contour, hair tips) with the Decimate modifier's vertex_group and vertex_group_factor. (4) Only then compute normals, the outline attribute and the control attributes.",
+    "how_to_reproduce_in_threejs": "Nothing new in the shader. Fewer, better-shaped triangles give straighter shadow edges, cheaper outline and depth passes, and smaller files. Keep Draco (raise its quantization as noted in the export technique) or use meshopt via gltfpack, and re-check with the normal debug view.",
+    "impact": "medium",
+    "sources": [
+     "https://docs.blender.org/api/4.5/bpy.ops.object.html",
+     "https://docs.blender.org/api/4.5/bpy.types.CorrectiveSmoothModifier.html",
+     "https://80.lv/articles/get-clean-normals-for-stylized-shading-with-this-free-blender-tool/",
+     "https://arxiv.org/pdf/1802.07710",
+     "https://www.ggxrd.com/Motomura_Junya_GuiltyGearXrd.pdf"
+    ]
+   },
+   {
+    "name": "Procedural hand-painted detail: vertical gradients, darker seams, trim bands, stitches and faint brush noise, as vertex colour or baked texture",
+    "problem_it_solves": "Flat single-colour materials read as clay or plastic. Gacha-game textures add subtle hand-painted cues: lighter tops and darker bottoms (BLUE PROTOCOL darkens the lower legs to ground the character), darker colour near seams and edges, contrasting trim bands along hems, stitch dashes, and very low-contrast brush texture. These cues tell the eye that the surface was illustrated.",
+    "how_to_implement_in_python_blender": "Compute a geodesic distance to each cloth piece's boundary: G = sparse edge graph weighted by edge lengths; dist, pred, src = scipy.sparse.csgraph.dijkstra(G, indices=boundary_verts, min_only=True, return_predecessors=True). The sources array gives each vertex its nearest boundary vertex, so propagate the boundary arc length s (cumulative length along each boundary loop) as s_v = s[src]. Store '_LINE' (FLOAT2: dist, s). Because the meshes are dense, start with per-vertex colour modulation, which needs no UVs. albedo_mod = gradient (1.04 at the top of each piece falling to 0.94 at the bottom, from object-local z) x seam darkening (1 - 0.12*exp(-dist/0.004)) x noise (1 \u00b1 0.03 from 3D value noise at about 3 cm). Write it to a '_PAINT' FLOAT_COLOR attribute. Trim bands get their own colour where dist < trim_width. When the meshes are reduced, bake to a texture instead: bpy.ops.uv.smart_project(angle_limit=radians(66), island_margin=0.004); build an Emission material from Attribute('_LINE') and Attribute('_PAINT') -> ShaderNodeMapRange / ShaderNodeValToRGB (trim, then a 0.5 mm dark line, then base) plus ShaderNodeTexNoise(scale 25, detail 2) at 3% contrast; create a 2048^2 image node and make it active; set scene.render.engine = 'CYCLES' and scene.cycles.samples = 1; call bpy.ops.object.bake(type='EMIT', margin=8, use_clear=True); save the image and connect it as the glTF Base Color.",
+    "how_to_reproduce_in_threejs": "Vertex-colour version: attribute vec4 paint; in the fragment shader litCol *= vPaint.rgb and shadeCol *= vPaint.rgb. The tint/ramp then derives the shade hue from the modulated base, which the current uUseMap path already does for the face. Texture version: generalise uUseMap to every material, with base = texture2D(uMap, vUv).rgb, lit = base, and shade = base*tint from the ramp. Do not bake lines thinner than about 2 texels; draw those with the vertex-distance or inner-line techniques.",
+    "impact": "medium",
+    "sources": [
+     "https://cgworld.jp/feature/202011-cedec2020-bluep.html",
+     "https://www.gamebusiness.jp/article/2021/09/13/19051.html",
+     "https://www.ggxrd.com/Motomura_Junya_GuiltyGearXrd.pdf",
+     "https://docs.blender.org/api/4.5/bpy.ops.object.html",
+     "https://bjayers.artstation.com/blog/category/5"
+    ]
+   },
+   {
+    "name": "Resolution-independent hem, seam and stitch lines from per-vertex distance fields (the GGXrd vertex-data idea)",
+    "problem_it_solves": "Lines painted into textures blur or pixelate in close-ups. GGXrd avoided texture detail because vertex data interpolates linearly and does not depend on resolution, and drew inner lines as axis-aligned beams in a texture to keep them free of jaggies. Procedural cloth has no hand-made UVs, so a per-vertex distance field plus fwidth gives the same crisp, zoom-proof lines for hems, trims and stitches with no textures.",
+    "how_to_implement_in_python_blender": "Reuse the '_LINE' attribute (geodesic distance to the cloth boundary, plus boundary arc length) from the procedural-detail technique. Interpolated distance is exact for a line on the boundary itself: boundary triangles have d = 0 on the boundary edge, so the iso-lines run parallel to it. For lines offset inward (trim edges, stitch rows 3-6 mm in), make sure at least two triangles span the band, for example by subdividing edges within 1 cm of the boundary with bmesh.ops.subdivide_edges(bm, edges=near, cuts=1, use_grid_fill=True) before computing distances. Also add a 0.5-1 mm rolled hem: the existing SOLIDIFY with use_rim = True gives thickness, and a 1-segment bevel on the rim catches a highlight.",
+    "how_to_reproduce_in_threejs": "float d = vLine.x; float aa = fwidth(d); float hem = 1.0 - smoothstep(uHemW - aa, uHemW + aa, d); float trimL = 1.0 - smoothstep(uLW - aa, uLW + aa, abs(d - uTrimOff)); float st = step(0.5, fract(vLine.y*uStitchFreq)) * (1.0 - smoothstep(uSW - aa, uSW + aa, abs(d - uStitchOff))); col = mix(col, uTrimCol*shadeFactor, step(d, uTrimOff)); col = mix(col, uInk, max(max(hem, trimL), st*0.8)). Widths are in metres (about 0.6 mm hem line, about 0.4 mm stitches, stitch frequency about 400 per metre). For constant pixel width, scale them by the view depth.",
+    "impact": "medium",
+    "sources": [
+     "https://www.ggxrd.com/Motomura_Junya_GuiltyGearXrd.pdf",
+     "https://prideout.net/blog/old/blog/index.html@p=22.html",
+     "https://docs.blender.org/api/4.5/bpy.types.SolidifyModifier.html"
+    ]
+   },
+   {
+    "name": "Designed cloth folds: a few large pipe, zig-zag and tension folds in the SDF, with normals, AO and lines tuned for toon rendering",
+    "problem_it_solves": "Offset-surface clothing is perfectly smooth, so it looks like painted skin or clay. Simulated or noise wrinkles create toon blotches instead. Anime clothing uses a few large, designed folds with sharp valleys and rounded ridges: pipe folds hanging from support points (the coat tails), zig-zag folds at elbows and knees, spiral folds on sleeves, tension folds radiating from pull points. The hem silhouette becomes a zig-zag. Valleys carry lines and shadow; ridges stay lit.",
+    "how_to_implement_in_python_blender": "Displace the cloth SDF before marching cubes, or move the offset-surface vertices along their normals. Pipe folds on the coat: th = arctan2(y - cy, x - cx); s = clip((z_top - z)/(z_top - z_hem), 0, 1); disp = A*s**1.5*(abs(sin(0.5*n_folds*th + phase)) - 0.6), with A = 4-8 mm and n_folds = 5-9 per panel. The abs(sin) gives V-shaped valleys and rounded ridges, and the amplitude grows toward the hem to produce a zig-zag hem silhouette. Joint folds: for an elbow or knee with axis a and centre c, u = (p - c)\u00b7a; disp = A*exp(-u*u/\u03c3\u00b2)*tri(k*u + \u03b1*sign(p\u00b7side)), using a triangle wave and alternating diagonal orientation. Then three adjustments for toon: (1) normals = 0.4*n_geo + 0.6*n of the unfolded surface, so folds read through lines and AO rather than noisy shading; (2) _CTRL.r about 0.2 at concave valley vertices, which gives painted-looking fold shadows; (3) outline width _CTRL.g = 0.1 in valleys (ARC's floating-line fix), and valley edges feed the inner-line extraction.",
+    "how_to_reproduce_in_threejs": "Nothing new beyond the control attribute, outline width and inner lines; the folds come from geometry and data. Check that valleys show as thin lines plus a dark sliver rather than as blotches. If blotchy, raise the unfolded-normal weight.",
+    "impact": "medium",
+    "sources": [
+     "https://docswell.com/s/ASW_Academy/5LVY67-GG-Toonline-Eng",
+     "https://www.ggxrd.com/Motomura_Junya_GuiltyGearXrd.pdf",
+     "https://cgworld.jp/feature/202011-cedec2020-bluep.html"
+    ]
+   },
+   {
+    "name": "Hair shadow on the face from a screen-space offset of hair-only depth",
+    "problem_it_solves": "With shadow maps disabled for clean toon shading, the bangs cast no shadow on the forehead and eyes, so hair looks pasted on. The anime hair shadow is a clean band that follows the hair shape and is offset toward the light. Star Rail approximates it by comparing the face depth with a hair-only depth texture sampled at a light-direction offset.",
+    "how_to_implement_in_python_blender": "Static approximation for Blender renders and as a web fallback: for face vertices, cast rays toward the key light with mathutils.bvhtree.BVHTree.FromObject(hair_ob, depsgraph) and hit = bvh.ray_cast(p + n*1e-4, L, 0.05). Where hit is not None, lower _CTRL.r to about 0.2, then blur the values over the vertex graph (normals.diffuse) and threshold for a clean band. Name the hair objects consistently ('Hair*') so the viewer can put them on their own layer.",
+    "how_to_reproduce_in_threejs": "Put hair meshes on layer 1 as well. Each frame render a hair-only depth target (WebGLRenderTarget plus DepthTexture, camera.layers.set(1)), then restore the layers. In the face shader, ported from Star Rail GetHairShadow: float d = lin(gl_FragCoord.z); vec2 uv = gl_FragCoord.xy/uRes; vec2 off = normalize(uLightView.xy) * uHairShadowDist * 0.04 / d; float hd = lin(texture2D(uHairDepth, uv + off).x); float hairLit = step(d, hd); lit *= hairLit. Star Rail also scales the offset by FOV and by log10(screen height). Apply only on the face and neck, where the face map G channel is 1.",
+    "impact": "medium",
+    "sources": [
+     "https://github.com/stalomeow/StarRailNPRShader/blob/main/Shaders/Character/CharFaceCore.hlsl",
+     "https://www.gamebusiness.jp/article/2021/09/13/19051.html",
+     "https://docs.blender.org/api/4.5/bpy.types.Mesh.html"
+    ]
+   },
+   {
+    "name": "Final anime 'diffusion' glow and light rig polish",
+    "problem_it_solves": "Even a well-shaded model can look like a raw 3D viewport capture. Anime compositing adds a soft diffusion glow over bright areas and a carefully chosen per-character key light. BLUE PROTOCOL applies a diffusion pass at the end; GGXrd gives each character a dedicated light vector instead of a global light. The effect on the model's crispness is small, but it does unify the image.",
+    "how_to_implement_in_python_blender": "Compositor: Render Layers Image -> Glare node (glare_type 'FOG_GLOW', threshold 0.85, mix about -0.7) or a Blur (size 20-40 px) blended with Screen at 15-25% -> Composite. Keep view_transform = 'Standard' (already set; AgX or Filmic would desaturate the toon colours). Use the same view-space key light vector as the viewer, as in the shadow-edge technique.",
+    "how_to_reproduce_in_threejs": "EffectComposer with RenderPass plus UnrealBloomPass(new THREE.Vector2(w,h), 0.25, 0.6, 0.85), or a custom pass: out = screen(src, blur(src)*0.2). Then OutputPass, which applies sRGB conversion. Keep the light in view space (LIGHT_VIEW) and expose a per-character preset.",
+    "impact": "low",
+    "sources": [
+     "https://www.gamebusiness.jp/article/2021/09/13/19051.html",
+     "https://www.ggxrd.com/Motomura_Junya_GuiltyGearXrd.pdf"
+    ]
+   }
+  ]
+ }
+}

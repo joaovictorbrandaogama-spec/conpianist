@@ -144,7 +144,7 @@ def _toon_group():
 
 def make_toon(name):
     import os as _os
-    if _os.environ.get('CHAR_TOON') == '2':
+    if _os.environ.get('CHAR_TOON', '2') == '2':
         import toon2
         return toon2.make_toon(name)
     if name in bpy.data.materials:

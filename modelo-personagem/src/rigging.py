@@ -167,6 +167,11 @@ HEAD_RIGID = ('Head', 'HairCap', 'HairBangs', 'HairCrown', 'HairOrnament', 'Hair
               'HairClips')
 
 
+# the skirt and its straps hang from the hips; the cropped jacket (Coat,
+# lapels, facing, piping, snaps, collar) follows the chest like clothing
+COAT_HANGING = ('CoatSkirt', 'CoatTail', 'CoatStraps', 'CoatHarness', 'CoatTags')
+
+
 def rule(name):
     """How an object is skinned, from its name: ('rigid', bone) or a mode."""
     base = name[:-len('_Outline')] if name.endswith('_Outline') else name
@@ -174,8 +179,10 @@ def rule(name):
         return ('rigid', 'Head')
     if base.startswith('Hair'):
         return ('hair', None)
-    if base.startswith('Coat') and 'Collar' not in base:
+    if base.startswith(COAT_HANGING):
         return ('coat', None)
+    if base.startswith('Knee'):
+        return ('rigid', 'LowerLeg.L')
     if base.startswith('Hand') or base.startswith('Fingers'):
         return ('rigid', 'Hand.' + ('R' if base.endswith('R') else 'L'))
     if base.startswith('Sword'):

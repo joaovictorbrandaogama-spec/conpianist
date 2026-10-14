@@ -422,7 +422,7 @@ def build(names=None, hide=(), outline=True):
                 bpy.data.objects.remove(ob)
                 continue
             finish_object(ob, d, outline=outline)
-    if os.environ.get('CHAR_TOON') == '2':
+    if os.environ.get('CHAR_TOON', '2') == '2':
         import toon2
         obs = [o for o in bpy.data.objects if o.type == 'MESH' and not o.name.endswith('_Outline')]
         toon2.bake_ao(obs)
@@ -447,7 +447,7 @@ def render_views(cams, views, out, res):
         if not v:
             continue
         sc.camera = cams[v]
-        if os.environ.get('CHAR_TOON') == '2':
+        if os.environ.get('CHAR_TOON', '2') == '2':
             import toon2
             toon2.set_light(cams[v])
         if v.startswith('face') or v == 'custom':

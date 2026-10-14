@@ -612,12 +612,14 @@ _BODY = None
 
 
 def body_clearance(P):
-    """Signed distance of world points to the body (thighs, hips)."""
+    """Signed distance of world points to the thighs / hips / torso (the arms
+    are left out: the hand's wrist end sits inside the forearm on purpose)."""
     global _BODY
     if _BODY is None:
         import body as B
-        _BODY = B.BodySDF()
-    return _BODY(np.asarray(P, dtype=np.float64))
+        _BODY = [B.leg('R'), B.leg('L'), B.torso()] + list(B.glutes())
+    P = np.asarray(P, dtype=np.float64)
+    return np.min([f(P) for f in _BODY], axis=0)
 
 
 def push_clear(hand, objs, min_gap=0.002):
@@ -760,7 +762,7 @@ def build_left():
         th = P.back_theta(np.array([x]), np.array([sv]))
         C = hand.surface(P, th, np.array([sv]), 0.0002)[0]
         N = hand.surface_normal(P, th, np.array([sv]))[0]
-        R = hs.frame_from(z=N)
+        R = hs.frame_from(y=np.array([0.0, 0.0, 1.0]), z=N)
         rivets.append(hs.lathe([(0, 0), (0.0011, 0), (0.0011, 0.0005), (0.0007, 0.0009),
                                 (0, 0.0009)], 12, C, R))
     out['HandRivetsL'] = hs.hard_mesh(rivets, 'metal', bevel=0.0, outline_w=0.3)
