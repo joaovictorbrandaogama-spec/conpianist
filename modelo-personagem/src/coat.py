@@ -109,6 +109,7 @@ STRIP_Z = 1.030            # front panels fall to below the belt
 DRAPE_K = 0.06             # drape: recedes 0.6 mm per cm below the bust
 PULL_Z = (1.255, 1.105)    # drape -> body offset blend below the bust
 JACKET_H = 0.0023          # jacket field grid step
+BUST_PAD = 0.0030          # extra room over the bikini cups
 
 # front opening, traced on the reference (fold line of the lapels / front
 # edges), top to bottom.  Her right is on the viewer's left.
@@ -154,6 +155,40 @@ def neck_axis_r(P):
     return np.linalg.norm(q - t[..., None] * a, axis=-1)
 
 
+class _ArmTop:
+    """Upper-arm loft limited to its top (fades out below ARM_TOP_S)."""
+    def __init__(self, side):
+        self.arm = B.arm(side)
+        self.sh, el = J['shoulder_' + side], J['elbow_' + side]
+        self.ax = (el - self.sh) / np.linalg.norm(el - self.sh)
+
+    def bounds(self):
+        return self.sh - 0.10, self.sh + 0.10
+
+    def __call__(self, P):
+        t = (P - self.sh) @ self.ax
+        return self.arm(P) + 2.0 * np.maximum(t - ARM_TOP_S, 0.0)
+
+
+ARM_TOP_S = 0.080
+
+
+def sleeve_cut(side, s0):
+    """> 0 on the arm beyond the sleeve-top hem (s0 down the arm from the
+    shoulder joint) where the cloth is closer to the arm than to the torso."""
+    sh, el = J['shoulder_' + side], J['elbow_' + side]
+    ax = (el - sh) / np.linalg.norm(el - sh)
+    arm = B.arm(side)
+    tor = B.torso()
+    br = B.breasts()
+
+    def m(P):
+        t = (P - sh) @ ax
+        dt = np.minimum.reduce([tor(P)] + [b(P) for b in br])
+        return np.minimum(t - s0, dt - arm(P))
+    return m
+
+
 def arm_cut(side, s0, r_in=0.036, a_lat=115.0):
     """> 0 in the sleeve region of an arm: beyond the armhole plane (s0
     down the arm from the shoulder joint) on the outer side of the arm,
@@ -189,8 +224,10 @@ def jacket_grid():
     lo, hi = [-0.20, -0.19, 0.99], [0.23, 0.14, 1.47]
     g = Grid(lo, hi, JACKET_H)
     g.union(B.torso(), 0.0)
+    from sdf import Ellipsoid
     for b in B.breasts():
-        g.union(b, 0.02)
+        # inflated a little: the bikini cups must stay inside the jacket edge
+        g.union(Ellipsoid(b.c, b.r + BUST_PAD, b.R), 0.02)
     D = g.d
     D_body = D.copy()
     step = np.float32(DRAPE_K * g.h)
@@ -202,6 +239,10 @@ def jacket_grid():
     g.d = D * (1 - w) + D_body * w
     for p in B.shoulders():
         g.union(p, 0.03)
+    # top of the upper arms: the jacket flows into short set-in sleeve
+    # tops (bridging the back of the armpit) that cover the sleeves' tops
+    for side in ('R', 'L'):
+        g.union(_ArmTop(side), 0.022)
     from scipy.ndimage import gaussian_filter
     g.d = gaussian_filter(g.d, 1.2).astype(np.float32) - np.float32(COAT_OFF)
     _JACKET_GRID = g
@@ -279,7 +320,7 @@ def jacket_keep(P):
     k = deg2m(P)
     neck = 0.052 - neck_axis_r(P) - np.maximum(0.0, 1.37 - z) * 3.0
     opening = np.minimum(E['L'](z) - th, th - E['R'](z)) * k
-    arms = np.maximum(arm_cut('R', ARM_S0[0])(P), arm_cut('L', ARM_S0[1])(P))
+    arms = np.maximum(sleeve_cut('R', ARM_S0[0])(P), sleeve_cut('L', ARM_S0[1])(P))
     sl = np.maximum(E['L'](z) - th, th - E['L2'](z)) * k
     sr = np.maximum(E['R2'](z) - th, th - E['R'](z)) * k
     strip = np.minimum(sl, sr)
@@ -289,7 +330,7 @@ def jacket_keep(P):
 
 FACING_W = 0.0050          # visible red facing along the front edges (at the bust)
 FACING_Z = (1.195, 1.275)  # ... fading out below the bust
-ARM_S0 = (0.014, 0.016)    # armhole plane: distance down the arm from the shoulder
+ARM_S0 = (0.040, 0.028)    # sleeve-top hem: distance down the arm from the shoulder
 
 
 def jacket():
@@ -300,6 +341,8 @@ def jacket():
     v, f = largest_components(v, f, min_frac=0.02)
     v = relax(v, f, 6)
     f = orient_outward(v, f, jacket_centre)
+    n = vertex_normals(v, f)
+    v = tuck_strips(v, n, E)
     n = vertex_normals(v, f)
     # turned-out red facing along the front opening (only where the lapels
     # roll at the bust): its own object that tucks under the white edge
@@ -328,6 +371,27 @@ def jacket():
             'CoatFacing': cloth(vr, fr, ['lining'] * len(fr), COAT_T, outline_w=0.6),
             'CoatPiping': HS.hard_mesh(pipe + back_seams(), 'coat_trim', bevel=0.0,
                                        angle=70, outline_w=0.5)}
+
+
+TUCK_W = 0.040             # width of the tucked band along the strips' side edges
+TUCK_GAP = 0.0045          # cloth mid-surface to skin at the tucked edge
+
+
+def tuck_strips(v, n, E):
+    """The narrow front strips below the crop hem hang off the body; seen
+    from behind their red inside showed through the gap.  Curl their side
+    (back) edges in onto the body so the gap closes."""
+    z = v[:, 2]
+    th = torso_angle(v)
+    k = deg2m(v)
+    dR = (th - E['R2'](z)) * k
+    dL = (E['L2'](z) - th) * k
+    d = np.where(th < 0, dR, dL)
+    w = (1.0 - sstep(d, 0.0, TUCK_W)) * sstep(HEM_Z + 0.004 - z, 0.0, 0.030)
+    w = np.where((np.abs(th) < 110) & (d > -0.01), w, 0.0)
+    db = B.torso()(v)
+    push = w * np.maximum(db - TUCK_GAP, 0.0)
+    return v - n * push[:, None]
 
 
 def back_seams():
@@ -1095,16 +1159,35 @@ def sx_at(u, z):
 
 
 # X lattice inside the back panels: (u, z) end points, extra depth
-STRAPS_X = [((0.405, 0.800), (0.790, 0.665), 0.0),
-            ((0.455, 0.865), (0.585, 0.530), 0.0026)]
-STRAP_W = 0.045
+# X lattice inside the back panels, in back coordinates (sx, z) traced from
+# the reference between the legs (one band enters from behind her right
+# thigh at ref px ~(322, 530), the other rises to her left panel at ~(465,
+# 535); they cross behind her left leg): end points, extra depth
+STRAPS_X = [((-0.075, 0.805), (0.245, 0.625), 0.0026),
+            ((0.315, 0.790), (-0.040, 0.615), 0.0)]
+STRAP_W = 0.036
+# two black straps hanging behind the legs (ref px ~(337, 550-632) and
+# ~(450, 555-635)), ending in a slanted point
+STRAPS_K = [((-0.012, 0.835), (-0.004, 0.585)), ((0.262, 0.830), (0.252, 0.590))]
+STRAPK_W = 0.030
+
+
+def _band_mask(sx, z, a, b, w, point=0.0):
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    L = np.linalg.norm(b - a)
+    d = (b - a) / L
+    qx, qz = sx - a[0], z - a[1]
+    along = qx * d[0] + qz * d[1]
+    perp = -qx * d[1] + qz * d[0]
+    return np.maximum.reduce([np.abs(perp) - w / 2, -along, along - L + point * (perp + w / 2)])
 
 
 def straps():
     """Broad crimson X lattice sewn inside the back panels (seen between
-    the legs from the front), and red tags on her right near the belt.
-    The bands are offset copies of the skirt surface, so they follow its
-    folds without poking through."""
+    the legs from the front), two black straps hanging behind the legs,
+    and red tags on her right near the belt.  The bands are offset copies
+    of the skirt surface, so they follow its folds without poking
+    through."""
     U, Vv, P, TH, R, SX = skirt_grid()
     V = P.reshape(-1, 3)
     F = grid_tris(SK_NU, SK_NV)
@@ -1112,25 +1195,26 @@ def straps():
                                                   Q[:, 2]], 1))
     n = vertex_normals(V, F)
     sx, z = SX.ravel(), V[:, 2]
-    items = []
-    for (ua, za), (ub, zb), deep in STRAPS_X:
-        a = np.array([sx_at(ua, za), za])
-        b = np.array([sx_at(ub, zb), zb])
-        L = np.linalg.norm(b - a)
-        d = (b - a) / L
-        qx, qz = sx - a[0], z - a[1]
-        along = qx * d[0] + qz * d[1]
-        perp = -qx * d[1] + qz * d[0]
-        m = np.maximum(np.abs(perp) - STRAP_W / 2, np.abs(along - L / 2) - L / 2)
-        Vc, Fc = clip_mesh(V - n * (SK_T / 2 + 0.0016 + deep), F, m)
-        items.append((Vc, Fc))
-    Vs, Fs, off = [], [], 0
-    for Vc, Fc in items:
-        Vs.append(Vc)
-        Fs.append(Fc + off)
-        off += len(Vc)
-    Vs, Fs = np.concatenate(Vs), np.concatenate(Fs)
-    out = {'CoatStraps': cloth(Vs, Fs, ['red'] * len(Fs), 0.0022, shell='red', outline_w=0.6)}
+
+    def pack(items):
+        Vs, Fs, off = [], [], 0
+        for Vc, Fc in items:
+            Vs.append(Vc)
+            Fs.append(Fc + off)
+            off += len(Vc)
+        return np.concatenate(Vs), np.concatenate(Fs)
+    red, blk = [], []
+    for a, b, deep in STRAPS_X:
+        m = _band_mask(sx, z, a, b, STRAP_W)
+        red.append(clip_mesh(V - n * (SK_T / 2 + 0.0042 + deep), F, m))
+    for a, b in STRAPS_K:
+        m = _band_mask(sx, z, a, b, STRAPK_W, point=0.9)
+        blk.append(clip_mesh(V - n * (SK_T / 2 + 0.0016), F, m))
+    Vs, Fs = pack(red)
+    out = {'CoatStraps': cloth(Vs, Fs, ['red'] * len(Fs), 0.0024, shell='red', outline_w=1.0)}
+    Vs, Fs = pack(blk)
+    out['CoatStrapsBlack'] = cloth(Vs, Fs, ['black'] * len(Fs), 0.0020, shell='black',
+                                   outline_w=0.8)
     tags = []
     for u, z, h in ((0.30, 0.995, 0.050), (0.335, 0.990, 0.040)):
         path = np.array([surf_at(u, zz, 0.0045) for zz in np.linspace(z, z - h, 6)])

@@ -547,7 +547,7 @@ def leg_armor():
     r_th = 0.068
     da = HOLSTER_W / 2 * ch.R0 / r_th
     ac = HOLSTER_TH * ch.R0
-    strip = np.array([(ac - da, 0.010), (ac + da, 0.010), (ac + da, 0.168),
+    strip = np.array([(ac - da, 0.054), (ac + da, 0.054), (ac + da, 0.168),
                       (ac + da * 0.7, 0.176), (ac - da * 0.7, 0.176), (ac - da, 0.168)])
     Q, Ft = G.tri_region([strip], 0.004)
     hl = lambda a, s: holster_level(a / ch.R0, s)
@@ -711,6 +711,35 @@ def streak(p0, p1, w, n=14, bend=0.0):
     return np.concatenate([left, right[::-1][1:-1]])
 
 
+def sheer_panel(fn, level, t, masks, inset=0.0015):
+    """Sheer mesh panel: the scoop polygon (inset) lifted straight from the
+    front view (clean even triangulation, no marching-cubes slivers), cut by
+    the shorts masks (belt line, hems)."""
+    from meshutil import clip_mesh
+    poly = np.array(P2M(SCOOP), dtype=np.float64)
+    poly = G.resample(poly, 0.002)
+    # inward offset (polygon is counter-clockwise or not: test with area)
+    area = 0.5 * np.sum(poly[:, 0] * np.roll(poly[:, 1], -1) - np.roll(poly[:, 0], -1) * poly[:, 1])
+    tan = np.roll(poly, -1, axis=0) - np.roll(poly, 1, axis=0)
+    tan /= np.linalg.norm(tan, axis=1, keepdims=True)
+    nin = np.stack([-tan[:, 1], tan[:, 0]], axis=1) * np.sign(area)
+    poly = poly + nin * inset
+    Q, Ft = G.tri_region([poly], 0.0022)
+    fc = G.FrontChart(fn)
+    P, N = fc.lift(Q[:, 0], Q[:, 1], level)
+    Ft = np.asarray(Ft, dtype=np.int64)
+    for m in masks:
+        P, Ft = clip_mesh(P, Ft, m(P))
+    used = np.unique(Ft)
+    remap = -np.ones(len(P), dtype=np.int64)
+    remap[used] = np.arange(len(used))
+    P, Ft = P[used], remap[Ft]
+    P = G.project(fn, P, level, 3)
+    N = G.grad(fn, P)
+    Ft = G.orient(P, N, Ft)
+    return G.shell(P, N, Ft, t)
+
+
 def shorts():
     out = {}
     fn = hips_fn()
@@ -722,9 +751,7 @@ def shorts():
                                                 SHORTS_T)],
                             'clothing_gloss', bevel=0.0005, angle=50)
     # sheer mesh panel: slightly sunk and stopping short of the trim
-    out['ShortsSheer'] = G.solid([G.clip_multi_shell(fn, lev - 0.0005, V, F,
-                                                     body + [lambda P: sheer(P) + 0.0015],
-                                                     0.0011)],
+    out['ShortsSheer'] = G.solid([sheer_panel(fn, lev - 0.0005, 0.0011, body)],
                                  'sheer', bevel=0.0, outline_w=0.4)
     # thin black trim along the scoop edge (two smooth cuts -> clean rims)
     trim = body + [lambda P: sheer(P) - 0.0030, lambda P: -(sheer(P) + 0.0025),
@@ -1028,8 +1055,8 @@ CUP_L = [(351, 204), (358, 209), (366, 216), (374, 225), (380, 234), (385, 243),
          (337, 224), (344, 212)]
 # her right cup is turned away from the camera: it is given directly in torso
 # chart coordinates (angle in degrees, reference row) so it wraps the breast
-CUP_R_CH = [(-76, 207), (-84, 214), (-90, 224), (-95, 236), (-98, 248), (-99, 258),
-            (-70, 259), (-35, 259), (-41, 249), (-48, 238), (-56, 228), (-66, 217)]
+CUP_R_CH = [(-78.9, 208), (-84, 214), (-90, 224), (-95, 236), (-98, 248), (-99, 258),
+            (-70, 259), (-34.4, 259), (-41, 249), (-48, 238), (-56, 228), (-66, 217)]
 # inner edges (apex -> inner bottom) used for the grey lining strips
 CUP_L_INNER = [(351, 204), (344, 212), (337, 224), (330, 236), (324, 247), (321, 258)]
 CUP_R_INNER = [(-76, 207), (-66, 217), (-56, 228), (-48, 238), (-41, 249), (-35, 259)]
@@ -1063,10 +1090,10 @@ def chart_px(loop):
     return np.stack([np.radians(L[:, 0]) * 0.12, (PY0 - L[:, 1]) * S], axis=1)
 
 
-def chart_patch(fn, loop_az, level, t, h=0.0025):
+def chart_patch(fn, loop_az, level, t, h=0.0025, res=0.003):
     """Region given in torso chart parameters (a, z), lifted onto the hull."""
     ch = G.TorsoChart(fn, _TORSO, R0=0.12)
-    Q = G.resample(np.asarray(loop_az), 0.003)
+    Q = G.resample(np.asarray(loop_az), res)
     Q2, F = G.tri_region([Q], h)
     return G.lift_region(ch, Q2, F, level, t)
 
@@ -1105,18 +1132,37 @@ def lining_strip(edge, cup, frac=0.62, w=0.0045, start=0.07, inset=0.0004):
     return np.concatenate([a, b[::-1]])
 
 
+# the inner edge of her right cup is a straight line in the front view
+CUP_R_INNER_PX = ((305.0, 208.0), (319.0, 259.0))
+
+
+def cup_r_chart(fn):
+    """Right cup outline in chart params: the outer edge given in chart
+    coordinates (wraps the breast), the inner edge straight in front view."""
+    ch = G.TorsoChart(fn, _TORSO, R0=0.12)
+    (x0, y0), (x1, y1) = CUP_R_INNER_PX
+    t = np.linspace(0, 1, 15)
+    px = np.stack([x0 + (x1 - x0) * t, y0 + (y1 - y0) * t], axis=1)
+    inner = G.torso_params_for_front(ch, np.array(P2M(px)), CUP_LEV + CUP_T)
+    outer = chart_px(CUP_R_CH[:7])            # apex -> outer side -> bottom
+    loop = np.concatenate([outer, inner[::-1][:-1]])
+    return loop, inner
+
+
 def bikini():
     out = {}
     fn = top_fn()
-    cupR = chart_px(CUP_R_CH)
-    cups = [front_patch(fn, CUP_L, CUP_LEV, CUP_T), chart_patch(fn, cupR, CUP_LEV, CUP_T)]
+    cupR, innerR = cup_r_chart(fn)
+    cups = [front_patch(fn, CUP_L, CUP_LEV, CUP_T),
+            chart_patch(fn, cupR, CUP_LEV, CUP_T, h=0.0016, res=0.0008)]
     # halter straps: one straight sweep from each cup apex up to the collar
     apex = cupR[0]
     collar_r = chart_px([(-33, 188)])[0]
     d = collar_r - apex
     nv = np.array([-d[1], d[0]]) / np.linalg.norm(d) * 0.0055
-    strapR = np.array([apex - nv - d * 0.06, apex + nv - d * 0.06, collar_r + nv * 0.95,
-                       collar_r - nv * 0.95])
+    strapR = np.array([apex - nv * 0.45 - d * 0.10, apex + nv * 0.45 - d * 0.10,
+                       apex + nv * 0.8 + d * 0.12, collar_r + nv * 0.95, collar_r - nv * 0.95,
+                       apex - nv * 0.8 + d * 0.12])
     straps = [front_patch(fn, [(348, 207), (355, 207), (362, 186), (356, 185)], CUP_LEV,
                           CUP_T, h=0.002),
               chart_patch(fn, strapR, CUP_LEV, CUP_T, h=0.002)]
@@ -1124,8 +1170,8 @@ def bikini():
     top = CUP_LEV + CUP_T
     lin = [front_patch_m(fn, lining_strip(P2M(CUP_L_INNER), P2M(CUP_L)), top + 0.0001,
                          0.0006, h=0.0012),
-           chart_patch(fn, lining_strip(chart_px(CUP_R_INNER), cupR), top + 0.0001, 0.0006,
-                       h=0.0012)]
+           front_patch_m(fn, lining_strip(P2M(CUP_R_INNER_PX), P2M([(292, 236)])),
+                         top + 0.0001, 0.0006, h=0.0012)]
     out['BikiniLining'] = G.solid(lin, 'clothing_lining', bevel=0.0, outline_w=0.3)
     # soft round highlight (painted, like the reference's grey disc)
     hl = [front_patch_m(fn, ellipse(np.array(P2M([(349, 236)])[0]), 0.0118, 0.0132, 28),
@@ -1151,13 +1197,13 @@ def bikini():
                                 bevel=0.0004, outline_w=0.6)
     # painted red X on the upper centre of her right cup: two straight strokes
     # (~2.5 cm long, 3-4 mm wide) crossing at their midpoints
-    c = chart_px([(-64, 236)])[0]
+    c = chart_px([(-55, 237)])[0]
     a = 0.0088
     xs = [stroke(c + (-a, a), c + (a, -a), 0.0040, 0.0030),
           stroke(c + (a, a), c + (-a, -a), 0.0036, 0.0028)]
     red = [chart_patch(fn, x, top + 0.00012 + 0.0001 * i, 0.0003, h=0.0012)
            for i, x in enumerate(xs)]
-    out['BikiniMarkX'] = G.solid(red, 'red', bevel=0.0, outline=False)
+    out['BikiniMarkX'] = G.solid(red, 'clothing_red', bevel=0.0, outline=False)
     return out
 
 
