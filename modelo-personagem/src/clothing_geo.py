@@ -511,9 +511,10 @@ def smooth_periodic(v, k=5, it=2):
     return v
 
 
-def torso_params_for_front(chart, xz, level, n=321, span=160.0):
+def torso_params_for_front(chart, xz, level, n=321, span=160.0, wrap_r=0.0):
     """Torso chart parameters (a, z) whose surface point is seen at front
-    position (x, z); clamps to the silhouette when x is outside it."""
+    position (x, z); clamps to the silhouette when x is outside it, or, with
+    ``wrap_r`` > 0, continues around the side (excess / wrap_r radians)."""
     xz = np.asarray(xz, dtype=np.float64)
     th = np.radians(np.linspace(-span, span, n))
     out = []
@@ -524,6 +525,14 @@ def torso_params_for_front(chart, xz, level, n=321, span=160.0):
         i = np.nonzero(front)[0]
         j = i[np.argmin(np.abs(P[i, 0] - x))]
         tj = th[j]
+        if wrap_r > 0:
+            xs = P[i, 0]
+            if x < xs.min() or x > xs.max():
+                k = i[np.argmin(xs)] if x < xs.min() else i[np.argmax(xs)]
+                exc = (xs.min() - x) if x < xs.min() else (x - xs.max())
+                sg = np.sign(th[k]) if th[k] != 0 else (-1.0 if x < xs.min() else 1.0)
+                out.append(((th[k] + sg * exc / wrap_r) * chart.R0, z))
+                continue
         # refine between neighbours (x(theta) is locally monotonic)
         for k in (j - 1, j + 1):
             if 0 <= k < n and front[k]:
@@ -533,3 +542,51 @@ def torso_params_for_front(chart, xz, level, n=321, span=160.0):
                     break
         out.append((tj * chart.R0, z))
     return np.array(out)
+
+
+def clip_multi(fn, level, V, F, masks):
+    """Like clip_region, but cuts with each smooth mask in turn (the region
+    is the intersection of mask_i < 0).  Exact along every boundary, so a
+    narrow band given as two masks (f - a, b - f) has clean straight rims
+    instead of the saw teeth that |f - c| - w gives inside big triangles."""
+    from meshutil import clip_mesh
+    P, Fc = np.asarray(V, dtype=np.float64), np.asarray(F, dtype=np.int64)
+    for m in masks:
+        if len(Fc) == 0:
+            break
+        vals = m(P)
+        if not np.any(vals < 0):
+            return np.zeros((0, 3)), np.zeros((0, 3)), np.zeros((0, 3), dtype=np.int64)
+        P, Fc = clip_mesh(P, Fc, vals)
+    if len(Fc) == 0:
+        return np.zeros((0, 3)), np.zeros((0, 3)), np.zeros((0, 3), dtype=np.int64)
+    P = project(fn, P, level, 3)
+    N = grad(fn, P)
+    Fc = orient(P, N, Fc)
+    return P, N, Fc
+
+
+def clip_multi_shell(fn, level, V, F, masks, t, t0=0.0):
+    P, N, Fc = clip_multi(fn, level, V, F, masks)
+    if len(Fc) == 0:
+        return np.zeros((0, 3)), []
+    return shell(P, N, Fc, t, t0)
+
+
+def ribbon(fn, pts, level, width, t, step=0.002):
+    """Flat strip of ``width`` lying on fn == level along a 3D polyline
+    (resampled and projected), extruded by ``t``.  Returns a shell."""
+    pts = resample(np.asarray(pts, dtype=np.float64), step, closed=False)
+    pts = project(fn, pts, level, 4)
+    N = grad(fn, pts)
+    tan = np.gradient(pts, axis=0)
+    side = nrm(np.cross(N, tan))
+    n = len(pts)
+    P = np.concatenate([pts - side * width / 2, pts + side * width / 2])
+    P = project(fn, P, level, 3)
+    NN = grad(fn, P)
+    F = []
+    for i in range(n - 1):
+        F += [(i, i + 1, n + i + 1), (i, n + i + 1, n + i)]
+    F = orient(P, NN, np.array(F))
+    return shell(P, NN, F, t)

@@ -7,6 +7,24 @@ EXTRA = {}
 EXTRA['clothing_fabric'] = ('#2A2E37', '#16181E', '#060709', dict(thr=0.40, rim=0.30))
 # clothing: stitching / seam grey on white straps
 EXTRA['clothing_stitch'] = ('#A9ACB8', '#80838F', '#4A4C56', dict(thr=0.40))
+# clothing: glossy black (shorts, leg armour) without the blob specular: the gloss is
+# painted as long streak strips (clothing_sheen) so it reads as anime latex
+EXTRA['clothing_gloss'] = ('#323844', '#1A1D24', '#060709', dict(thr=0.40))
+EXTRA['clothing_sheen'] = ('#6E7889', '#3C424E', '#1A1D24', dict(thr=0.40))
+EXTRA['clothing_sheen_hi'] = ('#A9B3C4', '#5C6472', '#1A1D24', dict(thr=0.40))
+# clothing: soft round highlight on the bikini cups
+EXTRA['clothing_cuphl'] = ('#474D5A', '#2C3039', '#060709', dict(thr=0.40))
+# clothing: light grey inner lining of the bikini cups (reference ~#B3B1B5)
+EXTRA['clothing_lining'] = ('#BDBBC2', '#97959F', '#55535C', dict(thr=0.40))
+# clothing: matte red of the forearm wrap (no streaky specular)
+EXTRA['clothing_red'] = ('#D6282E', '#951A1E', '#4A070A', dict(thr=0.40))
+# clothing: neon stripes of the right sleeve: soft pink halo + near-white hot core
+EXTRA['clothing_glow_halo'] = ('#F8A6B2', '#E98695', '#7A1424', dict(thr=0.40))
+EXTRA['clothing_glow_core'] = ('#FFD3DB', '#FFBCC8', '#7A1424', dict(emit=1.0))
+# clothing: dark seam lines on the glossy shorts
+EXTRA['clothing_seam'] = ('#15171C', '#0C0D10', '#000000', dict(thr=0.40))
+# clothing: dark grey jambs of the leg window ladder seen from the front
+EXTRA['clothing_jamb'] = ('#524C54', '#38333A', '#141216', dict(thr=0.40))
 
 # swords: pale pink printed marks / small text on the red and black sword parts
 EXTRA['swords_mark'] = ('#F6CACA', '#D99A9C', '#7A3A3E', dict(thr=0.40))

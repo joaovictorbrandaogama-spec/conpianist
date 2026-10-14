@@ -369,8 +369,8 @@ def hand_mesh(hand, mats):
     """mats: dict part -> callable(s) -> material name."""
     items = []
     for name, tube in hand.parts():
-        nth = 24 if name == 'palm' else 16
-        step = 0.003 if name == 'palm' else 0.0022
+        nth = 20 if name == 'palm' else 14
+        step = 0.004 if name == 'palm' else 0.0028
         items.append(tube_world_mesh(hand, tube, nth, step, mats[name]))
     V, F, M = merge_parts(items)
     N = vertex_normals(V, F)
@@ -438,7 +438,7 @@ def finish_strips(items, mat, outline_w=0.4, outline=True):
     return md
 
 
-def decal_on_back(hand, tube, poly_xs, off=0.00025, thick=0.00025, h=0.0012):
+def decal_on_back(hand, tube, poly_xs, off=0.00025, thick=0.00025, h=0.0028):
     """Flat graphic panel on the back of a tube: poly_xs is a 2D polygon in
     (x, s) rest coordinates (x across the back, s along the tube)."""
     Q, F = G.tri_region([np.asarray(poly_xs, dtype=np.float64)], h)
@@ -548,7 +548,7 @@ def wrap_turn(tube, th0, s_a, s_b, turns=1.0, off0=0.00035, rise=0.0005):
     return fn, offs
 
 
-def bandage(hand, tube, th0, s_a, s_b, half_w, turns=1.0, n=72, off0=0.00035):
+def bandage(hand, tube, th0, s_a, s_b, half_w, turns=1.0, n=48, off0=0.00035):
     fn, offs = wrap_turn(tube, th0, s_a, s_b, turns, off0, rise=0.0005 * turns)
     n = max(12, int(n * turns))
     return strip_on_tube(hand, tube, fn, half_w, (0.0, 1.0), n, 3, off=offs(n), thick=0.00045)
@@ -577,10 +577,10 @@ def build_right():
              bandage(hand, P, PALM + 0.2, 0.078, 0.058, 0.0090, off0=0.0009)]
     for n, f in hand.fingers.items():
         L1 = f.seg[0]
-        wraps.append(bandage(hand, f, PALM, 0.000, GLOVE * L1 - 0.004, 0.0050, turns=2.0, n=56,
+        wraps.append(bandage(hand, f, PALM, 0.000, GLOVE * L1 - 0.004, 0.0050, turns=2.0, n=36,
                              off0=0.0003))
     t = hand.thumb
-    wraps.append(bandage(hand, t, PALM, 0.006, t.seg[0] - 0.004, 0.0075, turns=1.5, n=60))
+    wraps.append(bandage(hand, t, PALM, 0.006, t.seg[0] - 0.004, 0.0075, turns=1.5, n=40))
     out['HandWrapsR'] = finish_strips(wraps, 'white', outline_w=0.35)
     return out
 
@@ -590,7 +590,7 @@ def build_right():
 LEFT_PANELS = [
     [(0.30, -0.12), (0.84, -0.12), (0.60, 0.34)],
     [(0.18, 0.28), (0.42, 0.28), (0.68, 0.80), (0.44, 0.82)],
-    [(0.70, 0.44), (1.02, 0.34), (1.02, 0.98), (0.80, 0.98)],
+    [(0.70, 0.44), (0.95, 0.36), (0.95, 0.98), (0.80, 0.98)],
 ]
 
 
