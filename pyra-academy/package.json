@@ -1,0 +1,17 @@
+{
+  "name": "pyra-academy",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Academia Pyra — visual novel para aprender Python, com tutora Kurisu via API.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "validate": "node tools/validate.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0"
+  }
+}
