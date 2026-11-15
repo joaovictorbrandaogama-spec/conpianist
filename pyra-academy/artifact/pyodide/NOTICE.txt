@@ -1,0 +1,2 @@
+Pyodide 0.29.2 (https://pyodide.org), distribuído sem modificações sob a Mozilla Public License 2.0.
+Código-fonte: https://github.com/pyodide/pyodide
