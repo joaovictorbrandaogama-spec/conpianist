@@ -1,7 +1,10 @@
 // Academia Pyra — inicialização, tela de título, barra superior e rotas.
 import { $, esc, icon, sfx, countUp, reducedMotion, sleep } from './util.js';
-import { state, save, merit, rank, onChange } from './state.js';
-import { mountScene, playScene, vnActive } from './vn.js';
+import { state, save, merit, rank, ranking, onChange } from './state.js';
+import { mountScene, playScene, vnActive, setVnHooks } from './vn.js';
+import { startWorld, setActivity } from './world/index.js';
+import { applyBackdrop, setBackdropView, syncRanking } from './backdrop.js';
+import { ambience } from './ambience.js';
 import { prologue, kurisuIntro } from './story.js';
 import * as screens from './screens.js';
 import { mountTutor, toggleTutor } from './tutor.js';
@@ -36,6 +39,9 @@ $('#sound').onclick = () => {
   sfx.enabled = state.sound;
   save();
   $('#sound').innerHTML = icon(state.sound ? 'sound' : 'mute');
+  $('#sound').setAttribute('aria-pressed', String(state.sound));
+  ambience.start();
+  ambience.refresh();
   sfx.play('click');
 };
 $('#kurisu-btn').onclick = async () => {
@@ -46,6 +52,10 @@ $('#kurisu-btn').onclick = async () => {
   }
   toggleTutor();
 };
+
+// ---------- fundo 3D de cada tela (ver backdrop.js) ----------
+setVnHooks(null, () => { if (state.started) applyBackdrop(); });
+onChange(() => syncRanking(ranking()));
 
 // ---------- rotas ----------
 let transition = 0;
@@ -64,6 +74,8 @@ async function route() {
   }
   paintHud(view === 'aula' || view === 'prova' ? 'missoes' : view);
   document.body.dataset.view = view;
+  setBackdropView(view);
+  if (!vnActive()) applyBackdrop();
   main.scrollTop = 0;
   window.scrollTo(0, 0);
   if (view === 'sala') screens.hub(main);
@@ -129,13 +141,15 @@ function showTitle() {
       <div class="title-actions">
         ${returning ? `<button type="button" class="btn gold big" id="continue">Continuar como ${esc(state.name || 'Vaga 006')}${icon('arrow')}</button><button type="button" class="btn ghost big" id="new-game">Novo jogo</button>` : `<button type="button" class="btn gold big" id="new-game">Atravessar o portão${icon('arrow')}</button>`}
       </div>
-      <p class="title-foot">Visual novel de programação · Python real no navegador · 17 aulas, 51 exercícios, 5 rivais</p>
+      <p class="title-foot">Visual novel 3D de programação · Python real no navegador · 17 aulas, 51 exercícios, 5 rivais</p>
     </div>`;
-  mountScene($('#title-scene'), 'gate');
+  mountScene($('#title-scene'), 'gate', 'title');
+  setActivity('full');
   title.hidden = false;
 
   const enter = async (fresh) => {
     sfx.play('title');
+    ambience.start();
     runner.warm();
     title.classList.add('leaving');
     await sleep(reducedMotion() ? 0 : 600);
@@ -172,5 +186,5 @@ window.addEventListener('keydown', (event) => {
 });
 
 mountTutor();
-startDust();
+if (!startWorld()) startDust();
 showTitle();

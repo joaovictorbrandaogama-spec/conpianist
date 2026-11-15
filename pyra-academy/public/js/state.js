@@ -8,7 +8,7 @@ function load() {
   let raw = {};
   try { raw = obj(JSON.parse(localStorage.getItem(KEY) || '{}')); } catch { /* armazenamento indisponível */ }
   return {
-    name: typeof raw.name === 'string' ? raw.name.slice(0, 20) : '',
+    name: typeof raw.name === 'string' ? raw.name.slice(0, 24) : '',
     started: !!raw.started,
     flags: obj(raw.flags),
     ex: obj(raw.ex),          // id do exercício -> { passed, half, tries }
@@ -19,7 +19,9 @@ function load() {
     drafts: obj(raw.drafts),
     last: typeof raw.last === 'string' ? raw.last : null,
     sound: raw.sound !== false,
+    gfx: ['low', 'medium', 'high'].includes(raw.gfx) ? raw.gfx : 'auto',
     freeMode: !!raw.freeMode,
+    classicHub: !!raw.classicHub,
     chat: Array.isArray(raw.chat) ? raw.chat.filter((m) => m && typeof m.content === 'string').slice(-40) : [],
   };
 }
@@ -40,6 +42,28 @@ export function resetAll() {
   try { localStorage.removeItem(KEY); } catch { /* nada a apagar */ }
   location.hash = '';
   location.reload();
+}
+
+// ---------- cópia do progresso (o localStorage não sincroniza entre dispositivos) ----------
+/** Texto JSON com todo o progresso, para salvar em arquivo. */
+export function exportSave() {
+  return JSON.stringify({ app: 'academia-pyra', version: 2, savedAt: new Date().toISOString(), state }, null, 2);
+}
+/** Restaura um progresso exportado. Devolve uma mensagem de erro, ou '' se deu certo (a página recarrega). */
+export function importSave(text) {
+  let data;
+  try { data = JSON.parse(text); } catch { return 'O arquivo não é um JSON válido.'; }
+  const saved = data?.app === 'academia-pyra' ? data.state : null;
+  if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return 'Este arquivo não é um progresso da Academia Pyra.';
+  for (const key of ['ex', 'quiz', 'done', 'duels']) {
+    const value = saved[key];
+    if (value !== undefined && (typeof value !== 'object' || value === null || Array.isArray(value))) return 'O progresso do arquivo está corrompido.';
+  }
+  if (JSON.stringify(saved).length > 400000) return 'O arquivo é grande demais para ser um progresso.';
+  try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch { return 'Este navegador não permitiu salvar o progresso.'; }
+  location.hash = '';
+  location.reload();
+  return '';
 }
 
 // ---------- mérito ----------

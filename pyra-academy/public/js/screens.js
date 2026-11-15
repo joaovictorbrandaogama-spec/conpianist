@@ -6,12 +6,18 @@ import { codex } from './content/codex.js';
 import { CAST, avatar, portrait } from './art/characters.js';
 import {
   state, save, merit, ranking, rank, lessonMerit, lessonMax, lessonDone, requiredDone, quizDone, chapterLessonsDone,
-  chapterUnlocked, duelUnlocked, duelFaced, duelWon, tryCompleteLesson, nextObjective, totals, resetAll,
+  chapterUnlocked, duelUnlocked, duelFaced, duelWon, tryCompleteLesson, nextObjective, totals, resetAll, exportSave, importSave,
 } from './state.js';
 import { createWorkbench, runner } from './editor.js';
 import { mountScene, playScene } from './vn.js';
 import { hubTalk, preDuel, postDuel, chapterIntro, ending } from './story.js';
 import { setTutorContext } from './tutor.js';
+import { world } from './world/index.js';
+import { hub3d } from './hub3d.js';
+import { duelStage } from './duel3d.js';
+import { rankMoment } from './backdrop.js';
+import { ambience } from './ambience.js';
+import { setQuality, setQualityAuto, QUALITY } from './world/index.js';
 
 let cleanup = null;
 export function leaveScreen() { cleanup?.(); cleanup = null; setTutorContext(null); }
@@ -30,7 +36,10 @@ export function celebrate(previousRank) {
   el.innerHTML = `<div class="rankup-card"><small>SUBIU NO RANKING</small><strong>${ordinal(now)} lugar</strong><span>${passed ? `Você ultrapassou ${esc(passed.name)}.` : ''}</span></div>`;
   el.hidden = false;
   sfx.play('title');
-  setTimeout(() => { el.hidden = true; }, 3200);
+  // Com 3D, a interface some por um instante e a câmera mostra o telão com o novo ranking.
+  const cinematic = rankMoment(rows);
+  el.classList.toggle('cinematic', cinematic);
+  setTimeout(() => { el.hidden = true; }, cinematic ? 3400 : 3200);
 }
 
 function award(points, label) {
@@ -52,6 +61,15 @@ export function hub(main) {
     bonus: () => ({ kicker: 'DESAFIOS BÔNUS', title: objective.lesson.title, text: 'Ainda há desafios bônus abertos. Cada um vale 50 de Mérito.', href: `#aula/${objective.lesson.id}`, cta: 'Ver desafios', ic: 'star' }),
     complete: () => ({ kicker: 'PERÍODO CONCLUÍDO', title: 'Você zerou a Academia Pyra', text: 'Todas as aulas, desafios e provas vencidos. O Laboratório e o Arcade continuam abertos para você criar.', href: '#lab', cta: 'Abrir o Laboratório', ic: 'flask' }),
   }[objective.type]();
+
+  setTutorContext(() => ({ mode: 'sala de aula (sem exercício aberto)' }));
+  if (world.enabled && !state.classicHub) {
+    // Com WebGL a sala é explorável em 3D; sem ele, vale o painel clássico abaixo.
+    const statusHtml = `Você está em <strong>${ordinal(me.rank)} lugar</strong> com <strong>${me.merit.toLocaleString('pt-BR')}</strong> de Mérito. ${above ? `Faltam <strong>${(above.merit - me.merit + 1).toLocaleString('pt-BR')}</strong> para ultrapassar ${esc(above.name.split(' ')[0])}.` : 'Ninguém está acima de você.'}`;
+    const goalSpot = { lesson: 'desk', duel: 'missoes', rematch: 'missoes', bonus: 'desk', complete: 'lab' }[objective.type];
+    cleanup = hub3d(main, { card: objectiveCard, greeting, statusHtml, goalSpot, go, openKurisu: () => $('#kurisu-btn').click(), arcadeCount: arcade.length, codexCount: codex.length });
+    return;
+  }
 
   main.innerHTML = `
   <section class="hub">
@@ -96,7 +114,7 @@ export function hub(main) {
     </div>
     <div class="talk" id="talk" hidden></div>
   </section>`;
-  mountScene($('#hub-scene'), 'classroom');
+  mountScene($('#hub-scene'), 'classroom', 'wide');
   $('#open-kurisu').onclick = () => $('#kurisu-btn').click();
   setTutorContext(() => ({ mode: 'sala de aula (sem exercício aberto)' }));
 
@@ -407,6 +425,7 @@ export async function duel(main, rivalId) {
         <div class="race"><span id="race-bar"></span><i id="race-label">${esc(rival.name)}: 0%</i></div>
         <p class="taunt" id="taunt" hidden></p>
       </header>
+      <div class="duel-window" aria-hidden="true"></div>
       <div class="duel-grid">
         <article class="duel-task reveal" style="--d:1">
           <p class="eyebrow">${icon('sword')} O DESAFIO</p>
@@ -419,7 +438,8 @@ export async function duel(main, rivalId) {
       </div>
     </div>
   </section>`;
-  mountScene($('#duel-scene'), 'arena');
+  mountScene($('#duel-scene'), 'arena', 'duel');
+  const arena = duelStage({ rivalId, rivalName: rival.name, color: rival.color, playerName: state.name, rematch });
 
   const clock = $('#clock');
   const bar = $('#race-bar');
@@ -432,6 +452,8 @@ export async function duel(main, rivalId) {
     bar.style.width = pct + '%';
     label.textContent = rivalDone ? `${rival.name} entregou.` : `${rival.name}: ${Math.floor(pct)}%`;
     clock.classList.toggle('danger', left <= 60 && !rivalDone);
+    arena?.update({ clock: clock.textContent, pct: pct / 100, danger: left <= 60 && !rivalDone, label: label.textContent });
+    ambience.tension(rivalDone ? 0.2 : pct / 100);
     const due = Math.floor((pct / 100) * (spec.taunts.length + 1)) - 1;
     if (due > tauntIndex && due < spec.taunts.length && !rivalDone) {
       tauntIndex = due;
@@ -442,9 +464,11 @@ export async function duel(main, rivalId) {
       void el.offsetWidth;
       el.classList.add('in');
       sfx.play('type');
+      arena?.taunt();
     }
     if (elapsed >= total && !rivalDone) {
       rivalDone = true;
+      arena?.rivalDone();
       const el = $('#taunt');
       el.textContent = `${rival.name} entregou primeiro. Termine a sua solução para garantir o Mérito de honra.`;
       el.hidden = false;
@@ -455,7 +479,8 @@ export async function duel(main, rivalId) {
   };
   const timer = setInterval(() => { if (!document.hidden) { elapsed += 1; tick(); } }, 1000);
   tick();
-  cleanup = () => { alive = false; clearInterval(timer); };
+  cleanup = () => { alive = false; clearInterval(timer); arena?.stop(); ambience.tension(0); };
+  $('#bench').addEventListener('input', () => arena?.typed());
 
   const bench = createWorkbench($('#bench'), {
     key: `duel-${rivalId}`, starter: spec.starter, filename: `prova_${rivalId}.py`, verifyLabel: 'Entregar',
@@ -471,8 +496,10 @@ export async function duel(main, rivalId) {
       if (firstTime) state.duels[rivalId] = { result: won ? 'win' : 'honra', bet: picked.bet ? (won ? 1 : -1) : 0 };
       else if (won) state.duels[rivalId].result = 'win';
       save();
-      await new Promise((resolve) => setTimeout(resolve, 900));
+      arena?.result(won);
+      await new Promise((resolve) => setTimeout(resolve, arena ? 2600 : 900));
       if (!alive) return;
+      arena?.stop();
       await playScene(postDuel(chapter, won, firstWin));
       const nextChapter = chapters[chapter.n];
       if (firstTime && nextChapter) await playScene(chapterIntro(nextChapter));
@@ -515,15 +542,67 @@ export function rankingScreen(main) {
       <div><strong>${t.duelsWon}<small>/${chapters.length}</small></strong><span>provas vencidas</span></div>
     </div>
     <details class="settings reveal" style="--d:9"><summary>${icon('gear')} Ajustes do jogo</summary>
+      <div class="settings-field"><span>Nome do protagonista</span>
+        <form class="settings-row" id="rename"><input type="text" id="rename-input" class="text-input" maxlength="24" autocomplete="off" spellcheck="false" value="${esc(state.name)}" placeholder="Seu nome" aria-label="Nome do protagonista"><button type="submit" class="btn ghost">Salvar nome</button></form>
+        <small class="fine">É assim que a turma, a professora e a Kurisu vão te chamar.</small></div>
       <label class="switch"><input type="checkbox" id="free-mode" ${state.freeMode ? 'checked' : ''}><span>Modo livre: abrir todos os capítulos e provas agora</span></label>
+      ${world.enabled ? `<div class="settings-field"><span>Qualidade gráfica do mundo 3D</span>
+        <div class="segmented" id="gfx" role="group" aria-label="Qualidade gráfica">${[['auto', 'Automática'], ...Object.entries(QUALITY).map(([id, q]) => [id, q.label])].map(([id, name]) => `<button type="button" data-gfx="${id}" aria-pressed="${state.gfx === id}">${name}</button>`).join('')}</div>
+        <small class="fine" id="gfx-note"></small></div>
+      <label class="switch"><input type="checkbox" id="classic-hub" ${state.classicHub ? 'checked' : ''}><span>Sala clássica: trocar a sala explorável em 3D por um painel de atalhos</span></label>` : '<p class="fine">Este navegador está sem WebGL: o jogo usa os cenários ilustrados no lugar do mundo 3D.</p>'}
+      <div class="settings-field"><span>Cópia do progresso</span>
+        <div class="settings-row"><button type="button" class="btn ghost" id="export-save">Exportar para arquivo</button><button type="button" class="btn ghost" id="import-save">Importar de arquivo</button><input type="file" id="import-file" accept="application/json,.json" hidden></div>
+        <small class="fine">Leve o arquivo para outro navegador ou dispositivo e importe lá para continuar de onde parou.</small></div>
       <div class="settings-row"><button type="button" class="btn ghost" id="replay-intro">Rever o prólogo</button><button type="button" class="btn ghost danger" id="reset-all">Apagar progresso e recomeçar</button></div>
       <p class="fine">O progresso fica salvo apenas neste navegador.</p>
     </details>
   </section>`;
   $$('.board-merit', main).forEach((el) => countUp(el, Number(el.dataset.merit), 1100));
+  $('#rename').onsubmit = (event) => {
+    event.preventDefault();
+    const value = $('#rename-input').value.trim().replace(/\s+/g, ' ').slice(0, 24);
+    if (!value) { toast('Escreva um nome.'); return; }
+    state.name = value;
+    save();
+    toast(`Agora você é ${value}.`, 'gold');
+    rankingScreen(main);
+  };
   $('#free-mode').onchange = (event) => { state.freeMode = event.target.checked; save(); toast(state.freeMode ? 'Modo livre ativado: tudo aberto.' : 'Modo livre desativado.'); };
   $('#reset-all').onclick = () => { if (confirm('Apagar todo o progresso, o nome e os rascunhos de código? Isso não pode ser desfeito.')) resetAll(); };
   $('#replay-intro').onclick = async () => { const { prologue } = await import('./story.js'); await playScene(prologue()); };
+  const paintGfx = () => {
+    $$('[data-gfx]', main).forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.gfx === state.gfx)));
+    const note = $('#gfx-note');
+    if (note) note.textContent = `Em uso agora: ${QUALITY[world.quality].label}${state.gfx === 'auto' ? ' (o jogo reduz sozinho se os quadros caírem)' : ''}.`;
+  };
+  $('#gfx')?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-gfx]');
+    if (!button) return;
+    if (button.dataset.gfx === 'auto') setQualityAuto(); else setQuality(button.dataset.gfx);
+    paintGfx();
+    sfx.play('click');
+  });
+  if (world.enabled) paintGfx();
+  const classic = $('#classic-hub');
+  if (classic) classic.onchange = () => { state.classicHub = classic.checked; save(); toast(state.classicHub ? 'Sala clássica ativada.' : 'Sala explorável em 3D ativada.'); };
+  $('#export-save').onclick = () => {
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([exportSave()], { type: 'application/json' }));
+    link.download = `academia-pyra-${(state.name || 'vaga-006').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.json`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 4000);
+    toast('Progresso exportado.', 'gold');
+  };
+  $('#import-save').onclick = () => $('#import-file').click();
+  $('#import-file').onchange = async (event) => {
+    const file = event.target.files[0];
+    event.target.value = '';
+    if (!file) return;
+    if (file.size > 500000) { toast('O arquivo é grande demais para ser um progresso.'); return; }
+    if (!confirm('Importar este arquivo substitui o progresso atual deste navegador. Continuar?')) return;
+    const problem = importSave(await file.text());
+    if (problem) toast(problem);
+  };
   setTutorContext(() => ({ mode: 'telão do ranking' }));
 }
 

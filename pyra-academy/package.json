@@ -1,8 +1,8 @@
 {
   "name": "pyra-academy",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
-  "description": "Academia Pyra — visual novel para aprender Python, com tutora Kurisu via API.",
+  "description": "Academia Pyra — visual novel em 3D (Three.js) para aprender Python, com tutora Kurisu via API.",
   "type": "module",
   "scripts": {
     "start": "node server.js",

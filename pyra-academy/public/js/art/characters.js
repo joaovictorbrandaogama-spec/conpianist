@@ -41,6 +41,14 @@ export const CAST = {
   },
 };
 
+// O protagonista (Vaga 006). Visual masculino; o nome é o que a pessoa escolher.
+export const PLAYER = {
+  name: 'Você', full: 'Você', role: 'Vaga 006', color: '#f3d999', masc: true,
+  skin: '#ecc9ad', shade: '#cfa58a', hair: '#24202f', hairHi: '#6c6496', eye: '#c9a35e',
+  style: 'male', outfit: 'blazer', cloth: '#171c30', cloth2: '#222a47', tie: '#d4af6a',
+};
+export const look = (id) => (id === 'voce' ? PLAYER : CAST[id]);
+
 let uid = 0;
 
 const darken = (hex, amount) => {
@@ -95,6 +103,13 @@ const HAIR = {
      <path d="M150 154 170 178M200 122 204 168M250 154 234 178" fill="none" stroke="#b9b3d6" stroke-width="5" stroke-linecap="round" opacity=".6"/>`,
     '',
   ],
+  male: (c) => [
+    `<path d="M108 238C94 116 306 116 292 238L288 256 112 256Z" fill="${c.hair}"/>`,
+    `<path d="M110 236C100 118 302 108 290 234 287 206 281 192 271 182L264 208 250 178 236 206 220 172 205 202 190 170 176 198 160 174 148 202 136 184C120 196 113 214 110 236Z" fill="${c.hair}"/>
+     <path d="M110 226C108 248 111 262 117 272L124 270C120 256 120 240 122 224Z M290 226C292 248 289 262 283 272L276 270C280 256 280 240 278 224Z" fill="${c.hair}"/>
+     <path d="M150 150Q196 122 252 146M212 132 236 158" fill="none" stroke="${c.hairHi}" stroke-width="6" stroke-linecap="round" opacity=".55"/>`,
+    '',
+  ],
   long: (c) => [
     `<path d="M98 226C88 100 312 100 302 226L318 600 82 600Z" fill="${c.hair}"/>`,
     `<path d="M106 240C94 114 306 114 294 240 292 212 286 194 274 184L266 226 248 190 236 226 216 186 200 232 186 188 166 228 152 190 136 226 128 186C116 196 108 214 106 240Z" fill="${c.hair}"/>
@@ -134,12 +149,13 @@ function eye(cx, side, c, e, key) {
   const inner = cx - side * 23;
   const outer = cx + side * 25;
   const browColor = darken(c.hair, c.style === 'messy' ? 0.45 : 0.25);
-  const brow = `<path d="M${inner} ${207 + e.brow[0]}Q${cx} ${199 + (e.brow[0] + e.brow[1]) / 2 - 3} ${outer} ${208 + e.brow[1]}" fill="none" stroke="${browColor}" stroke-width="5" stroke-linecap="round"/>`;
+  const m = !!c.masc;
+  const brow = `<path d="M${inner} ${(m ? 205 : 207) + e.brow[0]}Q${cx} ${(m ? 200 : 199) + (e.brow[0] + e.brow[1]) / 2 - (m ? 1 : 3)} ${outer} ${(m ? 207 : 208) + e.brow[1]}" fill="none" stroke="${browColor}" stroke-width="${m ? 7.5 : 5}" stroke-linecap="${m ? 'butt' : 'round'}"/>`;
   if (e.closed) {
     return `${brow}<path d="M${cx - 22} 242Q${cx} 224 ${cx + 22} 242" fill="none" stroke="#231a2c" stroke-width="5" stroke-linecap="round"/>`;
   }
-  const ry = e.wide ? 18 : 16;
-  const iris = e.wide ? 10.5 : 12.5;
+  const ry = (e.wide ? 18 : 16) - (m ? 2.5 : 0);
+  const iris = (e.wide ? 10.5 : 12.5) - (m ? 1 : 0);
   const lidY = 222 + (e.lid || 0) * 26;
   return `${brow}
   <clipPath id="${key}e${side}"><ellipse cx="${cx}" cy="240" rx="23" ry="${ry}"/></clipPath>
@@ -152,7 +168,7 @@ function eye(cx, side, c, e, key) {
     <rect x="${cx - 26}" y="${lidY}" width="52" height="5" fill="#2a1f33" opacity=".22"/>
   </g>
   <path d="M${cx - 25} ${e.lid ? lidY + 2 : 237}Q${cx} ${e.lid ? lidY - 6 : 240 - ry - 9} ${cx + 25} ${e.lid ? lidY + 1 : 235}" fill="none" stroke="#231a2c" stroke-width="5" stroke-linecap="round"/>
-  <path d="M${outer} ${e.lid ? lidY + 1 : 235}l${side * 7}-6" fill="none" stroke="#231a2c" stroke-width="4" stroke-linecap="round"/>
+  ${m ? '' : `<path d="M${outer} ${e.lid ? lidY + 1 : 235}l${side * 7}-6" fill="none" stroke="#231a2c" stroke-width="4" stroke-linecap="round"/>`}
   <path d="M${cx - 15} ${240 + ry}Q${cx} ${244 + ry} ${cx + 15} ${239 + ry}" fill="none" stroke="#7a5a5a" stroke-width="2" stroke-linecap="round" opacity=".45"/>`;
 }
 
@@ -182,8 +198,11 @@ function outfit(c, key) {
 }
 
 /** Devolve o SVG do busto de um personagem em uma expressão. */
+const FACE_SOFT = 'M122 216C120 140 280 140 278 216 278 264 250 308 200 326 150 308 122 264 122 216Z';
+const FACE_MASC = 'M120 214C118 140 282 140 280 214 280 258 260 294 228 316 214 326 186 326 172 316 140 294 120 258 120 214Z';
+
 export function portrait(id, expression = 'neutral') {
-  const c = CAST[id];
+  const c = look(id);
   if (!c || !c.skin) return '';
   const e = EXPR[expression] || EXPR.neutral;
   const key = `p${++uid}`;
@@ -195,7 +214,7 @@ export function portrait(id, expression = 'neutral') {
   <defs>
     <linearGradient id="${key}iris" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${darken(c.eye, 0.5)}"/><stop offset=".55" stop-color="${c.eye}"/><stop offset="1" stop-color="#fff" stop-opacity=".9"/></linearGradient>
     <linearGradient id="${key}cloth" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c.cloth2}"/><stop offset="1" stop-color="${c.cloth}"/></linearGradient>
-    <clipPath id="${key}face"><path d="M122 216C120 140 280 140 278 216 278 264 250 308 200 326 150 308 122 264 122 216Z"/></clipPath>
+    <clipPath id="${key}face"><path d="${c.masc ? FACE_MASC : FACE_SOFT}"/></clipPath>
   </defs>
   ${hairBack}
   <g transform="translate(0 -44)">
@@ -204,7 +223,7 @@ export function portrait(id, expression = 'neutral') {
   ${outfit(c, key)}
   </g>
   <ellipse cx="121" cy="244" rx="10" ry="18" fill="${c.skin}"/><ellipse cx="279" cy="244" rx="10" ry="18" fill="${c.skin}"/>
-  <path d="M122 216C120 140 280 140 278 216 278 264 250 308 200 326 150 308 122 264 122 216Z" fill="${c.skin}"/>
+  <path d="${c.masc ? FACE_MASC : FACE_SOFT}" fill="${c.skin}"/>
   <g clip-path="url(#${key}face)">
     <path d="M110 150H290V214Q200 196 110 214Z" fill="${c.shade}" opacity=".55"/>
     <path d="M258 250Q286 262 262 318L290 300V240Z" fill="${c.shade}" opacity=".35"/>
@@ -221,9 +240,6 @@ export function portrait(id, expression = 'neutral') {
 
 /** Miniatura circular (só o rosto) para listas e ranking. */
 export function avatar(id, expression = 'neutral') {
-  if (id === 'voce') {
-    return `<svg class="avatar" viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" fill="#141826"/><path d="M50 22a16 16 0 1 1 0 32 16 16 0 0 1 0-32ZM18 96c2-22 16-32 32-32s30 10 32 32Z" fill="#d4af6a"/></svg>`;
-  }
   const svg = portrait(id, expression);
   return svg.replace('class="portrait" viewBox="0 0 400 556"', 'class="avatar" viewBox="92 98 216 216"').replace('preserveAspectRatio="xMidYMax meet"', 'preserveAspectRatio="xMidYMid slice"');
 }

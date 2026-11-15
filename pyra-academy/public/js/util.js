@@ -124,6 +124,8 @@ let soundOn = true;
 export const sfx = {
   set enabled(value) { soundOn = !!value; },
   get enabled() { return soundOn; },
+  /** Contexto de áudio compartilhado (efeitos e trilha ambiente). */
+  context() { audio ??= new (window.AudioContext || window.webkitAudioContext)(); return audio; },
   play(name) {
     if (!soundOn) return;
     try {
@@ -145,6 +147,7 @@ export const sfx = {
       };
       if (name === 'type') tone(660 + Math.random() * 60, 0, 0.03, 'triangle', 0.012);
       else if (name === 'click') tone(520, 0, 0.07, 'triangle', 0.04, 260);
+      else if (name === 'step') tone(95 + Math.random() * 40, 0, 0.06, 'triangle', 0.028, -30);
       else if (name === 'whoosh') tone(220, 0, 0.28, 'sawtooth', 0.02, 700);
       else if (name === 'ok') { tone(523, 0, 0.12, 'triangle', 0.05); tone(659, 0.09, 0.12, 'triangle', 0.05); tone(784, 0.18, 0.22, 'triangle', 0.05); }
       else if (name === 'bad') { tone(240, 0, 0.16, 'square', 0.025, -80); tone(180, 0.12, 0.2, 'square', 0.025, -60); }

@@ -4,14 +4,28 @@ import { $, esc, sleep, sfx, reducedMotion } from './util.js';
 import { CAST, portrait } from './art/characters.js';
 import { scene } from './art/scenes.js';
 import { state, save } from './state.js';
+import { world, setScene, setActivity } from './world/index.js';
+import { stage } from './world/stage.js';
+import { runWalk } from './world/walks.js';
+import { ambience } from './ambience.js';
 
 let active = null;
 
 /** Liga o efeito de paralaxe de um contêiner de cenário ao ponteiro. */
-export function mountScene(container, name) {
-  container.innerHTML = scene(name);
+export function mountScene(container, name, shot) {
   container.dataset.scene = name;
+  if (world.enabled) {
+    // Com WebGL o cenário é o mundo 3D atrás da interface; o contêiner fica vazio.
+    container.innerHTML = '';
+    return setScene(name, { shot, center: shot === 'vn' ? 0.42 : undefined });
+  }
+  container.innerHTML = scene(name);
+  ambience.set(name);
 }
+
+const hooks = { open: null, close: null };
+/** Avisos de abertura e fechamento da visual novel (a tela atual recompõe o fundo 3D). */
+export function setVnHooks(open, close) { hooks.open = open; hooks.close = close; }
 
 if (!window.__pyraParallax) {
   window.__pyraParallax = true;
@@ -39,6 +53,7 @@ export function playScene(script) {
     <div class="vn-chars" id="vn-chars"></div>
     <div class="vn-title" id="vn-title" hidden></div>
     <div class="vn-top"><button class="vn-skip" id="vn-skip" type="button">Pular cena ▸▸</button></div>
+    <div class="vn-walk" id="vn-walk" hidden></div>
     <div class="vn-choices" id="vn-choices" hidden></div>
     <div class="vn-box" id="vn-box" hidden>
       <div class="vn-name" id="vn-name"></div>
@@ -47,6 +62,8 @@ export function playScene(script) {
     </div>`;
   root.hidden = false;
   document.body.classList.add('vn-open');
+  setActivity('full');
+  hooks.open?.();
 
   const bg = $('#vn-bg');
   const chars = $('#vn-chars');
@@ -55,6 +72,7 @@ export function playScene(script) {
   const picked = {};
   const onStage = new Map(); // id -> { el, pos }
   let typing = null;
+  let walking = null;
   let waiting = null;
   let skipping = false;
   let done = false;
@@ -71,7 +89,7 @@ export function playScene(script) {
     if (event.key === ' ' || event.key === 'Enter' || event.key === 'ArrowRight') { event.preventDefault(); advance(); }
   };
   const onClick = (event) => {
-    if (event.target.closest('button, input, .vn-choices, .vn-ask')) return;
+    if (walking || event.target.closest('button, input, .vn-choices, .vn-ask')) return;
     advance();
   };
   root.addEventListener('click', onClick);
@@ -81,15 +99,18 @@ export function playScene(script) {
     if (done) return;
     done = true;
     typing?.finish();
+    walking?.finish();
     root.removeEventListener('click', onClick);
     window.removeEventListener('keydown', onKey);
     root.classList.add('vn-leaving');
     setTimeout(() => {
       if (active?.finish === finish) active = null;
+      stage.clear();
       root.hidden = true;
       root.classList.remove('vn-leaving');
       root.innerHTML = '';
       document.body.classList.remove('vn-open');
+      hooks.close?.();
       resolveAll(picked);
     }, reducedMotion() ? 0 : 380);
   }
@@ -99,13 +120,15 @@ export function playScene(script) {
     // Pula falas e títulos, mas para em escolhas e perguntas: elas mudam o jogo.
     skipping = true;
     typing?.finish();
+    walking?.finish();
     if (waiting) { const next = waiting; waiting = null; next(); }
   };
 
-  function setBg(name) {
+  async function setBg(name) {
     if (bg.dataset.scene === name) return;
-    const old = bg.firstElementChild ? bg.cloneNode(true) : null;
-    mountScene(bg, name);
+    if (world.enabled) { stage.clear(); sfx.play('whoosh'); await mountScene(bg, name, 'vn'); return; }
+    const old = !world.enabled && bg.firstElementChild ? bg.cloneNode(true) : null;
+    mountScene(bg, name, 'vn');
     if (old && !reducedMotion()) {
       old.removeAttribute('id');
       old.classList.add('vn-bg-old');
@@ -116,11 +139,13 @@ export function playScene(script) {
   }
 
   function clearChars() {
+    stage.clear();
     for (const { el } of onStage.values()) { el.classList.add('leaving'); setTimeout(() => el.remove(), 320); }
     onStage.clear();
   }
 
   function showChar(id, expr = 'neutral', pos) {
+    if (world.enabled && stage.show(id, expr, pos)) return;
     let entry = onStage.get(id);
     if (!entry) {
       const taken = new Set([...onStage.values()].map((item) => item.pos));
@@ -173,8 +198,10 @@ export function playScene(script) {
     $('#vn-name').textContent = name;
     $('#vn-name').hidden = !name;
     if (cast.skin) showChar(step.who, step.expr, step.pos);
-    else for (const other of onStage.values()) other.el.classList.add('dim');
+    else { stage.rest(); for (const other of onStage.values()) other.el.classList.add('dim'); }
+    stage.talk(step.who, true);
     await type(fill(step.text));
+    stage.talk(step.who, false);
     await waitClick();
   }
 
@@ -215,19 +242,49 @@ export function playScene(script) {
     });
   }
 
+  /** Trecho jogável: a caixa de diálogo some e a pessoa caminha até o destino. */
+  async function walk(step) {
+    if (!world.enabled || skipping) return;
+    box.hidden = true;
+    clearChars();
+    const touch = matchMedia('(pointer: coarse)').matches;
+    const el = $('#vn-walk');
+    el.innerHTML = `
+      <div class="vn-walk-goal" id="vn-walk-goal"><i></i><span></span></div>
+      <p class="vn-walk-hint"><strong>${esc(step.hint || 'Caminhe até o destino')}</strong><span>${touch ? 'Toque no chão para andar · arraste para olhar' : '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ou setas · arraste para olhar · clique para ir'}</span></p>
+      <button type="button" class="vn-walk-go" id="vn-walk-go">Ir até lá</button>`;
+    el.hidden = false;
+    root.classList.add('walking');
+    const marker = $('#vn-walk-goal');
+    walking = runWalk(step.walk, {
+      pad: root,
+      onFrame: ({ x, y, visible, distance, label }) => {
+        marker.style.transform = visible ? `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)` : 'translate(-999px, -999px)';
+        marker.lastElementChild.textContent = `${label} · ${Math.max(0, Math.round(distance))} m`;
+      },
+    });
+    $('#vn-walk-go').onclick = () => walking?.go();
+    await walking.done;
+    walking = null;
+    root.classList.remove('walking');
+    el.hidden = true;
+    el.innerHTML = '';
+    sfx.play('ok');
+  }
+
   function ask(step) {
     skipping = false;
     box.hidden = false;
     box.className = 'vn-box kind-voce';
     $('#vn-name').hidden = true;
-    $('#vn-text').innerHTML = `<label class="vn-ask"><span>${esc(step.prompt)}</span><span class="vn-ask-row"><input id="vn-input" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Seu nome"><button type="button" id="vn-ok">Assinar</button></span></label>`;
+    $('#vn-text').innerHTML = `<label class="vn-ask"><span>${esc(step.prompt)}</span><span class="vn-ask-row"><input id="vn-input" type="text" maxlength="24" autocomplete="off" spellcheck="false" placeholder="Seu nome"><button type="button" id="vn-ok">Assinar</button></span></label>`;
     box.classList.remove('ready');
     const input = $('#vn-input');
     input.value = state.name || '';
     setTimeout(() => input.focus({ preventScroll: true }), 60);
     return new Promise((resolve) => {
       const submit = () => {
-        const value = input.value.trim().replace(/\s+/g, ' ').slice(0, 16);
+        const value = input.value.trim().replace(/\s+/g, ' ').slice(0, 24);
         if (!value) { input.classList.add('shake'); setTimeout(() => input.classList.remove('shake'), 400); input.focus(); return; }
         state.name = value;
         save();
@@ -242,11 +299,12 @@ export function playScene(script) {
   (async () => {
     while (queue.length && !done) {
       const step = queue.shift();
-      if (step.bg) setBg(step.bg);
+      if (step.bg) await setBg(step.bg);
       if (step.clear) clearChars();
       if (step.title) await titleCard(step);
       else if (step.choice) await choose(step);
       else if (step.ask) await ask(step);
+      else if (step.walk) await walk(step);
       else if (step.text) await line(step);
     }
     finish();
