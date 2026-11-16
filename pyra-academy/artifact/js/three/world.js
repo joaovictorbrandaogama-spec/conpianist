@@ -307,7 +307,7 @@ export function buildCampus() {
   const group = new THREE.Group();
   const colliders = [];
   const animated = [];
-  const dark = toon(0x14141f);
+  const dark = toon(0x26354f);
   const cream = toon(0xf5f2ea);
   const red = toon(0x2f6fc7);           // destaque da Academia (era carmim)
   const warm = new THREE.MeshBasicMaterial({ color: 0xdff1ff });
@@ -392,6 +392,20 @@ export function buildCampus() {
   group.add(crest);
   animated.push((t) => { crest.rotation.y = t * 0.5; });
   colliders.push({ minX: -1.9, maxX: 1.9, minZ: -1.9, maxZ: 1.9 });
+
+  // sombra de contato: um retângulo de bordas suaves sob cada prédio (uma única chamada de desenho)
+  const footprint = (() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 128;
+    const g = canvas.getContext('2d');
+    g.filter = 'blur(14px)';
+    g.fillStyle = '#000';
+    g.fillRect(22, 22, 84, 84);
+    const texture = new THREE.CanvasTexture(canvas);
+    return texture;
+  })();
+  const shades = Object.values(SITES).map((site) => ({ p: [site.x, 0.035, site.z], s: [site.w + 5, site.d + 5, 1], r: [-Math.PI / 2, 0, 0] }));
+  group.add(instances(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: footprint, transparent: true, opacity: 0.3, depthWrite: false }), shades));
 
   // prédios
   const place = (key, mesh) => {

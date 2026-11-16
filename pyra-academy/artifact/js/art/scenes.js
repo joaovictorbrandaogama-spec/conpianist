@@ -142,13 +142,13 @@ const SCENES = {
     return [
       layer(0.02, `<defs>
         <linearGradient id="h-win" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b7bd8"/><stop offset=".6" stop-color="#7fc0f4"/><stop offset="1" stop-color="#d8efff"/></linearGradient>
-        <linearGradient id="h-floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2a44"/><stop offset="1" stop-color="#0d0d16"/></linearGradient>
+        <linearGradient id="h-floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c3cfdd"/><stop offset="1" stop-color="#93a4b8"/></linearGradient>
         <radialGradient id="h-glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffe2a0" stop-opacity=".9"/><stop offset="1" stop-color="#ffe2a0" stop-opacity="0"/></radialGradient>
       </defs>
       <rect width="1600" height="900" fill="#12121e"/>
-      <path d="M0 60 560 330H1040L1600 60V0H0Z" fill="#181828"/>
+      <path d="M0 60 560 330H1040L1600 60V0H0Z" fill="#dfe6ee"/>
       <path d="M0 760 560 510H1040L1600 760V900H0Z" fill="url(#h-floor)"/>
-      <path d="M0 60 560 330V510L0 760Z" fill="#23233a"/><path d="M1600 60 1040 330V510L1600 760Z" fill="#1d1d32"/>
+      <path d="M0 60 560 330V510L0 760Z" fill="#8e9bad"/><path d="M1600 60 1040 330V510L1600 760Z" fill="#b7c3d2"/>
       <rect x="560" y="330" width="480" height="180" fill="#14141f"/>`),
       layer(0.05, `<circle cx="800" cy="420" r="210" fill="url(#h-glow)" opacity=".5"/>
         <path d="M710 510V360H890V510Z" fill="#ffe6ad"/><path d="M800 360V510" stroke="#14141f" stroke-width="5"/>
@@ -170,11 +170,11 @@ const SCENES = {
     return [
       layer(0.02, `<defs>
         <linearGradient id="c-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b7bd8"/><stop offset=".55" stop-color="#7fc0f4"/><stop offset="1" stop-color="#d8efff"/></linearGradient>
-        <linearGradient id="c-wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2c2a44"/><stop offset="1" stop-color="#17161f"/></linearGradient>
+        <linearGradient id="c-wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cfdbe8"/><stop offset="1" stop-color="#a9b9cc"/></linearGradient>
         <linearGradient id="c-board" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#153f3a"/><stop offset="1" stop-color="#0b2623"/></linearGradient>
       </defs>
       <rect width="1600" height="900" fill="url(#c-wall)"/>
-      <path d="M0 700H1600V900H0Z" fill="#101019"/><path d="M0 700H1600" stroke="#2f6fc7" stroke-width="6"/>`),
+      <path d="M0 700H1600V900H0Z" fill="#8a7458"/><path d="M0 700H1600" stroke="#2f6fc7" stroke-width="6"/>`),
       layer(0.04, `<g>
         ${[0, 1].map((i) => `<g transform="translate(${60 + i * 190} 150)"><rect width="160" height="400" fill="url(#c-sky)"/><circle cx="${i ? 40 : 120}" cy="290" r="34" fill="#fff0c0" opacity=".9"/><path d="M0 330 40 300 90 326 160 290V400H0Z" fill="#3f6aa3" opacity=".85"/><path d="M80 0V400M0 200H160" stroke="#14141f" stroke-width="8"/><rect width="160" height="400" fill="none" stroke="#0b0b12" stroke-width="8"/></g>`).join('')}
         <g opacity=".18" fill="#d8efff"><path d="M60 550 220 550 620 900H180Z"/><path d="M250 550 410 550 980 900H640Z"/></g>

@@ -266,7 +266,8 @@ const SETS = {
     return { background: 0x08111c };
   },
   arena(g) {
-    const floor = plane(60, 60, toon(0x13213a));
+    const arenaTiles = surfaceTexture(); arenaTiles.wrapS = arenaTiles.wrapT = THREE.RepeatWrapping; arenaTiles.repeat.set(10, 10);
+    const floor = plane(60, 60, toon(0x2a3e60, { map: arenaTiles }));
     floor.rotation.x = -Math.PI / 2;
     g.add(floor);
     const grid = new THREE.GridHelper(60, 40, 0x2f7fd0, 0x1b3d6e);
@@ -309,7 +310,8 @@ const SETS = {
     return { background: 0x101624 };
   },
   rooftop(g) {
-    const floor = plane(40, 30, toon(0x8995a6));
+    const roofTiles = surfaceTexture(); roofTiles.wrapS = roofTiles.wrapT = THREE.RepeatWrapping; roofTiles.repeat.set(8, 6);
+    const floor = plane(40, 30, toon(0x9aa6b8, { map: roofTiles }));
     floor.rotation.x = -Math.PI / 2;
     g.add(at(floor, 0, 0, -8));
     const mesh = meshTexture();
@@ -322,7 +324,8 @@ const SETS = {
     return { background: skyTexture([[0, '#1d6bd0'], [0.5, '#56a8f0'], [0.85, '#a9d9fb'], [1, '#e6f5ff']]) };
   },
   mall(g) {
-    const floor = plane(40, 24, toon(0x2b3a52));
+    const mallTiles = surfaceTexture(); mallTiles.wrapS = mallTiles.wrapT = THREE.RepeatWrapping; mallTiles.repeat.set(8, 5);
+    const floor = plane(40, 24, toon(0x3d4f6e, { map: mallTiles }));
     floor.rotation.x = -Math.PI / 2;
     g.add(at(floor, 0, 0, -5));
     [['CAFÉ', 0xff3355, '#ff3355'], ['MERCADO', 0xffc93c, '#ffc93c'], ['GAMES', 0x4fc8ff, '#4fc8ff']].forEach(([name, color, css], i) => {
@@ -339,7 +342,9 @@ const SETS = {
   },
   // Diante do portão: o campus de verdade ao fundo.
   gate(g) {
-    const ground = plane(80, 80, toon(0x6fa877));
+    const stripes = painted(64, 64, (c, w, h) => { for (let i = 0; i < 4; i++) { c.fillStyle = i % 2 ? '#679f70' : '#79b380'; c.fillRect(0, i * 16, w, 16); } });
+    stripes.wrapS = stripes.wrapT = THREE.RepeatWrapping; stripes.repeat.set(1, 14);
+    const ground = plane(80, 80, toon(0xffffff, { map: stripes }));
     ground.rotation.x = -Math.PI / 2;
     g.add(at(ground, 0, 0, -20));
     const path = plane(4, 60, toon(0xd9e1ea));
