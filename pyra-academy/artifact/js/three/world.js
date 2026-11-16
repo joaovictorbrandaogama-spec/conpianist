@@ -42,6 +42,11 @@ function windowTexture(cols, rows, wall, seed, lit = 0.55, glow = '#ffd98a') {
   const r = rng(seed);
   g.fillStyle = wall;
   g.fillRect(0, 0, size, size);
+  for (let y = 0; y < size; y += 16) {
+    g.fillStyle = 'rgba(40,60,90,.05)'; g.fillRect(0, y, size, 1);
+    for (let x = (y / 16) % 2 ? 0 : 24; x < size; x += 48) { g.fillStyle = 'rgba(40,60,90,.04)'; g.fillRect(x, y, 1, 16); }
+  }
+  for (let i = 0; i < 1400; i++) { g.fillStyle = r() < 0.5 ? 'rgba(255,255,255,.07)' : 'rgba(30,45,70,.06)'; g.fillRect(r() * size, r() * size, 2, 2); }
   e.fillStyle = '#000';
   e.fillRect(0, 0, size, size);
   const cw = size / cols;
@@ -588,6 +593,15 @@ export function buildCampus() {
     }
   }
   group.add(instances(new THREE.BoxGeometry(1, 1, 1), toon(0xffffff), roofKit));
+
+  const bollards = [], bollardTops = [];
+  for (const z of [16, 21, 26, 35, 44]) for (const sx of [-1, 1]) {
+    bollards.push({ p: [sx * 2.45, 0.35, z], s: [1, 1, 1] });
+    bollardTops.push({ p: [sx * 2.45, 0.74, z], s: [1, 1, 1] });
+    colliders.push({ minX: sx * 2.45 - 0.15, maxX: sx * 2.45 + 0.15, minZ: z - 0.15, maxZ: z + 0.15 });
+  }
+  group.add(instances(new THREE.CylinderGeometry(0.11, 0.13, 0.7, 8), dark, bollards));
+  group.add(instances(new THREE.CylinderGeometry(0.12, 0.12, 0.08, 8), new THREE.MeshBasicMaterial({ color: 0xfff1c8 }), bollardTops));
 
   // portão, cerca e câmeras
   for (const s of [-1, 1]) {

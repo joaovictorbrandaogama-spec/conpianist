@@ -311,6 +311,9 @@ const SETS = {
     g.add(at(part(new THREE.BoxGeometry(4.4, 0.2, 1.4), toon(0x2c3a50), 0.02), 5.4, 1, back + 1.2));
     g.add(at(plane(1.5, 0.9, basic(0x5eea9a)), 5, 1.7, back + 1));
     g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 8), basic(0xffc93c)), 6.8, 1.8, back + 1.2));
+    const lampPool = new THREE.Mesh(new THREE.CircleGeometry(2.2, 24), basic(0xffd98a, { map: glowMap(), transparent: true, opacity: 0.28, depthWrite: false, blending: THREE.AdditiveBlending }));
+    lampPool.rotation.x = -Math.PI / 2;
+    g.add(at(lampPool, 6.2, 0.03, back + 1.8));
     g.add(at(part(new THREE.BoxGeometry(4.6, 0.7, 2.2), toon(0xf5f2ea), 0.02), -6, 0.5, back + 1.4));
     g.add(at(part(new THREE.BoxGeometry(2.6, 0.72, 2.22), toon(0x3b6fb0), 0), -5, 0.5, back + 1.4));
     return { background: 0x0c1220 };

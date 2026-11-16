@@ -198,9 +198,10 @@ function kit(group, colliders) {
     deskPart(0x34313e, [x, 0.785, z, 1.42, 0.1, 0.82]);
     deskPart(top, [x, 0.817, z, 1.4, 0.065, 0.8]);
     for (const sx of [-0.62, 0.62]) for (const sz of [-0.32, 0.32]) deskPart(0x34313e, [x + sx, 0.38, z + sz, 0.05, 0.76, 0.05]);
-    deskPart(0x45425b, [x, 0.475, z + 0.69, 0.6, 0.09, 0.48]);
-    deskPart(0x45425b, [x, 0.7, z + 0.91, 0.6, 0.44, 0.07]);
+    deskPart(0x3c4a66, [x, 0.475, z + 0.69, 0.6, 0.09, 0.48]);
+    deskPart(0x3c4a66, [x, 0.7, z + 0.91, 0.6, 0.44, 0.07]);
     for (const sx of [-0.23, 0.23]) for (const sz of [0.5, 0.88]) deskPart(0x34313e, [x + sx, 0.215, z + sz, 0.045, 0.43, 0.045]);
+    deskPart(0x7a6650, [x, 0.006, z + 0.28, 1.62, 0.01, 1.7]);   // sombra de contato no piso
     colliders.push({ minX: x - 0.7, maxX: x + 0.7, minZ: z - 0.4, maxZ: z + 0.95 });
   };
   const finish = () => { for (const [color, items] of deskParts) details(group, color, items); deskParts.clear(); };
