@@ -53,7 +53,7 @@ async function ensureWorld() {
     layer.innerHTML = '<div class="world3d-host"></div><canvas class="world3d-mini" width="180" height="180" aria-hidden="true"></canvas><div class="world3d-loading"><span>Montando o campus…</span></div>';
     document.body.prepend(layer);
     try {
-      const { createWorld } = await import('./three/world.js');
+      const { createWorld } = await import('./three/world.js').then((m) => import('./three/models.js').then(({ bodiesReady }) => Promise.race([bodiesReady, new Promise((resolve) => setTimeout(resolve, 8000))])).catch(() => {}).then(() => m));
       await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 30)));
       const period = currentPeriod();
       world = createWorld($('.world3d-host', layer), {

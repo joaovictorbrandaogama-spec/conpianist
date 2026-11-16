@@ -1,6 +1,8 @@
 // Personagens procedurais: silhueta anime, mechas curvas e uniforme de alfaiataria.
 // As partes rígidas são reunidas por material; só braços/pernas mantêm pivôs próprios.
 import * as THREE from 'three';
+import { GLTFLoader } from '../../vendor/three/addons/loaders/GLTFLoader.js';
+import { clone as cloneRig } from '../../vendor/three/addons/utils/SkeletonUtils.js';
 
 const INK = 0x17131f;
 const INK_CSS = '#17131f';
@@ -504,8 +506,165 @@ function buildHair(c) {
   return combine(group, 0.006);
 }
 
+// ---------- corpos-base com esqueleto (arquivos do projeto) ----------
+// O corpo vem de um .glb (servido como .wasm, porque o artefato não serve .glb). O uniforme é
+// pintado por região do corpo: cada triângulo pertence ao osso que mais o move.
+const BODY_FILES = { male: new URL('../../vendor/bodies/body_male.wasm', import.meta.url).href };
+const BODIES = {};
+const REGIONS = ['skin', 'jacket', 'lower', 'shoe'];
+const regionOf = (name) => /^(Head|Neck|Hand|Thumb|Index|Middle|Ring|Little)/.test(name) ? 'skin'
+  : /^(Spine|Chest|UpperChest|Shoulder|UpperArm|LowerArm)/.test(name) ? 'jacket'
+  : /^(Foot|Toes)/.test(name) ? 'shoe' : 'lower';
+const INFLATE = { skin: 0, jacket: 0.012, lower: 0.007, shoe: 0.01 };   // tecido sobre a pele
+
+function inflated(geometry, amount) {
+  const source = geometry.attributes.position, normal = geometry.attributes.normal;
+  const out = new Float32Array(source.count * 3);
+  for (let i = 0; i < source.count; i++) {
+    out[i * 3] = source.getX(i) + normal.getX(i) * amount;
+    out[i * 3 + 1] = source.getY(i) + normal.getY(i) * amount;
+    out[i * 3 + 2] = source.getZ(i) + normal.getZ(i) * amount;
+  }
+  return new THREE.BufferAttribute(out, 3);
+}
+
+async function loadBody(kind, url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`${url}: ${response.status}`);
+  const gltf = await new GLTFLoader().parseAsync(await response.arrayBuffer(), '');
+  let skinned = null;
+  gltf.scene.traverse((object) => { if (object.isSkinnedMesh && !skinned) skinned = object; });
+  if (!skinned) throw new Error('sem malha com esqueleto');
+  const geometry = skinned.geometry;
+  const names = skinned.skeleton.bones.map((bone) => bone.name);
+  const joints = geometry.attributes.skinIndex, weights = geometry.attributes.skinWeight, pos = geometry.attributes.position;
+  gltf.scene.updateMatrixWorld(true);
+  const where = Object.fromEntries(skinned.skeleton.bones.map((bone) => [bone.name, bone.getWorldPosition(new THREE.Vector3())]));
+  const dominant = new Uint16Array(joints.count);
+  for (let i = 0; i < joints.count; i++) {
+    let best = 0, top = -1;
+    for (let k = 0; k < 4; k++) { const w = weights.getComponent(i, k); if (w > top) { top = w; best = joints.getComponent(i, k); } }
+    dominant[i] = best;
+  }
+  // Cortes geométricos (retos) em vez da fronteira entre ossos, que deixa a barra serrilhada:
+  // a barra do blazer numa altura fixa e o punho a uma distância fixa do pulso.
+  const hem = where.Hips.y - 0.02;
+  const wrist = {}, along = {};
+  for (const side of ['L', 'R']) {
+    wrist[side] = where['Hand' + side];
+    along[side] = where['Hand' + side].clone().sub(where['LowerArm' + side]).normalize();
+  }
+  const centroid = new THREE.Vector3(), tmp = new THREE.Vector3();
+  const regionOfTriangle = (a, b, c) => {
+    const ba = dominant[a], bb = dominant[b], bc = dominant[c];
+    const name = names[ba === bb || ba === bc ? ba : bb === bc ? bb : ba];
+    centroid.fromBufferAttribute(pos, a).add(tmp.fromBufferAttribute(pos, b)).add(tmp.fromBufferAttribute(pos, c)).divideScalar(3);
+    const side = name.endsWith('L') ? 'L' : name.endsWith('R') ? 'R' : '';
+    if (/^(Hips|Spine|Chest|UpperChest|UpperLeg)/.test(name)) return centroid.y >= hem ? 'jacket' : 'lower';
+    if (side && /^(Shoulder|UpperArm|LowerArm|Hand|Thumb|Index|Middle|Ring|Little)/.test(name)) {
+      return tmp.copy(centroid).sub(wrist[side]).dot(along[side]) < -0.018 ? 'jacket' : 'skin';
+    }
+    return regionOf(name);
+  };
+  const index = geometry.index.array;
+  const lists = REGIONS.map(() => []);
+  // As mãos do manequim são muito detalhadas para o tamanho na tela: os vértices de cada
+  // célula de 9 mm passam a usar um só representante (os atributos continuam compartilhados).
+  const handBone = (v) => /^(Hand|Thumb|Index|Middle|Ring|Little)/.test(names[dominant[v]]);
+  const cell = new Map(), keep = (v) => {
+    if (!handBone(v)) return v;
+    const key = `${Math.round(pos.getX(v) / 0.009)},${Math.round(pos.getY(v) / 0.009)},${Math.round(pos.getZ(v) / 0.009)}`;
+    if (!cell.has(key)) cell.set(key, v);
+    return cell.get(key);
+  };
+  for (let t = 0; t < index.length; t += 3) {
+    const a = index[t], b = index[t + 1], c = index[t + 2];
+    if ([a, b, c].every((v) => names[dominant[v]] === 'Head')) continue;   // a cabeça do manequim fica escondida
+    const region = regionOfTriangle(a, b, c);
+    const tri = region === 'skin' ? [keep(a), keep(b), keep(c)] : [a, b, c];
+    if (tri[0] === tri[1] || tri[1] === tri[2] || tri[0] === tri[2]) continue;
+    lists[REGIONS.indexOf(region)].push(...tri);
+  }
+  const regions = {};
+  REGIONS.forEach((name, r) => {
+    if (!lists[r].length) return;
+    const make = (amount) => {
+      const part = new THREE.BufferGeometry();
+      part.setAttribute('position', amount ? inflated(geometry, amount) : geometry.attributes.position);
+      for (const key of ['normal', 'uv', 'skinIndex', 'skinWeight']) if (geometry.attributes[key]) part.setAttribute(key, geometry.attributes[key]);
+      part.setIndex(lists[r]);
+      part.computeBoundingSphere();
+      part.userData.sharedResource = true;
+      return part;
+    };
+    regions[name] = { surface: make(INFLATE[name]), outline: name === 'skin' ? null : make(INFLATE[name] + 0.005) };
+  });
+  BODIES[kind] = { scene: gltf.scene, regions };
+}
+
+/** Resolve quando os corpos terminaram de carregar (ou falharam: aí o corpo procedural continua). */
+export const bodiesReady = Promise.all(Object.entries(BODY_FILES).map(([kind, url]) =>
+  loadBody(kind, url).catch((error) => console.warn('[pyra] corpo', kind, 'indisponível:', error.message)))).then(() => Object.keys(BODIES));
+
+const bodyFor = (c) => (c.fem ? BODIES.female : BODIES.male) || null;
+
+const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
+/** Aponta um osso (da sua origem até a do filho) numa direção do mundo. */
+function aimBone(bone, child, direction) {
+  bone.updateWorldMatrix(true, true);
+  const from = bone.getWorldPosition(_v1);
+  const current = child.getWorldPosition(_v2).sub(from).normalize();
+  const delta = new THREE.Quaternion().setFromUnitVectors(current, direction.clone().normalize());
+  const world = delta.multiply(bone.getWorldQuaternion(_q1));
+  bone.quaternion.copy(bone.parent.getWorldQuaternion(_q2).invert().multiply(world));
+  bone.updateWorldMatrix(false, true);
+}
+/** Gira um osso em torno do eixo X do mundo, a partir da pose de descanso. */
+function hinge(bone) {
+  bone.updateWorldMatrix(true, false);
+  const rest = bone.quaternion.clone();
+  const axis = new THREE.Vector3(1, 0, 0).applyQuaternion(bone.getWorldQuaternion(new THREE.Quaternion()).invert());
+  const turn = new THREE.Quaternion();
+  return (angle) => { bone.quaternion.copy(rest).multiply(turn.setFromAxisAngle(axis, angle)); };
+}
+
+function buildRig(c, template, mat) {
+  const root = cloneRig(template.scene);
+  let original = null;
+  root.traverse((object) => { if (object.isSkinnedMesh && !original) original = object; });
+  const { skeleton, bindMatrix, parent } = original;
+  parent.remove(original);
+  const paint = { skin: mat.skin, jacket: mat.cloth, lower: mat.lower, shoe: mat.shoe };
+  for (const [name, region] of Object.entries(template.regions)) {
+    for (const [geometry, material] of [[region.surface, paint[name]], [region.outline, outlineMaterial]]) {
+      if (!geometry) continue;
+      const piece = new THREE.SkinnedMesh(geometry, material);
+      piece.bind(skeleton, bindMatrix);
+      piece.frustumCulled = false;
+      parent.add(piece);
+    }
+  }
+  const bone = Object.fromEntries(skeleton.bones.map((b) => [b.name, b]));
+  root.updateMatrixWorld(true);
+  bone.Head.scale.setScalar(0.3);   // a cabeça do manequim some dentro da cabeça desenhada
+  for (const [side, s] of [['L', 1], ['R', -1]]) {
+    aimBone(bone['UpperArm' + side], bone['LowerArm' + side], new THREE.Vector3(s * 0.2, -1, 0.03));
+    aimBone(bone['LowerArm' + side], bone['Hand' + side], new THREE.Vector3(s * 0.1, -1, 0.2));
+  }
+  const joint = {};
+  for (const name of ['UpperLegL', 'UpperLegR', 'LowerLegL', 'LowerLegR', 'UpperArmL', 'UpperArmR']) joint[name] = hinge(bone[name]);
+  return {
+    root,
+    pose(swing, rest) {
+      joint.UpperLegR(swing); joint.UpperLegL(-swing);
+      joint.LowerLegR(Math.max(0, swing) * 0.9); joint.LowerLegL(Math.max(0, -swing) * 0.9);
+      joint.UpperArmR(-swing * 0.7 + rest); joint.UpperArmL(swing * 0.7 - rest * 0.8);
+    },
+  };
+}
+
 // ---------- corpo e uniforme ----------
-function buildBody(c) {
+function buildBody(c, rigged = false) {
   const body = new THREE.Group();
   const skin = ctoon(c.skin);
   const skinShade = ctoon(c.shade);
@@ -523,9 +682,11 @@ function buildBody(c) {
   const mat = { skin, skinShade, white, cloth, clothShade, trim, tie, gold, lower, shoe, sole };
   const skirt = c.fem && c.outfit !== 'labcoat';
 
-  body.add(mesh(loft([[0.91, 0.17, 0.105], [1.02, 0.15, 0.095], [1.18, 0.165, 0.10],
-    [1.37, 0.205, 0.105], [1.43, 0.14, 0.077]], 12), cloth));
-  body.add(at(mesh(new THREE.CylinderGeometry(0.055, 0.063, 0.14, 10), skin), 0, 1.46, 0));
+  if (!rigged) {
+    body.add(mesh(loft([[0.91, 0.17, 0.105], [1.02, 0.15, 0.095], [1.18, 0.165, 0.10],
+      [1.37, 0.205, 0.105], [1.43, 0.14, 0.077]], 12), cloth));
+    body.add(at(mesh(new THREE.CylinderGeometry(0.055, 0.063, 0.14, 10), skin), 0, 1.46, 0));
+  }
   // Camisa triangular, colarinho, lapelas com debrum e gravata com ponta.
   body.add(panel([[-0.085, 1.425], [0.085, 1.425], [0.038, 1.17], [-0.038, 1.17]], 0.11, white));
   for (const side of [-1, 1]) {
@@ -555,10 +716,10 @@ function buildBody(c) {
     for (const side of [-1, 1]) body.add(at(mesh(new THREE.BoxGeometry(0.07, 0.01, 0.006), trim), side * 0.12, 0.83, 0.116));
   }
   if (skirt) body.add(mesh(loft([[0.72, 0.235, 0.145], [0.91, 0.17, 0.105], [0.96, 0.16, 0.10]], 24, true), lower));
-  else body.add(mesh(loft([[0.83, 0.145, 0.09], [0.98, 0.157, 0.10]], 12), lower));
+  else if (!rigged) body.add(mesh(loft([[0.83, 0.145, 0.09], [0.98, 0.157, 0.10]], 12), lower));
 
   const legs = [];
-  for (const side of [-1, 1]) {
+  for (const side of rigged ? [] : [-1, 1]) {
     const leg = new THREE.Group();
     leg.position.set(side * 0.084, 0.94, 0);
     if (skirt) {
@@ -580,7 +741,7 @@ function buildBody(c) {
   }
 
   const arms = [];
-  for (const side of [-1, 1]) {
+  for (const side of rigged ? [] : [-1, 1]) {
     const arm = new THREE.Group();
     arm.position.set(side * 0.205, 1.375, 0);
     arm.rotation.z = side * 0.12;
@@ -601,18 +762,25 @@ function buildBody(c) {
     for (const side of [-1, 1]) body.add(at(mesh(new THREE.BoxGeometry(0.035, 0.06, 0.045), tie), side * 0.082, 1.415, 0.045));
   }
   combine(body, 0.003);
+  let rig = null;
+  if (rigged) {
+    rig = buildRig(c, bodyFor(c), mat);
+    body.position.z = 0.004;   // lapelas e gravata assentam sobre o peito do manequim
+  }
   // Alguns trajes não usam todas as cores; descarte materiais nunca associados.
   const used = new Set();
   body.traverse(object => { if (object.isMesh) used.add(object.material); });
+  rig?.root.traverse(object => { if (object.isMesh) used.add(object.material); });
   for (const material of Object.values(mat)) if (!used.has(material)) material.dispose();
-  return { body, legs, arms };
+  return { body, legs, arms, rig };
 }
 
 /** Personagem de pé (~1,9 m), olhando para +Z; contrato público preservado. */
 export function createCharacter(c, expression = 'neutral') {
   const group = new THREE.Group();
-  const { body, legs, arms } = buildBody(c);
+  const { body, legs, arms, rig } = buildBody(c, !!bodyFor(c));
   group.add(body);
+  if (rig) group.add(rig.root);
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 256;
@@ -688,11 +856,13 @@ export function createCharacter(c, expression = 'neutral') {
       phase += dt * (moving ? 10 : 1.7);
       stride += ((moving ? 1 : 0) - stride) * Math.min(1, dt * 10);
       const swing = Math.sin(phase) * (reduced ? 0.16 : 0.42) * stride;
-      legs[0].rotation.x = swing;
-      legs[1].rotation.x = -swing;
+      if (!rig) { legs[0].rotation.x = swing; legs[1].rotation.x = -swing; }
       const rest = reduced ? 0 : (1 - stride) * Math.sin(phase * 0.6) * 0.025;
-      arms[0].rotation.x = -swing * 0.7 + rest;
-      arms[1].rotation.x = swing * 0.7 - rest * 0.8;
+      if (rig) rig.pose(swing, rest);
+      else {
+        arms[0].rotation.x = -swing * 0.7 + rest;
+        arms[1].rotation.x = swing * 0.7 - rest * 0.8;
+      }
       body.position.y = reduced ? 0 : Math.abs(Math.sin(phase)) * 0.012 * stride;
       head.position.y = HEAD_Y + body.position.y + (reduced ? 0 : Math.sin(phase) * 0.003 * (1 - stride));
       head.rotation.z = reduced ? 0 : Math.sin(phase * 0.5) * 0.01 * (1 - stride);
@@ -706,7 +876,7 @@ export function createCharacter(c, expression = 'neutral') {
         geometries.add(object.geometry);
         if (object.material !== outlineMaterial) materials.add(object.material);
       });
-      for (const geometry of geometries) geometry.dispose();
+      for (const geometry of geometries) if (!geometry.userData.sharedResource) geometry.dispose();
       for (const material of materials) material.dispose();
       face.dispose();
       shadowMap.dispose();

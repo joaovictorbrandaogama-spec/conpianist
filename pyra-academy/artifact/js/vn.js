@@ -17,7 +17,7 @@ let sharedStage = null;
 let stageHost = null;
 const want3d = () => state.graphics !== '2d';
 function loadStage() {
-  stageLoad ||= import('./three/stage.js').then((module) => { stageModule = module; }).catch(() => { stageModule = null; });
+  stageLoad ||= import('./three/stage.js').then((m) => import('./three/models.js').then(({ bodiesReady }) => Promise.race([bodiesReady, new Promise((resolve) => setTimeout(resolve, 8000))])).catch(() => {}).then(() => m)).then((module) => { stageModule = module; }).catch(() => { stageModule = null; });
   return stageLoad;
 }
 function getStage() {
