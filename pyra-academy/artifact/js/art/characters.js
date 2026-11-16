@@ -328,10 +328,10 @@ function finish(c) {
   c.color ??= CLASS_COLORS[c.home] || '#f5f2ea';
   c.tie ??= c.color;
   if (c.outfit === 'blazer') {
-    // Uniforme da Academia: blazer azul com debrum branco; a cor da turma fica na gravata e no brasão.
-    c.trim ??= '#f1f4f8';
-    c.cloth ??= '#17325e';
-    c.cloth2 ??= '#2a5293';
+    // Uniforme da Academia: blazer vermelho com debrum branco; a cor da turma fica na gravata e no brasão.
+    c.trim ??= '#f1ece0';
+    c.cloth ??= '#5a0e1e';
+    c.cloth2 ??= '#8e1b31';
   }
   c.trim ??= CLASS_COLORS[c.home] || '#d4af6a';
   c.cloth ??= '#16161f';
