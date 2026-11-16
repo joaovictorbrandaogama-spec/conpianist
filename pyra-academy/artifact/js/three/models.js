@@ -33,7 +33,7 @@ export function part(geometry, material, outline = 0.05) {
 const at = (object, x, y, z) => { object.position.set(x, y, z); return object; };
 
 /** Placa de texto que sempre encara a câmera. */
-export function label(text, { fg = '#f5f2ea', bg = '#09090e', border = '#e8173f', size = 64 } = {}) {
+export function label(text, { fg = '#f5f2ea', bg = '#0a1426', border = '#3aa3ff', size = 64 } = {}) {
   const canvas = document.createElement('canvas');
   const g = canvas.getContext('2d');
   const font = `${size}px Anton, Impact, "Arial Narrow", sans-serif`;

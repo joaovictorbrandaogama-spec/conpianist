@@ -106,7 +106,7 @@ const classesTexture = (title = 'CLASSES') => painted(512, 560, (g, w, h) => {
     g.fillRect(110, 148 + i * 100, bar, 56);
   });
 });
-const signTexture = (text, color = '#ff3355') => painted(1024, 220, (g, w, h) => {
+const signTexture = (text, color = '#5cb2ff') => painted(1024, 220, (g, w, h) => {
   g.fillStyle = '#0b0b12';
   g.fillRect(0, 0, w, h);
   g.strokeStyle = '#f5f2ea';

@@ -206,8 +206,8 @@ function crestTexture() {
   g.translate(128, 118);
   g.scale(1.7, 1.7);
   g.lineJoin = g.lineCap = 'round';
-  g.fillStyle = '#0b0b12';
-  g.strokeStyle = '#e8173f';
+  g.fillStyle = '#0b1a33';
+  g.strokeStyle = '#3aa3ff';
   g.lineWidth = 6;
   const shield = new Path2D('M0-46 40-30V8C40 34 20 52 0 62-20 52-40 34-40 8V-30Z');
   g.fill(shield);
@@ -880,7 +880,7 @@ export function createWorld(container, { mode = 'play', minimap = null, onPrompt
     mini.translate(x, z);
     mini.rotate(-facing + Math.PI);
     mini.fillStyle = '#fff';
-    mini.strokeStyle = '#e8173f';
+    mini.strokeStyle = '#3aa3ff';
     mini.lineWidth = 2;
     mini.beginPath();
     mini.moveTo(0, -7);

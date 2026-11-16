@@ -182,7 +182,7 @@ function kit(group, colliders) {
     group.add(mesh);
     return mesh;
   };
-  const tag = (text, x, y, z, color = '#e8173f') => {
+  const tag = (text, x, y, z, color = '#3aa3ff') => {
     const sprite = label(text, { border: color, size: 40 });
     sprite.scale.multiplyScalar(0.5);
     sprite.position.set(x, y, z);

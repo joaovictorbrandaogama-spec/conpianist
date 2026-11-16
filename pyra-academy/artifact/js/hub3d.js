@@ -312,7 +312,7 @@ function optionsCard(place, extra = {}) {
     return `<button type="button" class="h3-opt act" data-act="${a.id}" ${ok ? '' : 'disabled'}>${icon('star')}<span><strong>${esc(a.name)}</strong><small>${esc(why)} · ${Object.entries(a.gain).map(([k, v]) => `+${v} ${k === 'int' ? 'Intelecto' : k === 'cal' ? 'Sangue-frio' : k === 'dis' ? 'Disciplina' : k === 'emp' ? 'Empatia' : 'Carisma'}`).join(' · ')}${a.pp ? ' · + pp' : ''}</small></span></button>`;
   }).join('')}
       </div>
-    </div>`, '#e8173f');
+    </div>`, '#3aa3ff');
   if (!card) return;
   sfx.play('click');
   $$('a.h3-opt', card).forEach((a) => a.addEventListener('click', () => closeCard()));

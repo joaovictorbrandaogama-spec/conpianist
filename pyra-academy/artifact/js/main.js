@@ -140,7 +140,7 @@ function startShards() {
         ctx.translate(m.x * width, m.y * height);
         ctx.rotate(-0.5 + Math.sin(m.p) * 0.25);
         ctx.globalAlpha = m.a;
-        ctx.fillStyle = m.red ? '#e8173f' : '#f5f2ea';
+        ctx.fillStyle = m.red ? '#5cb2ff' : '#f5f2ea';
         ctx.fillRect(-m.w / 2, -m.h / 2, m.w, m.h);
         ctx.restore();
       }
