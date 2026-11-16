@@ -100,6 +100,12 @@ export function skyTexture(stops = [[0, '#1f6fd1'], [0.42, '#4b9ff0'], [0.78, '#
   const night = new THREE.Color(stops[stops.length - 1][1]).getHSL({}).l < 0.3;
   const random = rng(204);
   if (night) {
+    const moon = g.createRadialGradient(392, 118, 4, 392, 118, 70);
+    moon.addColorStop(0, 'rgba(235,244,255,.55)');
+    moon.addColorStop(1, 'rgba(235,244,255,0)');
+    g.fillStyle = moon; g.fillRect(320, 46, 144, 144);
+    g.fillStyle = '#eef5ff'; g.beginPath(); g.arc(392, 118, 17, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'rgba(160,180,210,.45)'; g.beginPath(); g.arc(386, 113, 4, 0, Math.PI * 2); g.arc(398, 124, 3, 0, Math.PI * 2); g.fill();
     for (let i = 0; i < 65; i++) {
       const x = random() * 512, y = random() * 300;
       g.fillStyle = `rgba(220,233,255,${0.2 + random() * 0.55})`;
@@ -257,7 +263,20 @@ function grove(spots, random) {
   const bark = toon(0x5d4a3c);
   group.add(instances(new THREE.CylinderGeometry(0.18, 0.29, 2.5, 7), bark, trunks));
   group.add(instances(new THREE.CylinderGeometry(0.7, 1, 1, 6), bark, branches));
-  group.add(instances(new THREE.IcosahedronGeometry(1, 1), toon(0xffffff), crowns));
+  const crownMesh = instances(new THREE.IcosahedronGeometry(1, 1), toon(0xffffff), crowns);
+  group.add(crownMesh);
+  const dummy = new THREE.Object3D();
+  group.userData.sway = (t) => {
+    crowns.forEach(({ p, s, r }, i) => {
+      const k = Math.sin(t * 1.1 + p[0] * 0.3 + p[2] * 0.2) * 0.05 * s[0];
+      dummy.position.set(p[0] + k, p[1], p[2] + k * 0.4);
+      dummy.scale.set(...s);
+      dummy.rotation.set(r[0], r[1], r[2] + k * 0.05);
+      dummy.updateMatrix();
+      crownMesh.setMatrixAt(i, dummy.matrix);
+    });
+    crownMesh.instanceMatrix.needsUpdate = true;
+  };
   return group;
 }
 
@@ -343,15 +362,42 @@ export function buildCampus() {
   lighthouse.add(at(part(new THREE.CylinderGeometry(1.35, 1.35, 0.3, 16), toon(0x26354f), 0), 0, 9.1, 0));
   lighthouse.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 1.1, 12), new THREE.MeshBasicMaterial({ color: 0xfff3c4 })), 0, 9.8, 0));
   lighthouse.add(at(part(new THREE.ConeGeometry(1.0, 1.2, 12), toon(0x26354f), 0), 0, 10.9, 0));
-  const beam = new THREE.Mesh(new THREE.ConeGeometry(2.4, 26, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff1c0, transparent: true, opacity: 0.0, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+  const fadeMap = (() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 4; canvas.height = 128;
+    const g = canvas.getContext('2d');
+    const grad = g.createLinearGradient(0, 0, 0, 128);
+    grad.addColorStop(0, '#ffffff'); grad.addColorStop(0.5, '#555555'); grad.addColorStop(1, '#000000');
+    g.fillStyle = grad; g.fillRect(0, 0, 4, 128);
+    return new THREE.CanvasTexture(canvas);
+  })();
+  const beam = new THREE.Mesh(new THREE.ConeGeometry(2.6, 26, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff1c0, map: fadeMap, transparent: true, opacity: 0.0, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
   beam.rotation.z = Math.PI / 2;
   beam.position.x = 13;
   const beamPivot = new THREE.Group();
   beamPivot.position.y = 9.8;
   beamPivot.add(beam);
   lighthouse.add(beamPivot);
-  beam.material.userData.nightOpacity = 0.22;
+  beam.material.userData.nightOpacity = 0.35;
   LAMPS.push(beam.material);
+  // gaivotas circulando alto sobre o campus (uma chamada de desenho, batendo as asas)
+  const wing = new THREE.BufferGeometry();
+  wing.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0.25, -0.9, 0.18, 0, 0, 0, -0.12, 0, 0, 0.25, 0.9, 0.18, 0, 0, 0, -0.12], 3));
+  wing.computeVertexNormals();
+  const gulls = new THREE.InstancedMesh(wing, new THREE.MeshBasicMaterial({ color: 0xf4f7fb, side: THREE.DoubleSide }), 7);
+  const gull = new THREE.Object3D();
+  group.add(gulls);
+  animated.push((t) => {
+    for (let i = 0; i < 7; i++) {
+      const a = t * 0.12 + i * 0.5, radius = 34 + (i % 3) * 6;
+      gull.position.set(Math.cos(a) * radius, 22 + Math.sin(t * 0.7 + i) * 1.5 + i * 0.6, 4 + Math.sin(a) * radius);
+      gull.rotation.set(0, -a, 0);
+      gull.scale.set(1.4, 1.4 * (0.5 + Math.abs(Math.sin(t * 5 + i)) * 0.9), 1.4);
+      gull.updateMatrix();
+      gulls.setMatrixAt(i, gull.matrix);
+    }
+    gulls.instanceMatrix.needsUpdate = true;
+  });
   lighthouse.position.set(-58, 0, -50);
   group.add(lighthouse);
   animated.push((t) => { beamPivot.rotation.y = t * 0.6; });
@@ -591,7 +637,9 @@ export function buildCampus() {
   // árvores, postes e bancos
   const r = rng(77);
   const spots = [[-9, 14], [9, 14], [-13, -9], [13, -9], [-36, -6], [36, -6], [-36, 16], [36, 15], [-8, 30], [5, 28], [-36, 36], [34, 34], [-14, 42], [28, 42], [-18, -34], [19, -35], [-36, -30], [36, -32], [-12, 38], [-20, 8], [20, -3]];
-  group.add(grove(spots, r));
+  const trees = grove(spots, r);
+  group.add(trees);
+  animated.push(trees.userData.sway);
   for (const [x, z] of spots) colliders.push({ minX: x - 0.45, maxX: x + 0.45, minZ: z - 0.45, maxZ: z + 0.45 });
   for (const [x, z] of [[-7, -7], [7, -7], [-7, 7], [7, 7], [-3.2, 30], [3.2, 30], [-3.2, 40], [3.2, 40]]) group.add(lamp(x, z));
   for (const [x, z, turn] of [[-12, 0, Math.PI / 2], [12, 0, -Math.PI / 2], [0, 12.5, 0]]) {
