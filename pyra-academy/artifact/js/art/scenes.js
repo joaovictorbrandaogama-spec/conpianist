@@ -233,7 +233,7 @@ const SCENES = {
       + [540, 570, 612, 670, 750, 860].map((y) => `<path d="M0 ${y}H1600"/>`).join('');
     return [
       layer(0.02, `<defs>
-        <radialGradient id="a-bg" cx=".5" cy=".45" r=".7"><stop offset="0" stop-color="#3a1030"/><stop offset="1" stop-color="#07070c"/></radialGradient>
+        <radialGradient id="a-bg" cx=".5" cy=".45" r=".7"><stop offset="0" stop-color="#0e2a5a"/><stop offset="1" stop-color="#07070c"/></radialGradient>
         <linearGradient id="a-l" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f5f2ea" stop-opacity=".5"/><stop offset="1" stop-color="#f5f2ea" stop-opacity="0"/></linearGradient>
         <linearGradient id="a-r" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3aa3ff" stop-opacity=".6"/><stop offset="1" stop-color="#3aa3ff" stop-opacity="0"/></linearGradient>
       </defs><rect width="1600" height="900" fill="url(#a-bg)"/>${stars(50, 77, 420)}`),
@@ -241,7 +241,7 @@ const SCENES = {
         <g opacity=".45">${CREST(800, 330, 2.2, '#2f6fc7')}</g>
         <path d="M470 60 1130 36V150L470 174Z" fill="#0b0b12" stroke="#f5f2ea" stroke-width="5"/>
         <text x="800" y="128" text-anchor="middle" transform="rotate(-2 800 110)" font-family="Anton,Impact,sans-serif" font-size="64" letter-spacing="8" fill="#ff3355">EXAME ESPECIAL</text>`),
-      layer(0.1, `<path d="M0 520H1600V900H0Z" fill="#0b0b12"/><g stroke="#6a1a30" stroke-width="2" opacity=".8">${grid}</g>
+      layer(0.1, `<path d="M0 520H1600V900H0Z" fill="#0b0b12"/><g stroke="#1f4f8a" stroke-width="2" opacity=".8">${grid}</g>
         <path d="M0 520H1600" stroke="#2f6fc7" stroke-width="6"/>${CAMERA(60, 420)}${CAMERA(1540, 420, -1)}`),
     ].join('');
   },
@@ -273,7 +273,7 @@ const SCENES = {
         <rect width="1600" height="900" fill="url(#r-sky)"/>${stars(50, 31, 260)}
         <circle cx="420" cy="590" r="320" fill="url(#r-sun)"/><circle cx="420" cy="590" r="96" fill="#fff0c0"/>
         <g fill="#ffffff" opacity=".5"><rect x="700" y="210" width="520" height="30" rx="15"/><rect x="820" y="252" width="340" height="20" rx="10"/><rect x="120" y="150" width="380" height="24" rx="12"/><rect x="1180" y="330" width="300" height="18" rx="9"/></g>`),
-      layer(0.03, `${skyline(13, 660, '#4a2468', 30, 150)}<rect y="656" width="1600" height="60" fill="#3a1c58"/>`),
+      layer(0.03, `${skyline(13, 660, '#5d86bb', 30, 150)}<rect y="656" width="1600" height="60" fill="#4f78ad"/>`),
       layer(0.07, `${skyline(40, 700, '#3f6aa3', 30, 110)}`),
       layer(0.12, `<path d="M0 700H1600V900H0Z" fill="#1c1c28"/><g stroke="#2e2e40" stroke-width="3"><path d="M0 760H1600M0 830H1600M200 700 80 900M500 700 440 900M800 700V900M1100 700 1160 900M1400 700 1520 900"/></g>
         <g stroke="#0b0b12" stroke-width="5" opacity=".9">${fence}</g><path d="M0 420H1600M0 700H1600" stroke="#0b0b12" stroke-width="10"/>
@@ -286,12 +286,12 @@ const SCENES = {
   // Quarto do dormitório.
   dorm() {
     return [
-      layer(0.02, `<defs><linearGradient id="d-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a0a24"/><stop offset="1" stop-color="#3a1c68"/></linearGradient>
+      layer(0.02, `<defs><linearGradient id="d-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#06102a"/><stop offset="1" stop-color="#1c3a70"/></linearGradient>
         <radialGradient id="d-lamp" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffd98a" stop-opacity=".5"/><stop offset="1" stop-color="#ffd98a" stop-opacity="0"/></radialGradient></defs>
-        <rect width="1600" height="900" fill="#17151f"/><path d="M0 700H1600V900H0Z" fill="#0f0e15"/><path d="M0 700H1600" stroke="#2f6fc7" stroke-width="6"/>`),
+        <rect width="1600" height="900" fill="#141c2c"/><path d="M0 700H1600V900H0Z" fill="#0d1422"/><path d="M0 700H1600" stroke="#2f6fc7" stroke-width="6"/>`),
       layer(0.04, `<g transform="translate(560 130)"><rect width="480" height="420" fill="url(#d-sky)"/>${stars(40, 3, 200).replace(/cx="(\d+)"/g, (m, x) => `cx="${(Number(x) * 0.3).toFixed(0)}"`)}
           <circle cx="380" cy="90" r="44" fill="#fff5d6"/><circle cx="362" cy="78" r="9" fill="#e9dcb4" opacity=".6"/>
-          <g transform="translate(0 420) scale(.3 1)">${skyline(17, 0, '#14122e', 80, 260)}</g>
+          <g transform="translate(0 420) scale(.3 1)">${skyline(17, 0, '#0e1a33', 80, 260)}</g>
           <g fill="#ffd98a">${windows(20, 240, 12, 6, 8, 10, 30, 18, 12, 0.4, 'none')}</g>
           <path d="M240 0V420M0 210H480" stroke="#0b0b12" stroke-width="10"/><rect width="480" height="420" fill="none" stroke="#0b0b12" stroke-width="12"/></g>
         <path d="M520 110h90c0 160-20 320-60 460h-40Z" fill="#2f5d9e" stroke="#0b0b12" stroke-width="5"/><path d="M1080 110h-90c0 160 20 320 60 460h40Z" fill="#2f5d9e" stroke="#0b0b12" stroke-width="5"/><rect x="500" y="96" width="600" height="18" fill="#0b0b12"/>`),
@@ -338,9 +338,9 @@ const SCENES = {
     const banner = (x, color) => `<g transform="translate(${x} 90)"><path d="M0 0H130V420L65 380 0 420Z" fill="${color}" stroke="#0b0b12" stroke-width="6" stroke-linejoin="round"/>${CREST(65, 170, 1, '#f5f2ea')}</g>`;
     const bars = [['A', 300, '#ffc93c'], ['B', 216, '#4fc8ff'], ['C', 140, '#5eea9a'], ['D', 10, '#ff3355']];
     return [
-      layer(0.02, `<defs><linearGradient id="k-wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a1a2a"/><stop offset="1" stop-color="#140d16"/></linearGradient></defs>
-        <rect width="1600" height="900" fill="url(#k-wall)"/><path d="M0 700H1600V900H0Z" fill="#0f0a10"/><path d="M0 700H1600" stroke="#ffc93c" stroke-width="6"/>
-        <g stroke="#3a2638" stroke-width="4">${Array.from({ length: 9 }, (_, i) => `<path d="M${i * 200} 0V700"/>`).join('')}</g>`),
+      layer(0.02, `<defs><linearGradient id="k-wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c2a40"/><stop offset="1" stop-color="#0e1422"/></linearGradient></defs>
+        <rect width="1600" height="900" fill="url(#k-wall)"/><path d="M0 700H1600V900H0Z" fill="#0b111c"/><path d="M0 700H1600" stroke="#ffc93c" stroke-width="6"/>
+        <g stroke="#2a3a55" stroke-width="4">${Array.from({ length: 9 }, (_, i) => `<path d="M${i * 200} 0V700"/>`).join('')}</g>`),
       layer(0.05, `${banner(120, '#2f5d9e')}${banner(1350, '#2f5d9e')}
         <rect x="430" y="120" width="740" height="400" fill="#0b0b12" stroke="#f5f2ea" stroke-width="6"/>
         <text x="800" y="184" text-anchor="middle" font-family="Anton,Impact,sans-serif" font-size="44" letter-spacing="8" fill="#f5f2ea">SISTEMA S</text>

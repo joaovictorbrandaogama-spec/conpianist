@@ -426,7 +426,7 @@ export function buildMall(night = false) {
   const group = new THREE.Group();
   const colliders = [];
   const { wall, box, floor, plaque, tag, plant } = kit(group, colliders);
-  const wallMat = toon(0x22304a);
+  const wallMat = toon(0x2c3f5e);
   const lowMat = toon(0x2a5a6a);
   floor(-18, -10, 18, 0, floorTexture('#dfe6ee', '#cfd8e3', 12));
   wall(-18, 0, -1.8, 0, LOW, lowMat);

@@ -153,7 +153,7 @@ function lawnTexture() {
   canvas.width = canvas.height = 256;
   const g = canvas.getContext('2d');
   const r = rng(91);
-  for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#74ad7c' : '#82bb88'; g.fillRect(0, i * 32, 256, 32); }
+  for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#679f70' : '#79b380'; g.fillRect(0, i * 32, 256, 32); }
   for (let i = 0; i < 900; i++) {
     const x = r() * 256, y = r() * 256;
     g.fillStyle = r() < 0.5 ? 'rgba(46,96,62,.16)' : 'rgba(214,246,206,.14)';
@@ -244,7 +244,7 @@ function grove(spots, random) {
   const group = new THREE.Group();
   const trunks = [], crowns = [], branches = [];
   const leaf = [0x4f9e62, 0x6bbf78, 0x86d08f, 0x5aae70];
-  const jacaranda = [0x7f9cf0, 0x9db4f7, 0xb8c9fb, 0x8aa6f2];
+  const jacaranda = [0x8b9fdc, 0xa2b3e6, 0xb9c6ee, 0x95a8e0];
   spots.forEach(([x, z], index) => {
     const size = 0.9 + random() * 0.5;
     trunks.push({ p: [x, 1.25 * size, z], s: [size, size, size] });
@@ -414,13 +414,20 @@ export function buildCampus() {
   // 1. prédio principal, com a torre do relógio
   const sala = block(30, 9, 10, '#e3e9f0', 5, { cols: 12, rows: 3 });
   sala.add(at(part(new THREE.BoxGeometry(30.6, 0.5, 10.6), red, 0), 0, 9.3, 0));
-  sala.add(at(part(new THREE.BoxGeometry(7, 17, 7), toon(0xd6e0ea), 0.01), 0, 8.5, 2.5));
+  sala.add(at(block(7, 17, 7, '#d9e2ec', 6, { cols: 3, rows: 6, lit: 0.45 }), 0, 0, 2.5));
   const roof = part(new THREE.ConeGeometry(5.6, 4.5, 4), red, 0.02);
   roof.rotation.y = Math.PI / 4;
   sala.add(at(roof, 0, 19.2, 2.5));
   const clock = new THREE.Mesh(new THREE.CircleGeometry(2.2, 28), new THREE.MeshBasicMaterial({ map: crestTexture() }));
   sala.add(at(clock, 0, 13.4, 6.02));
-  sala.add(at(new THREE.Mesh(new THREE.PlaneGeometry(3.4, 4.6), warm), 0, 2.3, 6.03));
+  // entrada: moldura, portas de vidro, marquise e degraus (o colisor da torre não muda)
+  sala.add(at(part(new THREE.BoxGeometry(4.4, 5.4, 0.3), toon(0x1f3557), 0.02), 0, 2.7, 6.1));
+  const glassDoor = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 4.5), new THREE.MeshBasicMaterial({ color: 0x8fc6ef }));
+  sala.add(at(glassDoor, 0, 2.3, 6.27));
+  sala.add(at(new THREE.Mesh(new THREE.PlaneGeometry(0.12, 4.5), new THREE.MeshBasicMaterial({ color: 0x1f3557 })), 0, 2.3, 6.28));
+  sala.add(at(part(new THREE.BoxGeometry(6, 0.35, 1.9), red, 0.03), 0, 5.6, 6.9));
+  sala.add(at(part(new THREE.BoxGeometry(5.4, 0.16, 0.9), toon(0xf3f6fa), 0), 0, 0.08, 6.6));
+  sala.add(at(part(new THREE.BoxGeometry(4.6, 0.16, 0.6), toon(0xf3f6fa), 0), 0, 0.24, 6.4));
   place('sala', sala);
   colliders.push({ minX: -3.5, maxX: 3.5, minZ: -31, maxZ: -24 });   // a torre avança além da fachada
 
@@ -663,9 +670,9 @@ export function createWorld(container, { mode = 'play', minimap = null, onPrompt
       scene.fog = new THREE.Fog(night ? 0x0d1a36 : 0xcfe8fb, night ? 48 : 80, night ? 145 : 210);
       hemi.color.set(night ? 0x8fb0ee : 0xd2eaff);
       hemi.groundColor.set(night ? 0x1f2b40 : 0x5c7f68);
-      hemi.intensity = night ? 1.15 : 1.8;
+      hemi.intensity = night ? 1.15 : 1.5;
       sun.color.set(night ? 0xb1c7ff : 0xfff3e0);
-      sun.intensity = night ? 0.85 : 2.05;
+      sun.intensity = night ? 0.85 : 2.45;
       sun.position.set(night ? 28 : -35, night ? 58 : 55, night ? -26 : 30);
       for (const m of campus.windows) m.emissiveIntensity = night ? 1.55 : 0.06;
       for (const m of campus.lamps) m.opacity = night ? m.userData.nightOpacity ?? 0.4 : 0;

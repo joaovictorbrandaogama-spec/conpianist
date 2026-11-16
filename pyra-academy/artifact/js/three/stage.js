@@ -175,7 +175,7 @@ const meshTexture = () => painted(256, 256, (g, w, h) => {
 });
 
 // Sala básica: chão, parede do fundo e paredes laterais.
-function room(g, { floor = 0x1a2030, wall = 0x26344c, width = 18, depth = 9, height = 8, stripe = 0x3aa3ff } = {}) {
+function room(g, { floor = 0x2a3a55, wall = 0x26344c, width = 18, depth = 9, height = 8, stripe = 0x3aa3ff } = {}) {
   const ground = plane(width + 8, depth + 8, toon(floor, { map: surfaceTexture(true) }));
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
@@ -253,10 +253,10 @@ const SETS = {
       g.add(at(strip, 0, 5.98, -2 - i * 6));
     });
     g.add(at(plane(3, 4.4, basic(0xdff1ff)), 0, 2.2, -29.9));
-    return { background: 0xdfe9f3, fog: [0xdfe9f3, 16, 44] };
+    return { background: 0xdfe9f3, fog: [0xdfe9f3, 26, 70] };
   },
   lab(g) {
-    const back = room(g, { floor: 0x101019, wall: 0x0f1c26, stripe: 0x3fd0c8 });
+    const back = room(g, { floor: 0x1d2e40, wall: 0x0f1c26, stripe: 0x3fd0c8 });
     g.add(at(part(new THREE.BoxGeometry(7.4, 4, 0.12), toon(0x3fd0c8), 0), 0, 3.5, back + 0.08));
     g.add(at(plane(7.1, 3.7, basic(0xffffff, { map: waveTexture() })), 0, 3.5, back + 0.16));
     g.add(at(plane(3.6, 4.6, basic(0xffffff, { map: booksTexture(42) })), -6.4, 2.6, back + 0.06));
@@ -266,7 +266,7 @@ const SETS = {
     return { background: 0x08111c };
   },
   arena(g) {
-    const floor = plane(60, 60, toon(0x0b0b12));
+    const floor = plane(60, 60, toon(0x13213a));
     floor.rotation.x = -Math.PI / 2;
     g.add(floor);
     const grid = new THREE.GridHelper(60, 40, 0x2f7fd0, 0x1b3d6e);
@@ -280,7 +280,7 @@ const SETS = {
     return { background: 0x08142a, fog: [0x08142a, 12, 40] };
   },
   council(g) {
-    const back = room(g, { floor: 0x0c111c, wall: 0x1c2a40, stripe: 0xffc93c });
+    const back = room(g, { floor: 0x24324a, wall: 0x1c2a40, stripe: 0xffc93c });
     g.add(at(part(new THREE.BoxGeometry(7.6, 4.4, 0.12), toon(0xf5f2ea), 0), 0, 3.7, back + 0.08));
     g.add(at(plane(7.3, 4.1, basic(0xffffff, { map: classesTexture('SISTEMA S') })), 0, 3.7, back + 0.16));
     for (const s of [-1, 1]) g.add(at(plane(1.6, 5, toon(0x2f5d9e)), s * 6.4, 4, back + 0.06));
@@ -289,7 +289,7 @@ const SETS = {
     return { background: 0x0b121e };
   },
   dorm(g) {
-    const back = room(g, { floor: 0x0c1220, wall: 0x1a2638 });
+    const back = room(g, { floor: 0x26344c, wall: 0x1a2638 });
     g.add(at(plane(4.2, 3.6, basic(0xffffff, { map: nightTexture() })), -1.5, 3.5, back + 0.05));
     for (const s of [-1, 1]) g.add(at(part(new THREE.BoxGeometry(0.9, 4.2, 0.2), toon(0x2f5d9e), 0.02), -1.5 + s * 2.6, 3.5, back + 0.2));
     g.add(at(part(new THREE.BoxGeometry(4.4, 0.2, 1.4), toon(0x2c3a50), 0.02), 5.4, 1, back + 1.2));
@@ -300,7 +300,7 @@ const SETS = {
     return { background: 0x0c1220 };
   },
   library(g) {
-    const back = room(g, { floor: 0x101624, wall: 0x1c2636 });
+    const back = room(g, { floor: 0x3a3a44, wall: 0x1c2636 });
     const sky = skyTexture([[0, '#2b7bd8'], [0.6, '#7fc0f4'], [1, '#d8efff']]);
     for (const x of [-6.6, 6.6]) g.add(at(plane(4.4, 5.6, basic(0xffffff, { map: booksTexture(x > 0 ? 9 : 4) })), x, 3, back + 0.06));
     for (const x of [-2.2, 0, 2.2]) g.add(at(plane(1.5, 4.6, basic(0xffffff, { map: sky })), x, 3.3, back + 0.05));
@@ -322,7 +322,7 @@ const SETS = {
     return { background: skyTexture([[0, '#1d6bd0'], [0.5, '#56a8f0'], [0.85, '#a9d9fb'], [1, '#e6f5ff']]) };
   },
   mall(g) {
-    const floor = plane(40, 24, toon(0x1a2436));
+    const floor = plane(40, 24, toon(0x2b3a52));
     floor.rotation.x = -Math.PI / 2;
     g.add(at(floor, 0, 0, -5));
     [['CAFÉ', 0xff3355, '#ff3355'], ['MERCADO', 0xffc93c, '#ffc93c'], ['GAMES', 0x4fc8ff, '#4fc8ff']].forEach(([name, color, css], i) => {
@@ -345,7 +345,7 @@ const SETS = {
     const path = plane(4, 60, toon(0xd9e1ea));
     path.rotation.x = -Math.PI / 2;
     g.add(at(path, 0, 0.02, -24));
-    const dark = toon(0x14141f);
+    const dark = toon(0x2a3a55);
     const red = toon(0x2f6fc7);
     for (const s of [-1, 1]) {
       g.add(at(part(new THREE.BoxGeometry(1.4, 6, 1.4), dark, 0.02), s * 4.6, 3, -11));
