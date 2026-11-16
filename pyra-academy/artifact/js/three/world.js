@@ -377,13 +377,13 @@ export function buildCampus() {
   // estátua do brasão no centro da praça
   const stoneMat = toon(0xdfe6ee);
   group.add(at(part(new THREE.CylinderGeometry(1.82, 1.88, 0.55, 24), stoneMat, 0.03), 0, 0.27, 0));
-  const water = new THREE.Mesh(new THREE.CircleGeometry(1.62, 32), new THREE.MeshBasicMaterial({ color: 0x5cb8f2 }));
+  const water = new THREE.Mesh(new THREE.CircleGeometry(1.62, 32), toon(0x5cb8f2));   // iluminada: escurece à noite
   water.rotation.x = -Math.PI / 2;
   water.position.y = 0.5;
   group.add(water);
   group.add(at(part(new THREE.CylinderGeometry(0.42, 0.55, 1.5, 12), stoneMat, 0.03), 0, 0.95, 0));
   group.add(at(part(new THREE.CylinderGeometry(0.95, 0.5, 0.22, 16), stoneMat, 0.03), 0, 1.75, 0));
-  const spray = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.32, 0.9, 10, 1, true), new THREE.MeshBasicMaterial({ color: 0xd8f1ff, transparent: true, opacity: 0.55, depthWrite: false }));
+  const spray = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.32, 0.9, 10, 1, true), toon(0xd8f1ff, { transparent: true, opacity: 0.55, depthWrite: false }));
   spray.position.y = 2.25;
   group.add(spray);
   animated.push((t) => { spray.scale.y = 1 + Math.sin(t * 4) * 0.12; water.material.color.setHSL(0.56, 0.82, 0.64 + Math.sin(t * 1.3) * 0.03); });

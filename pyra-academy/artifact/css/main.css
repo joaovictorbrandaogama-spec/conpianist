@@ -120,6 +120,8 @@ a.pill:hover { border-color: var(--paper); }
 .pill small { font: 800 .68rem var(--head); letter-spacing: .14em; color: var(--muted); }
 .pill b { font: 400 1.12rem/1 var(--display); letter-spacing: .03em; }
 .pill.merit { color: var(--gold); } .pill.pp b { color: var(--cyan); } .pill.klass b { color: var(--red-2); font-size: 1.4rem; }
+/* A letra da turma usa a cor da turma (a mesma do ranking e do brasão), não o destaque azul. */
+.pill.klass[data-letter="A"] b { color: #ffc93c; } .pill.klass[data-letter="B"] b { color: #4fc8ff; } .pill.klass[data-letter="C"] b { color: #5eea9a; } .pill.klass[data-letter="D"] b { color: #ff3355; }
 .kurisu-btn { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; height: 38px; padding: 0 14px; background: #ff9f6b; color: #000; border: 2px solid #000; line-height: 1.05; transition: .16s; transform: skewX(-10deg); box-shadow: 4px 4px 0 var(--red); }
 .kurisu-btn:hover { background: var(--paper); transform: skewX(-10deg) translate(-2px, -2px); }
 .kurisu-btn span { font: 700 .8rem var(--mono); }
@@ -392,7 +394,7 @@ body[data-term="fosforo"] .hl { color: #c8ffd6; }
 .race i { position: absolute; inset: 0; display: grid; place-items: center; font: 700 .72rem var(--mono); font-style: normal; color: #fff; text-shadow: 0 1px 3px #000, 0 0 6px #000; }
 .taunt { grid-column: 1 / -1; text-align: right; color: var(--glow); font-style: italic; font-size: .98rem; }
 .taunt.in { animation: rise .4s var(--ease); }
-.taunt.late { color: var(--red-2); font-style: normal; text-align: center; font-weight: 700; }
+.taunt.late { color: var(--danger-2); font-style: normal; text-align: center; font-weight: 700; }
 .duel-grid { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 20px; align-items: start; }
 .duel-task { padding: 22px; }
 .duel-task h1 { font: 400 1.7rem/1.1 var(--display); text-transform: uppercase; margin: 10px 0 14px; }
