@@ -264,7 +264,7 @@ const SETS = {
     });
     g.add(at(plane(3, 4.4, basic(0xdff1ff)), 0, 2.2, -29.9));
     // vasos com plantas entre as portas
-    for (const z of [-5.5, -10.5, -15.5]) {
+    for (const z of [-12, -18, -24]) {   // mais ao fundo: não ficam atrás de quem fala
       g.add(at(part(new THREE.CylinderGeometry(0.32, 0.25, 0.6, 10), toon(0xe9eef4), 0.03), 2.9, 0.3, z));
       g.add(at(part(new THREE.IcosahedronGeometry(0.55, 0), toon(0x4f9e62), 0.03), 2.9, 1.05, z));
     }
@@ -390,7 +390,7 @@ const SETS = {
     for (const [x, w, h] of [[-12, 8, 9], [0, 14, 12], [12, 8, 9]]) {
       g.add(at(part(new THREE.BoxGeometry(w, h, 5), toon(0xdbe3ec), 0.01), x, h / 2, -40));
     }
-    return { background: skyTexture(), fog: [0xcfe8fb, 24, 80] };
+    return { background: skyTexture(undefined, { sun: true }), fog: [0xcfe8fb, 24, 80] };
   },
   black() { return { background: 0x07070c }; },
 };

@@ -94,7 +94,7 @@ function windowTexture(cols, rows, wall, seed, lit = 0.55, glow = '#ffd98a') {
   return { map, emissiveMap };
 }
 
-export function skyTexture(stops = [[0, '#1f6fd1'], [0.42, '#4b9ff0'], [0.78, '#9fd3fa'], [1, '#e2f3ff']]) {
+export function skyTexture(stops = [[0, '#1f6fd1'], [0.42, '#4b9ff0'], [0.78, '#9fd3fa'], [1, '#e2f3ff']], { sun = false } = {}) {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 512;
   const g = canvas.getContext('2d');
@@ -118,11 +118,13 @@ export function skyTexture(stops = [[0, '#1f6fd1'], [0.42, '#4b9ff0'], [0.78, '#
     }
   } else {
     // Nuvens pintadas no fundo, sem partículas ou texturas remotas.
-    const glow = g.createRadialGradient(90, 120, 6, 90, 120, 120);
-    glow.addColorStop(0, 'rgba(255,252,236,.9)');
-    glow.addColorStop(0.18, 'rgba(255,250,230,.5)');
-    glow.addColorStop(1, 'rgba(255,250,230,0)');
-    g.fillStyle = glow; g.fillRect(0, 0, 220, 250);
+    if (sun) {
+      const glow = g.createRadialGradient(90, 120, 6, 90, 120, 120);
+      glow.addColorStop(0, 'rgba(255,252,236,.9)');
+      glow.addColorStop(0.18, 'rgba(255,250,230,.5)');
+      glow.addColorStop(1, 'rgba(255,250,230,0)');
+      g.fillStyle = glow; g.fillRect(0, 0, 220, 250);
+    }
     // Cúmulos: grupos de bolhas brancas com base achatada e sombra azulada embaixo.
     for (let i = 0; i < 9; i++) {
       const cx = random() * 600 - 40, cy = 120 + random() * 210, width = 50 + random() * 70;
@@ -361,7 +363,7 @@ export function buildCampus() {
   sea.position.y = -0.12;
   group.add(sea);
   animated.push((t) => { seaMap.offset.set(t * 0.004, t * 0.0025); });
-  const foam = new THREE.Mesh(new THREE.RingGeometry(85.4, 87.6, 72), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4, depthWrite: false }));
+  const foam = new THREE.Mesh(new THREE.RingGeometry(85.4, 87.6, 72), toon(0xffffff, { transparent: true, opacity: 0.4, depthWrite: false }));
   foam.rotation.x = -Math.PI / 2;
   foam.position.set(0, -0.06, 4);
   group.add(foam);
@@ -395,7 +397,7 @@ export function buildCampus() {
   const wing = new THREE.BufferGeometry();
   wing.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0.25, -0.9, 0.18, 0, 0, 0, -0.12, 0, 0, 0.25, 0.9, 0.18, 0, 0, 0, -0.12], 3));
   wing.computeVertexNormals();
-  const gulls = new THREE.InstancedMesh(wing, new THREE.MeshBasicMaterial({ color: 0xf4f7fb, side: THREE.DoubleSide }), 7);
+  const gulls = new THREE.InstancedMesh(wing, toon(0xf4f7fb, { side: THREE.DoubleSide }), 7);
   const gull = new THREE.Object3D();
   group.add(gulls);
   animated.push((t) => {
@@ -650,6 +652,7 @@ export function buildCampus() {
   const fr = rng(31);
   const bed = (x, z, w, d) => {
     beds.push({ p: [x, 0.12, z], s: [w, 0.24, d] });
+    colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 });
     soil.push({ p: [x, 0.25, z], s: [w - 0.24, 0.04, d - 0.24] });
     for (let i = 0; i < Math.round(w * d * 2.2); i++) blooms.push({ p: [x + (fr() - 0.5) * (w - 0.3), 0.34, z + (fr() - 0.5) * (d - 0.3)], s: [0.13, 0.13, 0.13], color: flowerColors[Math.floor(fr() * flowerColors.length)] });
   };
@@ -684,6 +687,12 @@ export function buildCampus() {
   for (let i = 0; i < 420; i++) {
     const x = (sr() - 0.5) * 76, z = -36 + sr() * 80;
     if (Math.abs(x) < 2.6 || Math.hypot(x, z) < 11) continue;   // fora do caminho central e da praça
+    const onPath = Object.values(SITES).some(({ door: [dx, dz] }) => {
+      const len2 = dx * dx + dz * dz;
+      const k = Math.max(0, Math.min(1, (x * dx + z * dz) / len2));
+      return Math.hypot(x - dx * k, z - dz * k) < 2.2;
+    });
+    if (onPath) continue;
     tufts.push({ p: [x, 0.09, z], s: [0.16, 0.18 + sr() * 0.12, 0.16], r: [0, sr() * 6, 0], color: sr() < 0.5 ? 0x5d9a66 : 0x8cc792 });
   }
   group.add(instances(new THREE.ConeGeometry(0.6, 1, 4), toon(0xffffff), tufts));
@@ -790,7 +799,7 @@ export function createWorld(container, { mode = 'play', minimap = null, onPrompt
 
   const scene = new THREE.Scene();
   const skies = {
-    aft: skyTexture(),
+    aft: skyTexture(undefined, { sun: true }),
     night: skyTexture([[0, '#020611'], [0.5, '#071736'], [0.85, '#123064'], [1, '#22477e']]),
   };
   scene.fog = new THREE.Fog(0xcfe8fb, 70, 200);
