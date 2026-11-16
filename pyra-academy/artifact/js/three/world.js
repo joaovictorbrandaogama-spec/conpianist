@@ -336,10 +336,10 @@ export function buildCampus() {
   const hillRandom = rng(64);
   for (let i = 0; i < 26; i++) {
     const angle = (i / 26) * TAU + hillRandom() * 0.15;
-    const radius = 64 + hillRandom() * 9;
+    const radius = 60 + hillRandom() * 8;
     const x = Math.cos(angle) * radius, z = 4 + Math.sin(angle) * radius;
     if (z > 40 && Math.abs(x) < 26) continue;   // deixa a vista do portão aberta
-    const size = 5 + hillRandom() * 7;
+    const size = 3.5 + hillRandom() * 4.5;
     hills.push({ p: [x, 0, z], s: [size * 1.6, size * (0.7 + hillRandom() * 0.5), size * 1.4], r: [0, hillRandom() * TAU, 0], color: [0x5e9e6c, 0x6fb07a, 0x4f8f63][i % 3] });
   }
   group.add(instances(new THREE.SphereGeometry(1, 12, 8, 0, TAU, 0, Math.PI / 2), toon(0xffffff), hills));
@@ -521,17 +521,27 @@ export function buildCampus() {
   sign.position.set(0, 7.6, GATE_Z);
   sign.scale.multiplyScalar(1.7);
   group.add(sign);
+  const wallStone = toon(0xe3e9f0);
+  const spikes = [];
   const fence = (x1, z1, x2, z2) => {
     const length = Math.hypot(x2 - x1, z2 - z1);
-    const rail = part(new THREE.BoxGeometry(0.25, 2.2, length), dark, 0);
-    rail.rotation.y = Math.atan2(x2 - x1, z2 - z1);
-    group.add(at(rail, (x1 + x2) / 2, 1.1, (z1 + z2) / 2));
+    const angle = Math.atan2(x2 - x1, z2 - z1);
+    const rail = part(new THREE.BoxGeometry(0.32, 1.25, length), wallStone, 0);
+    rail.rotation.y = angle;
+    group.add(at(rail, (x1 + x2) / 2, 0.62, (z1 + z2) / 2));
+    const count = Math.floor(length / 0.9);
+    for (let i = 0; i <= count; i++) {
+      const k = i / Math.max(count, 1);
+      spikes.push({ p: [x1 + (x2 - x1) * k, 1.25 + 0.5, z1 + (z2 - z1) * k], s: [1, 1, 1] });
+    }
   };
   fence(-40, GATE_Z, -5.2, GATE_Z);
   fence(5.2, GATE_Z, 40, GATE_Z);
   fence(-40, -39, -40, GATE_Z);
   fence(40, -39, 40, GATE_Z);
   fence(-40, -39, 40, -39);
+  group.add(instances(new THREE.CylinderGeometry(0.03, 0.05, 1.0, 5), dark, spikes));
+  group.add(instances(new THREE.ConeGeometry(0.09, 0.22, 5), dark, spikes.map(({ p }) => ({ p: [p[0], p[1] + 0.6, p[2]] }))));
 
   // canteiros com flores na frente dos prédios e cerca viva junto ao muro
   const beds = [], soil = [], blooms = [], hedges = [];

@@ -223,6 +223,16 @@ const WALL = 3.2;
 const LOW = 0.8;
 
 // =============================== PRÉDIO PRINCIPAL ===============================
+// Mancha de sol no chão, ao lado de uma janela (só de dia). Bordas suaves, mistura aditiva.
+let sunMap = null;
+function sunPatch(group, x, z, w, d, turn = 0, opacity = 0.2) {
+  sunMap ||= painted(128, 128, (g, W, H) => { g.filter = 'blur(10px)'; g.fillStyle = '#fff'; g.fillRect(18, 18, W - 36, H - 36); });
+  const patch = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ map: sunMap, color: 0xfff4dc, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+  patch.rotation.set(-Math.PI / 2, 0, turn);
+  patch.position.set(x, 0.025, z);
+  group.add(patch);
+}
+
 export function buildSchool(night = false) {
   const group = new THREE.Group();
   const colliders = [];
@@ -252,6 +262,7 @@ export function buildSchool(night = false) {
   plaque(-4.2, 2.2, -13.82, 2, 2.2, classesTexture());
   plaque(-17.82, 2.2, -8, 3.4, 2.2, windowTexture(night), Math.PI / 2);
   plaque(-17.82, 2.2, -3.5, 3.4, 2.2, windowTexture(night), Math.PI / 2);
+  if (!night) for (const z of [-8, -3.5]) sunPatch(group, -15.2, z + 0.6, 5, 3.2, 0.25);
   box(-10, -12.2, 3, 0.95, 1, toon(0x2a1f2a));
   for (const z of [-10, -7, -4]) for (const x of [-15, -11.8, -8.6, -5.4]) desk(x, z);
   tag('SALA DA TURMA D', -10, 1.7, -0.2, '#ff3355');
@@ -261,6 +272,7 @@ export function buildSchool(night = false) {
   wall(16, -12, 16, 0, WALL, wallMat);
   plaque(9, 2.4, -11.82, 6, 1.4, sign('CLUBE DE CÓDIGO CRIATIVO', '#0b1a12', '#5fd39a', 1024));
   plaque(15.82, 2.2, -6, 3.6, 2.2, windowTexture(night), -Math.PI / 2);
+  if (!night) sunPatch(group, 13.3, -5.4, 5, 3.4, -0.25);
   for (const x of [4, 6.2, 11.8, 14]) box(x, -11.3, 2, 2.6, 0.8, toon(0x4a3326));
   for (const [x, z] of [[5, -6], [13, -6]]) {
     box(x, z, 2.4, 0.08, 1.2, toon(0xf1ece0), 0.76, false);
@@ -281,6 +293,7 @@ export function buildSchool(night = false) {
   for (const x of [-21.2, -20.0, -18.8, 17.8, 19.0, 20.2]) box(x, 0.45, 1.1, 2.2, 0.5, toon(0x3a4a6a));
   plaque(-21.82, 2, 3, 3, 2, classesTexture(), Math.PI / 2);
   plaque(21.82, 2, 3, 3, 2, windowTexture(night), -Math.PI / 2);
+  if (!night) sunPatch(group, 19.6, 3.4, 4.4, 2.8, -0.25);
   box(0, 6, 3.6, 0.04, 0.2, trimMat, LOW, false);
 
   finish();
@@ -348,6 +361,7 @@ export function buildDorm(night = false) {
   wall(22, -10, 22, -2, WALL, wallMat);
   wall(12, -2, 22, -2, LOW, lowMat);
   for (const x of [-7, 0, 7]) plaque(x, 2.2, -9.82, 3, 2, windowTexture(night));
+  if (!night) for (const x of [-7, 0, 7]) sunPatch(group, x + 0.6, -7.6, 2.8, 4.4, 0.25, 0.16);
   plaque(17, 2.2, -9.82, 2.4, 1.8, windowTexture(night));
   // saguão: sofás, TV, máquina de bebidas, balcão
   box(0, -9.4, 4, 2, 0.4, toon(0x0b0b12), 0.6);

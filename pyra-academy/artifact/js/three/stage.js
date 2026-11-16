@@ -209,6 +209,15 @@ const desk = (x, z, color = 0x2a2a40) => {
   return group;
 };
 
+let sunMap = null;
+const sunPool = (x, z, w, d, turn = 0, opacity = 0.22) => {
+  sunMap ||= painted(128, 128, (c, W, H) => { c.filter = 'blur(10px)'; c.fillStyle = '#fff'; c.fillRect(18, 18, W - 36, H - 36); });
+  const pool = new THREE.Mesh(new THREE.PlaneGeometry(w, d), basic(0xfff4dc, { map: sunMap, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+  pool.rotation.set(-Math.PI / 2, 0, turn);
+  pool.position.set(x, 0.03, z);
+  return pool;
+};
+
 const SETS = {
   classroom(g) {
     const back = room(g, { floor: 0x9a8668, wall: 0xdfe7f0, stripe: 0x2f6fc7 });
@@ -222,6 +231,7 @@ const SETS = {
       g.add(at(win, -8.95, 3.4, z));
     }
     for (const z of [-2.2, -4]) for (const x of [-5.4, -1.8, 1.8, 5.4]) g.add(desk(x, z));
+    for (const z of [-0.6, -3.4]) g.add(sunPool(-6.6, z + 0.5, 4.6, 2.4, 0.3));
     return { background: 0xcfe6fa };
   },
   hall(g) {
@@ -305,6 +315,7 @@ const SETS = {
     const sky = skyTexture([[0, '#2b7bd8'], [0.6, '#7fc0f4'], [1, '#d8efff']]);
     for (const x of [-6.6, 6.6]) g.add(at(plane(4.4, 5.6, basic(0xffffff, { map: booksTexture(x > 0 ? 9 : 4) })), x, 3, back + 0.06));
     for (const x of [-2.2, 0, 2.2]) g.add(at(plane(1.5, 4.6, basic(0xffffff, { map: sky })), x, 3.3, back + 0.05));
+    for (const x of [-2.2, 0, 2.2]) g.add(sunPool(x + 0.4, back + 3, 1.6, 4.2, 0.18, 0.2));
     g.add(at(part(new THREE.BoxGeometry(11, 0.2, 1.6), toon(0x2e3a4c), 0.01), 0, 1, back + 2));
     for (const x of [-3.4, 3.4]) g.add(at(part(new THREE.ConeGeometry(0.45, 0.4, 12), toon(0x2fa66a), 0.05), x, 1.7, back + 2));
     return { background: 0x101624 };
