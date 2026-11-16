@@ -17,6 +17,20 @@ function gradient() {
   return ramp;
 }
 export const toon = (color, extra = {}) => new THREE.MeshToonMaterial({ color, gradientMap: gradient(), ...extra });
+// Personagens: o mesmo toon, mais uma luz de contorno estilo anime nas bordas. O contorno
+// multiplica a cor já iluminada, então acompanha noite, cenários escuros e o setDim.
+function withRim(material) {
+  material.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', `
+      float rimEdge = 1.0 - max(dot(normal, normalize(vViewPosition)), 0.0);
+      float rimBand = smoothstep(0.48, 0.68, rimEdge);
+      outgoingLight += outgoingLight * vec3(0.6, 0.82, 1.0) * rimBand * 0.85;
+      #include <opaque_fragment>`);
+  };
+  material.customProgramCacheKey = () => 'pyra-rim';
+  return material;
+}
+const ctoon = (color, extra = {}) => withRim(toon(color, extra));
 const outlineMaterial = new THREE.MeshBasicMaterial({ color: INK, side: THREE.BackSide });
 outlineMaterial.userData.sharedResource = true;
 
@@ -190,6 +204,16 @@ function drawFace(canvas, c, expression) {
   g.fillStyle = c.shade;
   g.globalAlpha = 0.45;
   g.fillRect(cx - 200, cy - 160, 400, 72);
+  g.globalAlpha = 1;
+  const contour = g.createRadialGradient(cx, cy + 10, 120, cx, cy + 10, 250);
+  contour.addColorStop(0, 'rgba(0,0,0,0)');
+  contour.addColorStop(1, c.shade);
+  g.globalAlpha = 0.55;
+  g.fillStyle = contour;
+  g.fillRect(0, 0, 1024, 512);
+  g.globalAlpha = 0.5;
+  g.fillStyle = '#ffffff';
+  g.beginPath(); g.ellipse(cx + 4, cy + 38, 5, 9, 0, 0, TAU); g.fill();
   g.globalAlpha = e.blush ? 0.5 : 0.14;
   g.fillStyle = '#ff6b7d';
   for (const s of [-1, 1]) { g.beginPath(); g.ellipse(cx + s * 100, cy + 54, 30, 14, 0, 0, TAU); g.fill(); }
@@ -367,10 +391,10 @@ function lock(points, width, depth = width * 0.35, steps = 7) {
 // ---------- cabelo ----------
 function buildHair(c) {
   const group = new THREE.Group();
-  const hair = toon(c.hair);
-  const dark = toon(c.hairLo);
-  const highlight = toon(new THREE.Color(c.hair).lerp(new THREE.Color(c.hairHi), 0.35));
-  const tie = toon(c.tie);
+  const hair = ctoon(c.hair);
+  const dark = ctoon(c.hairLo);
+  const highlight = ctoon(new THREE.Color(c.hair).lerp(new THREE.Color(c.hairHi), 0.24));
+  const tie = ctoon(c.tie);
   const style = c.style;
   const longish = ['long', 'hime', 'wavy'].includes(style);
   const addLock = (points, width, material = hair, depth) => group.add(mesh(lock(points, width, depth), material));
@@ -457,7 +481,7 @@ function buildHair(c) {
     group.add(at(mesh(ball(0.043, 8, 6), tie), 0.37, -0.85, 0.16));
   }
   if (c.acc?.includes('bow')) {
-    const ribbon = toon(0xf6f0e3);
+    const ribbon = ctoon(0xf6f0e3);
     for (const side of [-1, 1]) {
       const wing = mesh(loft([[-0.1, 0.11, 0.035], [0.06, 0.025, 0.025]], 4), ribbon);
       wing.rotation.z = side * Math.PI / 2;
@@ -473,7 +497,7 @@ function buildHair(c) {
     }
   }
   if (c.acc?.includes('earring')) {
-    const gold = toon(0xe5bf6e);
+    const gold = ctoon(0xe5bf6e);
     for (const side of [-1, 1]) group.add(at(mesh(new THREE.TorusGeometry(0.034, 0.01, 5, 10), gold), side * 0.39, -0.15, 0.03));
   }
   if (!group.children.some(child => child.material === tie)) tie.dispose();
@@ -483,19 +507,19 @@ function buildHair(c) {
 // ---------- corpo e uniforme ----------
 function buildBody(c) {
   const body = new THREE.Group();
-  const skin = toon(c.skin);
-  const skinShade = toon(c.shade);
-  const white = toon(0xf4f0e8);
+  const skin = ctoon(c.skin);
+  const skinShade = ctoon(c.shade);
+  const white = ctoon(0xf4f0e8);
   const colors = { labcoat: ['#e8e7e1', '#fffaf0'], council: ['#e0d8cb', '#f7f0df'], suit: [c.cloth, c.cloth2], blazer: [c.cloth, c.cloth2] };
   const [shadowColor, mainColor] = colors[c.outfit] || colors.blazer;
-  const cloth = toon(mainColor);
-  const clothShade = toon(shadowColor);
-  const trim = toon(c.outfit === 'council' ? '#d4af6a' : c.trim);
-  const tie = toon(c.tie);
-  const gold = toon(0xd6b46b);
-  const lower = toon(c.outfit === 'labcoat' ? '#2a2f45' : c.outfit === 'suit' ? '#1c1b2b' : '#20212d');
-  const shoe = toon(0x171622);
-  const sole = toon(0x0c0d14);
+  const cloth = ctoon(mainColor);
+  const clothShade = ctoon(shadowColor);
+  const trim = ctoon(c.outfit === 'council' ? '#d4af6a' : c.trim);
+  const tie = ctoon(c.tie);
+  const gold = ctoon(0xd6b46b);
+  const lower = ctoon(c.outfit === 'labcoat' ? '#2a2f45' : c.outfit === 'suit' ? '#1c1b2b' : '#20212d');
+  const shoe = ctoon(0x171622);
+  const sole = ctoon(0x0c0d14);
   const mat = { skin, skinShade, white, cloth, clothShade, trim, tie, gold, lower, shoe, sole };
   const skirt = c.fem && c.outfit !== 'labcoat';
 
@@ -559,7 +583,7 @@ function buildBody(c) {
   for (const side of [-1, 1]) {
     const arm = new THREE.Group();
     arm.position.set(side * 0.205, 1.375, 0);
-    arm.rotation.z = side * 0.08;
+    arm.rotation.z = side * 0.12;
     arm.add(mesh(loft([[-0.405, 0.045, 0.047], [-0.24, 0.052, 0.055], [-0.18, 0.054, 0.057], [-0.025, 0.073, 0.073], [0.025, 0.042, 0.049]], 10), cloth));
     arm.add(mesh(loft([[-0.419, 0.044, 0.045], [-0.397, 0.047, 0.048]], 10), trim));
     arm.add(mesh(loft([[-0.51, 0.029, 0.023], [-0.47, 0.038, 0.026], [-0.424, 0.031, 0.027]], 10), skin));
@@ -607,8 +631,8 @@ export function createCharacter(c, expression = 'neutral') {
     positions.setXYZ(i, positions.getX(i) * jaw * 0.94, positions.getY(i) * 1.07, positions.getZ(i) * 0.91);
   }
   geometry.computeVertexNormals();
-  head.add(mesh(geometry, toon(0xffffff, { map: face })));
-  const earMaterial = toon(c.skin);
+  head.add(mesh(geometry, ctoon(0xffffff, { map: face })));
+  const earMaterial = ctoon(c.skin);
   for (const side of [-1, 1]) {
     const ear = mesh(ball(0.07, 10, 7), earMaterial);
     ear.scale.set(0.5, 1, 0.6);
@@ -666,8 +690,9 @@ export function createCharacter(c, expression = 'neutral') {
       const swing = Math.sin(phase) * (reduced ? 0.16 : 0.42) * stride;
       legs[0].rotation.x = swing;
       legs[1].rotation.x = -swing;
-      arms[0].rotation.x = -swing * 0.7;
-      arms[1].rotation.x = swing * 0.7;
+      const rest = reduced ? 0 : (1 - stride) * Math.sin(phase * 0.6) * 0.025;
+      arms[0].rotation.x = -swing * 0.7 + rest;
+      arms[1].rotation.x = swing * 0.7 - rest * 0.8;
       body.position.y = reduced ? 0 : Math.abs(Math.sin(phase)) * 0.012 * stride;
       head.position.y = HEAD_Y + body.position.y + (reduced ? 0 : Math.sin(phase) * 0.003 * (1 - stride));
       head.rotation.z = reduced ? 0 : Math.sin(phase * 0.5) * 0.01 * (1 - stride);
