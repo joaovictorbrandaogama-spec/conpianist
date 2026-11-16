@@ -147,6 +147,44 @@ function pavingTexture() {
   return texture;
 }
 
+// Gramado cortado em faixas, com manchas suaves (repetido em tiles pelo chão).
+function lawnTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 256;
+  const g = canvas.getContext('2d');
+  const r = rng(91);
+  for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#74ad7c' : '#82bb88'; g.fillRect(0, i * 32, 256, 32); }
+  for (let i = 0; i < 900; i++) {
+    const x = r() * 256, y = r() * 256;
+    g.fillStyle = r() < 0.5 ? 'rgba(46,96,62,.16)' : 'rgba(214,246,206,.14)';
+    g.fillRect(x, y, 1 + r() * 2, 2 + r() * 3);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1, 1);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+// Água do mar em volta da ilha: ondinhas claras sobre azul.
+function seaTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 256;
+  const g = canvas.getContext('2d');
+  const r = rng(53);
+  g.fillStyle = '#2f86c9'; g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 160; i++) {
+    const x = r() * 256, y = r() * 256, w = 6 + r() * 18;
+    g.fillStyle = `rgba(214,240,255,${0.18 + r() * 0.3})`;
+    g.fillRect(x, y, w, 1.5);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(40, 40);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
 // Uma única geometria e chamada de desenho para cada conjunto de peças repetidas.
 function instances(geometry, material, transforms) {
   const mesh = new THREE.InstancedMesh(geometry, material, transforms.length);
@@ -275,9 +313,36 @@ export function buildCampus() {
   const warm = new THREE.MeshBasicMaterial({ color: 0xdff1ff });
 
   // chão, praça e caminhos
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(220, 220), toon(0x74ad7c));
+  const lawn = lawnTexture();
+  const groundGeometry = new THREE.CircleGeometry(78, 72);
+  const groundUV = groundGeometry.attributes.uv;
+  for (let i = 0; i < groundUV.count; i++) groundUV.setXY(i, groundUV.getX(i) * 40, groundUV.getY(i) * 40);
+  const ground = new THREE.Mesh(groundGeometry, toon(0xffffff, { map: lawn }));
   ground.rotation.x = -Math.PI / 2;
+  ground.position.z = 4;
   group.add(ground);
+  const beach = new THREE.Mesh(new THREE.RingGeometry(77.5, 86, 72), toon(0xf1e7cf));
+  beach.rotation.x = -Math.PI / 2;
+  beach.position.set(0, -0.02, 4);
+  group.add(beach);
+  const seaMap = seaTexture();
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(700, 700), toon(0xffffff, { map: seaMap }));
+  sea.rotation.x = -Math.PI / 2;
+  sea.position.y = -0.12;
+  group.add(sea);
+  animated.push((t) => { seaMap.offset.set(t * 0.004, t * 0.0025); });
+  // morros baixos no contorno da ilha (fora da cerca, só cenário)
+  const hills = [];
+  const hillRandom = rng(64);
+  for (let i = 0; i < 26; i++) {
+    const angle = (i / 26) * TAU + hillRandom() * 0.15;
+    const radius = 64 + hillRandom() * 9;
+    const x = Math.cos(angle) * radius, z = 4 + Math.sin(angle) * radius;
+    if (z > 40 && Math.abs(x) < 26) continue;   // deixa a vista do portão aberta
+    const size = 5 + hillRandom() * 7;
+    hills.push({ p: [x, 0, z], s: [size * 1.6, size * (0.7 + hillRandom() * 0.5), size * 1.4], r: [0, hillRandom() * TAU, 0], color: [0x5e9e6c, 0x6fb07a, 0x4f8f63][i % 3] });
+  }
+  group.add(instances(new THREE.SphereGeometry(1, 12, 8, 0, TAU, 0, Math.PI / 2), toon(0xffffff), hills));
   const stone = pavingTexture();
   const plazaGeometry = new THREE.CircleGeometry(10, 64);
   const plazaUV = plazaGeometry.attributes.uv;
@@ -310,9 +375,20 @@ export function buildCampus() {
   group.add(instances(new THREE.BoxGeometry(1, 1, 1), toon(0xf6f9fc), borders));
 
   // estátua do brasão no centro da praça
-  group.add(at(part(new THREE.CylinderGeometry(1.5, 1.8, 0.8, 8), dark, 0.03), 0, 0.4, 0));
+  const stoneMat = toon(0xdfe6ee);
+  group.add(at(part(new THREE.CylinderGeometry(1.82, 1.88, 0.55, 24), stoneMat, 0.03), 0, 0.27, 0));
+  const water = new THREE.Mesh(new THREE.CircleGeometry(1.62, 32), new THREE.MeshBasicMaterial({ color: 0x5cb8f2 }));
+  water.rotation.x = -Math.PI / 2;
+  water.position.y = 0.5;
+  group.add(water);
+  group.add(at(part(new THREE.CylinderGeometry(0.42, 0.55, 1.5, 12), stoneMat, 0.03), 0, 0.95, 0));
+  group.add(at(part(new THREE.CylinderGeometry(0.95, 0.5, 0.22, 16), stoneMat, 0.03), 0, 1.75, 0));
+  const spray = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.32, 0.9, 10, 1, true), new THREE.MeshBasicMaterial({ color: 0xd8f1ff, transparent: true, opacity: 0.55, depthWrite: false }));
+  spray.position.y = 2.25;
+  group.add(spray);
+  animated.push((t) => { spray.scale.y = 1 + Math.sin(t * 4) * 0.12; water.material.color.setHSL(0.56, 0.82, 0.64 + Math.sin(t * 1.3) * 0.03); });
   const crest = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ map: crestTexture(), transparent: true, side: THREE.DoubleSide }));
-  crest.position.y = 2.6;
+  crest.position.y = 3.5;
   group.add(crest);
   animated.push((t) => { crest.rotation.y = t * 0.5; });
   colliders.push({ minX: -1.9, maxX: 1.9, minZ: -1.9, maxZ: 1.9 });
@@ -435,6 +511,25 @@ export function buildCampus() {
   fence(-40, -39, -40, GATE_Z);
   fence(40, -39, 40, GATE_Z);
   fence(-40, -39, 40, -39);
+
+  // canteiros com flores na frente dos prédios e cerca viva junto ao muro
+  const beds = [], blooms = [], hedges = [];
+  const flowerColors = [0xffffff, 0x8fc6ff, 0x6f8df7, 0xfff1a6, 0xbfe3ff];
+  const fr = rng(31);
+  const bed = (x, z, w, d) => {
+    beds.push({ p: [x, 0.12, z], s: [w, 0.24, d] });
+    for (let i = 0; i < Math.round(w * d * 2.2); i++) blooms.push({ p: [x + (fr() - 0.5) * (w - 0.3), 0.34, z + (fr() - 0.5) * (d - 0.3)], s: [0.13, 0.13, 0.13], color: flowerColors[Math.floor(fr() * flowerColors.length)] });
+  };
+  for (const sx of [-1, 1]) { bed(sx * 9.5, -23.6, 6, 1.2); bed(sx * 4.6, 25, 3.4, 1.2); }
+  for (const sx of [-1, 1]) bed(sx * 15.8, -0.8, 1.2, 3);   // entre os caminhos laterais, sem cobrir nenhum
+  const hedgeLine = (x1, z1, x2, z2) => {
+    const length = Math.hypot(x2 - x1, z2 - z1);
+    hedges.push({ p: [(x1 + x2) / 2, 0.55, (z1 + z2) / 2], s: [0.9, 1.1, length], r: [0, Math.atan2(x2 - x1, z2 - z1), 0] });
+  };
+  hedgeLine(-39.2, -38, -39.2, 46); hedgeLine(39.2, -38, 39.2, 46); hedgeLine(-38.5, -38.3, 38.5, -38.3);
+  group.add(instances(new THREE.BoxGeometry(1, 1, 1), toon(0x8a7a66), beds));
+  group.add(instances(new THREE.IcosahedronGeometry(1, 0), toon(0xffffff), blooms));
+  group.add(instances(new THREE.BoxGeometry(1, 1, 1), toon(0x3f8a55), hedges));
 
   // árvores, postes e bancos
   const r = rng(77);
