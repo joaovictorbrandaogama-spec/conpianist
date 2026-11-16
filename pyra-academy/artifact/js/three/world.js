@@ -48,9 +48,9 @@ function windowTexture(cols, rows, wall, seed, lit = 0.55, glow = '#ffd98a') {
   const ch = size / rows;
   for (let j = 0; j < rows; j++) {
     // Frisos, peitoris e montantes continuam nítidos sem multiplicar malhas.
-    g.fillStyle = 'rgba(255,248,229,.22)';
+    g.fillStyle = 'rgba(255,255,255,.26)';
     g.fillRect(0, j * ch + ch * 0.84, size, ch * 0.05);
-    g.fillStyle = 'rgba(37,29,46,.18)';
+    g.fillStyle = 'rgba(30,48,74,.16)';
     g.fillRect(0, j * ch + ch * 0.89, size, ch * 0.025);
     for (let i = 0; i < cols; i++) {
       const on = r() < lit;
@@ -58,12 +58,12 @@ function windowTexture(cols, rows, wall, seed, lit = 0.55, glow = '#ffd98a') {
       const y = j * ch + ch * 0.2;
       const w = cw * 0.64;
       const h = ch * 0.57;
-      g.fillStyle = '#efe2ca';
+      g.fillStyle = '#f4f7fb';
       g.fillRect(x - 2, y - 2, w + 4, h + 5);
       const glass = g.createLinearGradient(x, y, x + w, y + h);
-      glass.addColorStop(0, '#7595ac');
-      glass.addColorStop(0.48, '#425a76');
-      glass.addColorStop(1, '#252e45');
+      glass.addColorStop(0, '#9fd2f5');
+      glass.addColorStop(0.48, '#4f8fc7');
+      glass.addColorStop(1, '#27507e');
       g.fillStyle = glass;
       g.fillRect(x, y, w, h);
       g.fillStyle = 'rgba(208,232,247,.22)';
@@ -76,7 +76,7 @@ function windowTexture(cols, rows, wall, seed, lit = 0.55, glow = '#ffd98a') {
         e.fillRect(x + w * 0.12, y, w * 0.18, h);
       }
       for (const ctx of [g, e]) {
-        ctx.fillStyle = ctx === g ? '#283347' : '#000';
+        ctx.fillStyle = ctx === g ? '#e8eef5' : '#000';
         ctx.fillRect(x + w * 0.47, y, Math.max(1, w * 0.055), h);
         ctx.fillRect(x, y + h * 0.28, w, Math.max(1, h * 0.045));
       }
@@ -89,7 +89,7 @@ function windowTexture(cols, rows, wall, seed, lit = 0.55, glow = '#ffd98a') {
   return { map, emissiveMap };
 }
 
-export function skyTexture(stops = [[0, '#526b96'], [0.45, '#9297bc'], [0.75, '#e5b2b0'], [1, '#f9d6ac']]) {
+export function skyTexture(stops = [[0, '#1f6fd1'], [0.42, '#4b9ff0'], [0.78, '#9fd3fa'], [1, '#e2f3ff']]) {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 512;
   const g = canvas.getContext('2d');
@@ -107,13 +107,20 @@ export function skyTexture(stops = [[0, '#526b96'], [0.45, '#9297bc'], [0.75, '#
     }
   } else {
     // Nuvens pintadas no fundo, sem partículas ou texturas remotas.
-    for (let i = 0; i < 11; i++) {
-      const x = random() * 650 - 60, y = 100 + random() * 240;
-      const cloud = g.createRadialGradient(x, y, 1, x, y, 100);
-      cloud.addColorStop(0, 'rgba(255,240,222,.22)');
-      cloud.addColorStop(1, 'rgba(255,240,222,0)');
-      g.save(); g.translate(x, y); g.scale(1.7, 0.13); g.translate(-x, -y);
-      g.fillStyle = cloud; g.fillRect(x - 110, y - 110, 220, 220); g.restore();
+    // Cúmulos: grupos de bolhas brancas com base achatada e sombra azulada embaixo.
+    for (let i = 0; i < 9; i++) {
+      const cx = random() * 600 - 40, cy = 120 + random() * 210, width = 50 + random() * 70;
+      for (let k = 0; k < 7; k++) {
+        const x = cx + (k / 6 - 0.5) * width * 1.6, y = cy - Math.sin((k / 6) * Math.PI) * width * 0.32, rad = width * (0.28 + random() * 0.18);
+        const puff = g.createRadialGradient(x, y, 1, x, y, rad);
+        puff.addColorStop(0, 'rgba(255,255,255,.78)');
+        puff.addColorStop(0.6, 'rgba(255,255,255,.45)');
+        puff.addColorStop(1, 'rgba(255,255,255,0)');
+        g.save(); g.translate(x, y); g.scale(1.25, 0.62); g.translate(-x, -y);
+        g.fillStyle = puff; g.fillRect(x - rad, y - rad, rad * 2, rad * 2); g.restore();
+      }
+      g.fillStyle = 'rgba(120,160,210,.10)';
+      g.fillRect(cx - width * 0.8, cy + width * 0.06, width * 1.6, 2);
     }
   }
   const texture = new THREE.CanvasTexture(canvas);
@@ -126,11 +133,11 @@ function pavingTexture() {
   canvas.width = canvas.height = 256;
   const g = canvas.getContext('2d');
   const r = rng(79);
-  g.fillStyle = '#9b969b'; g.fillRect(0, 0, 256, 256);
+  g.fillStyle = '#93a0ad'; g.fillRect(0, 0, 256, 256);
   for (let row = 0; row < 8; row++) for (let col = -1; col < 4; col++) {
     const x = col * 85.33 + (row % 2 ? 42.66 : 0);
     const tone = 172 + Math.floor(r() * 16);
-    g.fillStyle = `rgb(${tone + 11},${tone + 5},${tone})`;
+    g.fillStyle = `rgb(${tone - 4},${tone + 4},${tone + 12})`;
     g.fillRect(x + 1, row * 32 + 1, 83.33, 30);
     g.fillStyle = 'rgba(255,255,255,.2)'; g.fillRect(x + 2, row * 32 + 1, 81, 1);
   }
@@ -176,7 +183,7 @@ function crestTexture() {
 }
 
 // ---------- peças do cenário ----------
-function block(w, h, d, wall, seed, { cols = 6, rows = 3, lit = 0.55, glow, roof = 0x22263a } = {}) {
+function block(w, h, d, wall, seed, { cols = 6, rows = 3, lit = 0.55, glow, roof = 0x2a3f5e } = {}) {
   const tex = windowTexture(cols, rows, wall, seed, lit, glow);
   const side = toon(0xffffff, { map: tex.map, emissive: 0xffffff, emissiveMap: tex.emissiveMap, emissiveIntensity: 0.08 });
   WINDOWS.push(side);
@@ -191,23 +198,25 @@ function block(w, h, d, wall, seed, { cols = 6, rows = 3, lit = 0.55, glow, roof
   for (const x of [-w / 2 + 0.16, w / 2 - 0.16]) for (const z of [-d / 2 + 0.12, d / 2 - 0.12]) {
     trim.push({ p: [x, h / 2, z], s: [0.32, h, 0.28] });
   }
-  group.add(instances(new THREE.BoxGeometry(1, 1, 1), toon(0xe4d8c3), trim));
+  group.add(instances(new THREE.BoxGeometry(1, 1, 1), toon(0xf3f6fa), trim));
   return group;
 }
 
 function grove(spots, random) {
   const group = new THREE.Group();
   const trunks = [], crowns = [], branches = [];
-  const pink = [0xe69aad, 0xf5b4c2, 0xffd1d5, 0xe6a8c2];
+  const leaf = [0x4f9e62, 0x6bbf78, 0x86d08f, 0x5aae70];
+  const jacaranda = [0x7f9cf0, 0x9db4f7, 0xb8c9fb, 0x8aa6f2];
   spots.forEach(([x, z], index) => {
     const size = 0.9 + random() * 0.5;
     trunks.push({ p: [x, 1.25 * size, z], s: [size, size, size] });
     for (const side of [-1, 1]) branches.push({ p: [x + side * 0.38 * size, 2.1 * size, z], s: [0.13 * size, 1.1 * size, 0.13 * size], r: [0, 0, side * -0.5] });
     [[0, 3.4, 0, 1.65], [-1.05, 3, 0.3, 1.25], [1, 3.15, -0.3, 1.3], [0.15, 4.25, 0.12, 1.05], [-0.15, 3.4, 1.05, 1.15], [0.35, 3.5, -1, 1.15]].forEach(([px, py, pz, radius], i) => {
-      crowns.push({ p: [x + px * size, py * size, z + pz * size], s: [radius * size, radius * size * 0.75, radius * size], r: [0, index * 1.7 + i, 0], color: pink[i % pink.length] });
+      const palette = index % 4 === 1 ? jacaranda : leaf;
+      crowns.push({ p: [x + px * size, py * size, z + pz * size], s: [radius * size, radius * size * 0.75, radius * size], r: [0, index * 1.7 + i, 0], color: palette[i % palette.length] });
     });
   });
-  const bark = toon(0x654451);
+  const bark = toon(0x5d4a3c);
   group.add(instances(new THREE.CylinderGeometry(0.18, 0.29, 2.5, 7), bark, trunks));
   group.add(instances(new THREE.CylinderGeometry(0.7, 1, 1, 6), bark, branches));
   group.add(instances(new THREE.IcosahedronGeometry(1, 1), toon(0xffffff), crowns));
@@ -262,26 +271,26 @@ export function buildCampus() {
   const animated = [];
   const dark = toon(0x14141f);
   const cream = toon(0xf5f2ea);
-  const red = toon(0xe8173f);
-  const warm = new THREE.MeshBasicMaterial({ color: 0xffd98a });
+  const red = toon(0x2f6fc7);           // destaque da Academia (era carmim)
+  const warm = new THREE.MeshBasicMaterial({ color: 0xdff1ff });
 
   // chão, praça e caminhos
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(220, 220), toon(0x647e72));
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(220, 220), toon(0x74ad7c));
   ground.rotation.x = -Math.PI / 2;
   group.add(ground);
   const stone = pavingTexture();
   const plazaGeometry = new THREE.CircleGeometry(10, 64);
   const plazaUV = plazaGeometry.attributes.uv;
   for (let i = 0; i < plazaUV.count; i++) plazaUV.setXY(i, plazaUV.getX(i) * 7, plazaUV.getY(i) * 7);
-  const plaza = new THREE.Mesh(plazaGeometry, toon(0xe1d4d2, { map: stone }));
+  const plaza = new THREE.Mesh(plazaGeometry, toon(0xe6edf4, { map: stone }));
   plaza.rotation.x = -Math.PI / 2;
   plaza.position.y = 0.03;
   group.add(plaza);
-  const ring = new THREE.Mesh(new THREE.RingGeometry(9.75, 10, 64), red);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(9.75, 10, 64), toon(0x3aa3ff));
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = 0.04;
   group.add(ring);
-  const paving = toon(0xe4dbd1, { map: stone });
+  const paving = toon(0xe9eff5, { map: stone });
   const borders = [];
   const path = (x1, z1, x2, z2, width = 3) => {
     const length = Math.hypot(x2 - x1, z2 - z1);
@@ -298,7 +307,7 @@ export function buildCampus() {
   };
   for (const site of Object.values(SITES)) path(0, 0, site.door[0], site.door[1]);
   path(0, 0, 0, GATE_Z + 6, 4);
-  group.add(instances(new THREE.BoxGeometry(1, 1, 1), toon(0xecdcc8), borders));
+  group.add(instances(new THREE.BoxGeometry(1, 1, 1), toon(0xf6f9fc), borders));
 
   // estátua do brasão no centro da praça
   group.add(at(part(new THREE.CylinderGeometry(1.5, 1.8, 0.8, 8), dark, 0.03), 0, 0.4, 0));
@@ -327,9 +336,9 @@ export function buildCampus() {
   };
 
   // 1. prédio principal, com a torre do relógio
-  const sala = block(30, 9, 10, '#c7b8b4', 5, { cols: 12, rows: 3 });
+  const sala = block(30, 9, 10, '#e3e9f0', 5, { cols: 12, rows: 3 });
   sala.add(at(part(new THREE.BoxGeometry(30.6, 0.5, 10.6), red, 0), 0, 9.3, 0));
-  sala.add(at(part(new THREE.BoxGeometry(7, 17, 7), toon(0xb7a9ac), 0.01), 0, 8.5, 2.5));
+  sala.add(at(part(new THREE.BoxGeometry(7, 17, 7), toon(0xd6e0ea), 0.01), 0, 8.5, 2.5));
   const roof = part(new THREE.ConeGeometry(5.6, 4.5, 4), red, 0.02);
   roof.rotation.y = Math.PI / 4;
   sala.add(at(roof, 0, 19.2, 2.5));
@@ -340,13 +349,13 @@ export function buildCampus() {
   colliders.push({ minX: -3.5, maxX: 3.5, minZ: -31, maxZ: -24 });   // a torre avança além da fachada
 
   // 2. prédio de exames
-  const exames = block(12, 8, 10, '#8d8c9d', 7, { cols: 5, rows: 3, lit: 0.3, glow: '#ff5a70' });
+  const exames = block(12, 8, 10, '#8f9db0', 7, { cols: 5, rows: 3, lit: 0.3, glow: '#ff5a70' });
   for (const y of [2.2, 4.4, 6.6]) exames.add(at(new THREE.Mesh(new THREE.BoxGeometry(12.1, 0.18, 10.1), new THREE.MeshBasicMaterial({ color: 0xe8173f })), 0, y, 0));
   exames.add(at(new THREE.Mesh(new THREE.PlaneGeometry(2.6, 3.4), new THREE.MeshBasicMaterial({ color: 0xff5a70 })), 0, 1.7, 5.03));
   place('exames', exames);
 
   // 3. conselho estudantil, com colunas
-  const conselho = block(12, 8, 10, '#d5c2b0', 9, { cols: 5, rows: 2, lit: 0.6 });
+  const conselho = block(12, 8, 10, '#e7e4dc', 9, { cols: 5, rows: 2, lit: 0.6 });
   for (const x of [-4.5, -1.5, 1.5, 4.5]) conselho.add(at(part(new THREE.CylinderGeometry(0.45, 0.5, 8, 10), cream, 0.03), x, 4, 5.7));
   conselho.add(at(part(new THREE.BoxGeometry(13, 1, 2.4), toon(0xffc93c), 0.02), 0, 8.6, 5.4));
   conselho.add(at(new THREE.Mesh(new THREE.PlaneGeometry(2.4, 3.4), warm), 0, 1.7, 5.03));
@@ -360,8 +369,8 @@ export function buildCampus() {
   place('info', info);
 
   // 5. biblioteca
-  const biblio = block(10, 7, 12, '#bca392', 13, { cols: 5, rows: 2, lit: 0.7 });
-  const gable = part(new THREE.CylinderGeometry(0.01, 6.2, 3, 4, 1), toon(0x5a3a36), 0.02);
+  const biblio = block(10, 7, 12, '#c9c3ba', 13, { cols: 5, rows: 2, lit: 0.7 });
+  const gable = part(new THREE.CylinderGeometry(0.01, 6.2, 3, 4, 1), toon(0x34506f), 0.02);
   gable.rotation.y = Math.PI / 4;
   gable.scale.z = 1.25;
   biblio.add(at(gable, 0, 8.6, 0));
@@ -384,7 +393,7 @@ export function buildCampus() {
   // 7. galeria: três lojas com toldo
   const galeria = new THREE.Group();
   [[0xff3355, -4.7], [0xffc93c, 0], [0x4fc8ff, 4.7]].forEach(([color, z], i) => {
-    const shop = block(7, 5, 4.5, '#c2b3b5', 21 + i, { cols: 3, rows: 2, lit: 0.9 });
+    const shop = block(7, 5, 4.5, '#e1e6ed', 21 + i, { cols: 3, rows: 2, lit: 0.9 });
     const awning = part(new THREE.BoxGeometry(1.6, 0.2, 4.3), toon(color), 0.02);
     awning.rotation.z = -0.35;
     shop.add(at(awning, 4.2, 3, 0));
@@ -399,7 +408,7 @@ export function buildCampus() {
   place('galeria', galeriaWrap);
 
   // 8. dormitório
-  place('dorm', block(10, 14, 8, '#b6afc2', 17, { cols: 5, rows: 6, lit: 0.45 }));
+  place('dorm', block(10, 14, 8, '#cbd8e8', 17, { cols: 5, rows: 6, lit: 0.45 }));
 
   // portão, cerca e câmeras
   for (const s of [-1, 1]) {
@@ -488,12 +497,12 @@ export function createWorld(container, { mode = 'play', minimap = null, onPrompt
   const scene = new THREE.Scene();
   const skies = {
     aft: skyTexture(),
-    night: skyTexture([[0, '#02030c'], [0.5, '#0b1030'], [0.85, '#1d1846'], [1, '#3a2a5a']]),
+    night: skyTexture([[0, '#020611'], [0.5, '#071736'], [0.85, '#123064'], [1, '#22477e']]),
   };
-  scene.fog = new THREE.Fog(0x4a2468, 55, 150);
-  const hemi = new THREE.HemisphereLight(0xc9b8ff, 0x1a1626, 2.4);
+  scene.fog = new THREE.Fog(0xcfe8fb, 70, 200);
+  const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x4f6f5c, 2.4);
   scene.add(hemi);
-  const sun = new THREE.DirectionalLight(0xffb27a, 2.6);
+  const sun = new THREE.DirectionalLight(0xfff6e8, 2.6);
   sun.position.set(-30, 26, 18);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
@@ -554,11 +563,11 @@ export function createWorld(container, { mode = 'play', minimap = null, onPrompt
     const night = currentPeriod === 'night';
     if (area.sites) {
       scene.background = night ? skies.night : skies.aft;
-      scene.fog = new THREE.Fog(night ? 0x12172e : 0xc3b0bc, night ? 48 : 70, night ? 145 : 175);
-      hemi.color.set(night ? 0x91a8e2 : 0xdce6ff);
-      hemi.groundColor.set(night ? 0x242638 : 0x756779);
+      scene.fog = new THREE.Fog(night ? 0x0d1a36 : 0xcfe8fb, night ? 48 : 80, night ? 145 : 210);
+      hemi.color.set(night ? 0x8fb0ee : 0xd2eaff);
+      hemi.groundColor.set(night ? 0x1f2b40 : 0x5c7f68);
       hemi.intensity = night ? 1.15 : 1.8;
-      sun.color.set(night ? 0xb1c7ff : 0xffd4ac);
+      sun.color.set(night ? 0xb1c7ff : 0xfff3e0);
       sun.intensity = night ? 0.85 : 2.05;
       sun.position.set(night ? 28 : -35, night ? 58 : 55, night ? -26 : 30);
       for (const m of campus.windows) m.emissiveIntensity = night ? 1.55 : 0.06;
@@ -567,10 +576,10 @@ export function createWorld(container, { mode = 'play', minimap = null, onPrompt
       // dentro dos prédios a luz é sempre de lâmpada; só as janelas mudam
       scene.background = new THREE.Color(0x07060c);
       scene.fog = null;
-      hemi.color.set(0xfff2e0);
-      hemi.groundColor.set(0x2a2030);
+      hemi.color.set(0xeef5ff);
+      hemi.groundColor.set(0x2c3444);
       hemi.intensity = 1.8;
-      sun.color.set(0xffe2c0);
+      sun.color.set(0xf4f7ff);
       sun.intensity = 1.35;
       sun.position.set(-6, 14, 10);
     }
