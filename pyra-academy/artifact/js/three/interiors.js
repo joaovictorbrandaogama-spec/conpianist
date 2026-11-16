@@ -39,17 +39,17 @@ const classesTexture = () => painted(512, 560, (g, w, h) => {
 });
 const windowTexture = (night) => painted(256, 256, (g, w, h) => {
   const grad = g.createLinearGradient(0, 0, 0, h);
-  if (night) { grad.addColorStop(0, '#04061a'); grad.addColorStop(1, '#1d1846'); } else { grad.addColorStop(0, '#3a2a8a'); grad.addColorStop(0.6, '#e8506a'); grad.addColorStop(1, '#ffc56e'); }
+  if (night) { grad.addColorStop(0, '#030816'); grad.addColorStop(1, '#14305e'); } else { grad.addColorStop(0, '#2b7bd8'); grad.addColorStop(0.6, '#7fc0f4'); grad.addColorStop(1, '#d8efff'); }
   g.fillStyle = grad; g.fillRect(0, 0, w, h);
   // Silhueta distante e reflexos: o vidro continua legível à noite.
-  g.fillStyle = night ? '#11162b' : '#504764';
+  g.fillStyle = night ? '#0c1428' : '#7f9cbf';
   for (let i = 0; i < 11; i++) g.fillRect(i * 27 - 8, 178 - (i * 31 % 54), 22, 90);
-  g.fillStyle = night ? '#ffd996' : '#e6ba92';
+  g.fillStyle = night ? '#ffd996' : '#eef7ff';
   for (let i = 0; i < 26; i++) g.fillRect((i * 47) % 250, 190 + (i * 19 % 58), 3, 5);
   g.fillStyle = 'rgba(234,241,255,.11)';
   g.beginPath(); g.moveTo(0, 32); g.lineTo(150, 0); g.lineTo(208, 0); g.lineTo(0, 102); g.fill();
-  g.fillStyle = '#d9d2c3'; g.fillRect(w / 2 - 4, 0, 8, h); g.fillRect(0, h / 2 - 4, w, 8);
-  g.strokeStyle = '#565568'; g.lineWidth = 10; g.strokeRect(2, 2, w - 4, h - 4);
+  g.fillStyle = '#eef2f6'; g.fillRect(w / 2 - 4, 0, 8, h); g.fillRect(0, h / 2 - 4, w, 8);
+  g.strokeStyle = '#8d9aab'; g.lineWidth = 10; g.strokeRect(2, 2, w - 4, h - 4);
 });
 const floorTexture = (a, b, n = 8, wood = false) => {
   const t = painted(256, 256, (g, w, h) => {
@@ -118,8 +118,8 @@ function lighting(group, night, fixtures) {
     g.fillStyle = fade; g.fillRect(0, 0, 64, 64);
   });
   const glowMat = new THREE.SpriteMaterial({ map: glowMap, transparent: true, depthWrite: false, opacity: night ? 0.7 : 0.28, blending: THREE.AdditiveBlending });
-  const litMat = basic(night ? 0xffe2a8 : 0xf7e9ca, { toneMapped: false });
-  const housingMat = toon(0x9b7c68);
+  const litMat = basic(night ? 0xffe2a8 : 0xf3f8ff, { toneMapped: false });
+  const housingMat = toon(0x8d99a8);
   for (const [x, y, z] of fixtures) {
     const housing = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.16, 0.22), housingMat);
     group.add(at(housing, x, y, z));
@@ -131,7 +131,7 @@ function lighting(group, night, fixtures) {
   // Duas luzes no máximo; sem mapas de sombra adicionais.
   for (const fixture of [fixtures[0], fixtures[fixtures.length - 1]]) {
     if (!fixture) continue;
-    const light = new THREE.PointLight(0xffd6a1, night ? 3.2 : 1.2, 12, 2);
+    const light = new THREE.PointLight(night ? 0xffd6a1 : 0xe8f2ff, night ? 3.2 : 1.2, 12, 2);
     group.add(at(light, fixture[0], fixture[1] - 0.3, fixture[2] + 0.65));
   }
 }
@@ -143,8 +143,8 @@ function kit(group, colliders) {
     if (!materials.has(color)) materials.set(color, toon(color));
     return materials.get(color);
   };
-  const trim = material(0xbba990);
-  const foot = material(0x555062);
+  const trim = material(0xc9d3de);
+  const foot = material(0x4f5b6c);
   const wall = (x0, z0, x1, z1, h, mat, thick = 0.3) => {
     const w = Math.abs(x1 - x0) || thick;
     const d = Math.abs(z1 - z0) || thick;
@@ -227,12 +227,12 @@ export function buildSchool(night = false) {
   const group = new THREE.Group();
   const colliders = [];
   const { wall, box, floor, plaque, tag, desk, plant, finish } = kit(group, colliders);
-  const wallMat = toon(0xd9d2c3);
-  const trimMat = toon(0x8e1b31);
-  const lowMat = toon(0x8e1b31);
+  const wallMat = toon(0xe8eef4);
+  const trimMat = toon(0x24497f);
+  const lowMat = toon(0x2e5a97);
 
-  floor(-22, 0, 22, 6, floorTexture('#5a4a5e', '#4c3e50', 16));
-  floor(-18, -14, -2, 0, floorTexture('#84634b', '#795b46', 8, true));
+  floor(-22, 0, 22, 6, floorTexture('#5a6b82', '#506076', 16));
+  floor(-18, -14, -2, 0, floorTexture('#a08b70', '#937e64', 8, true));
   floor(2, -12, 16, 0, floorTexture('#2e5a48', '#27503f', 6));
 
   // corredor: parede sul baixa com a saída no meio; fundos com janelas
@@ -273,7 +273,7 @@ export function buildSchool(night = false) {
   plant(15, -1.2);
   tag('CLUBE', 10, 1.7, -0.2, '#5fd39a');
   // volumes maciços entre as salas e nas pontas do prédio
-  const mass = toon(0xb9b0a0);
+  const mass = toon(0xc7cfd9);
   box(0, -7, 4.3, WALL, 14, mass);
   box(-20, -7, 4.3, WALL, 14, mass);
   box(19, -6, 6.3, WALL, 12, mass);
@@ -301,7 +301,7 @@ export function buildSchool(night = false) {
     notebooks.push([x + 0.23, 0.854, z, 0.43, 0.025, 0.3]);
     pages.push([x + 0.23, 0.873, z, 0.39, 0.012, 0.27]);
   }
-  details(group, 0x8f344b, notebooks);
+  details(group, 0x3f67a8, notebooks);
   details(group, 0xf0e4c9, pages);
   details(group, 0xbda985, [[-10, 0.58, -13.67, 7.25, 0.08, 0.3], [-13.58, 2.1, -13.78, 0.08, 3.1, 0.08], [-6.42, 2.1, -13.78, 0.08, 3.1, 0.08]]);
   details(group, 0xe7dec7, [[5, 0.87, -5.57, 0.72, 0.04, 0.24], [13, 0.87, -5.57, 0.72, 0.04, 0.24]]);
@@ -332,9 +332,9 @@ export function buildDorm(night = false) {
   const group = new THREE.Group();
   const colliders = [];
   const { wall, box, floor, plaque, tag, plant } = kit(group, colliders);
-  const wallMat = toon(0x2e2a44);
-  const lowMat = toon(0x4a3a6a);
-  floor(-12, -10, 12, 0, floorTexture('#3a3048', '#332a40', 10));
+  const wallMat = toon(0x2b3b58);
+  const lowMat = toon(0x3a5687);
+  floor(-12, -10, 12, 0, floorTexture('#344462', '#2e3c57', 10));
   floor(12, -10, 22, -2, floorTexture('#80634f', '#745944', 5, true));
   wall(-12, 0, -1.8, 0, LOW, lowMat);
   wall(1.8, 0, 12, 0, LOW, lowMat);
@@ -352,8 +352,8 @@ export function buildDorm(night = false) {
   // saguão: sofás, TV, máquina de bebidas, balcão
   box(0, -9.4, 4, 2, 0.4, toon(0x0b0b12), 0.6);
   plaque(0, 1.6, -9.18, 3.6, 1.6, painted(256, 128, (g, w, h) => { g.fillStyle = '#101830'; g.fillRect(0, 0, w, h); g.fillStyle = '#ffc93c'; g.font = `40px ${POSTER}`; g.fillText('SISTEMA S', 20, 60); g.fillStyle = '#ff3355'; g.fillRect(20, 80, 140, 20); }));
-  box(-2.4, -5.6, 2.6, 0.7, 1, toon(0x8e1b31));
-  box(2.4, -5.6, 2.6, 0.7, 1, toon(0x8e1b31));
+  box(-2.4, -5.6, 2.6, 0.7, 1, toon(0x2f5d9e));
+  box(2.4, -5.6, 2.6, 0.7, 1, toon(0x2f5d9e));
   box(0, -3.6, 2, 0.45, 1, toon(0x3a2626));
   box(10.6, -9, 1.4, 2.2, 0.9, toon(0x4fc8ff));
   box(-9, -2.6, 3.6, 1.1, 1, toon(0x3a2a26));
@@ -373,9 +373,9 @@ export function buildDorm(night = false) {
     for (const side of [-1, 1]) sofaDetails.push([x + side * 1.18, 0.6, -5.6, 0.22, 0.55, 1]);
     for (const side of [-1, 1]) cushions.push([x + side * 0.56, 0.735, -5.55, 1.05, 0.09, 0.78]);
   }
-  details(group, 0x7c2943, sofaDetails);
-  details(group, 0xb95164, cushions);
-  details(group, 0x8e4462, [[20.4, 0.587, -6.3, 2.52, 0.074, 2.08]]);
+  details(group, 0x2e5488, sofaDetails);
+  details(group, 0x7fb3e8, cushions);
+  details(group, 0x3b679f, [[20.4, 0.587, -6.3, 2.52, 0.074, 2.08]]);
   details(group, 0xd5afaa, [[20.4, 0.634, -7.17, 2.52, 0.025, 0.28], [20.4, 0.634, -5.48, 2.52, 0.025, 0.1]]);
   plaque(16.8, 1.14, -9.187, 1.08, 2.04, booksTexture(3));
   plaque(13.7, 1.05, -9.259, 0.61, 0.39, painted(128, 80, (g, w, h) => {
@@ -396,9 +396,9 @@ export function buildDorm(night = false) {
   }));
   // Tapete plano no saguão, sem criar qualquer obstáculo.
   const rug = new THREE.Mesh(new THREE.PlaneGeometry(9, 5), basic(0xffffff, { map: painted(256, 128, (g, w, h) => {
-    g.fillStyle = '#3f344d'; g.fillRect(0, 0, w, h);
-    g.strokeStyle = '#9d7886'; g.lineWidth = 3; g.strokeRect(8, 8, w - 16, h - 16);
-    g.strokeStyle = '#68556b'; g.lineWidth = 1; g.strokeRect(13, 13, w - 26, h - 26);
+    g.fillStyle = '#2f4566'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#9fc4ea'; g.lineWidth = 3; g.strokeRect(8, 8, w - 16, h - 16);
+    g.strokeStyle = '#5c7aa3'; g.lineWidth = 1; g.strokeRect(13, 13, w - 26, h - 26);
   }) }));
   rug.rotation.x = -Math.PI / 2; rug.position.set(0, 0.016, -4.5); rug.receiveShadow = true; group.add(rug);
   lighting(group, night, [[-7, 2.8, -9.57], [7, 2.8, -9.57], [17.1, 2.8, -9.57]]);
@@ -426,9 +426,9 @@ export function buildMall(night = false) {
   const group = new THREE.Group();
   const colliders = [];
   const { wall, box, floor, plaque, tag, plant } = kit(group, colliders);
-  const wallMat = toon(0x1c1c2a);
-  const lowMat = toon(0x2a4a3a);
-  floor(-18, -10, 18, 0, floorTexture('#d9d2c3', '#c9c0ae', 12));
+  const wallMat = toon(0x22304a);
+  const lowMat = toon(0x2a5a6a);
+  floor(-18, -10, 18, 0, floorTexture('#dfe6ee', '#cfd8e3', 12));
   wall(-18, 0, -1.8, 0, LOW, lowMat);
   wall(1.8, 0, 18, 0, LOW, lowMat);
   wall(-18, -10, 18, -10, WALL + 0.8, wallMat);

@@ -155,8 +155,8 @@ const booksTexture = (seed) => painted(512, 640, (g, w, h) => {
 });
 const nightTexture = () => painted(256, 256, (g, w, h) => {
   const sky = g.createLinearGradient(0, 0, 0, h);
-  sky.addColorStop(0, '#0a0a24');
-  sky.addColorStop(1, '#3a1c68');
+  sky.addColorStop(0, '#06102a');
+  sky.addColorStop(1, '#1c3a70');
   g.fillStyle = sky;
   g.fillRect(0, 0, w, h);
   g.fillStyle = '#fff5d6';
@@ -175,7 +175,7 @@ const meshTexture = () => painted(256, 256, (g, w, h) => {
 });
 
 // Sala básica: chão, parede do fundo e paredes laterais.
-function room(g, { floor = 0x1a1a26, wall = 0x2a2940, width = 18, depth = 9, height = 8, stripe = 0xe8173f } = {}) {
+function room(g, { floor = 0x1a2030, wall = 0x26344c, width = 18, depth = 9, height = 8, stripe = 0x3aa3ff } = {}) {
   const ground = plane(width + 8, depth + 8, toon(floor, { map: surfaceTexture(true) }));
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
@@ -211,49 +211,49 @@ const desk = (x, z, color = 0x2a2a40) => {
 
 const SETS = {
   classroom(g) {
-    const back = room(g);
+    const back = room(g, { floor: 0x9a8668, wall: 0xdfe7f0, stripe: 0x2f6fc7 });
     g.add(at(part(new THREE.BoxGeometry(8.4, 3.8, 0.12), toon(0x14141f), 0.01), 0, 3.3, back + 0.08));
     g.add(at(plane(8, 3.4, basic(0xffffff, { map: boardTexture() })), 0, 3.3, back + 0.16));
     g.add(at(plane(2.6, 2.9, basic(0xffffff, { map: classesTexture() })), 6.6, 3.4, back + 0.05));
-    const sky = skyTexture([[0, '#3a2a8a'], [0.55, '#e8506a'], [1, '#ffc56e']]);
+    const sky = skyTexture([[0, '#2b7bd8'], [0.6, '#7fc0f4'], [1, '#d8efff']]);
     for (const z of [-0.6, -3.4]) {
       const win = plane(2.2, 3.6, basic(0xffffff, { map: sky }));
       win.rotation.y = Math.PI / 2;
       g.add(at(win, -8.95, 3.4, z));
     }
     for (const z of [-2.2, -4]) for (const x of [-5.4, -1.8, 1.8, 5.4]) g.add(desk(x, z));
-    return { background: 0x17161f };
+    return { background: 0xcfe6fa };
   },
   hall(g) {
-    const floor = plane(7, 34, toon(0x23233a));
+    const floor = plane(7, 34, toon(0x8e9bad));
     floor.rotation.x = -Math.PI / 2;
     g.add(at(floor, 0, 0, -13));
-    const ceiling = plane(7, 34, toon(0x181828));
+    const ceiling = plane(7, 34, toon(0xe9eef4));
     ceiling.rotation.x = Math.PI / 2;
     g.add(at(ceiling, 0, 6, -13));
-    const sky = skyTexture([[0, '#4a2a8a'], [0.6, '#e8506a'], [1, '#ffc56e']]);
+    const sky = skyTexture([[0, '#2b7bd8'], [0.6, '#7fc0f4'], [1, '#d8efff']]);
     for (const s of [-1, 1]) {
-      const wall = plane(34, 6, toon(s < 0 ? 0x23233a : 0x1d1d32));
+      const wall = plane(34, 6, toon(s < 0 ? 0xdde5ee : 0xd2dbe6));
       wall.rotation.y = -s * Math.PI / 2;
       g.add(at(wall, s * 3.5, 3, -13));
-      g.add(at(plane(0.1, 34, basic(0xe8173f)).rotateX(-Math.PI / 2), s * 3.3, 0.02, -13));
+      g.add(at(plane(0.1, 34, basic(0x2f6fc7)).rotateX(-Math.PI / 2), s * 3.3, 0.02, -13));
     }
     ['#ff3355', '#5eea9a', '#4fc8ff', '#ffc93c'].forEach((color, i) => {
       const win = plane(2.4, 3, basic(0xffffff, { map: sky }));
       win.rotation.y = Math.PI / 2;
       g.add(at(win, -3.45, 3.2, -3 - i * 5));
-      const door = plane(1.8, 3.6, toon(0x14141f));
+      const door = plane(1.8, 3.6, toon(0x2a3a55));
       door.rotation.y = -Math.PI / 2;
       g.add(at(door, 3.45, 1.8, -3 - i * 5));
       const tag = plane(1.8, 0.4, basic(color));
       tag.rotation.y = -Math.PI / 2;
       g.add(at(tag, 3.44, 4, -3 - i * 5));
-      const strip = plane(2.4, 0.3, basic(0xfff3d0));
+      const strip = plane(2.4, 0.3, basic(0xf2f8ff));
       strip.rotation.x = Math.PI / 2;
       g.add(at(strip, 0, 5.98, -2 - i * 6));
     });
-    g.add(at(plane(3, 4.4, basic(0xffe6ad)), 0, 2.2, -29.9));
-    return { background: 0x12121e, fog: [0x12121e, 14, 40] };
+    g.add(at(plane(3, 4.4, basic(0xdff1ff)), 0, 2.2, -29.9));
+    return { background: 0xdfe9f3, fog: [0xdfe9f3, 16, 44] };
   },
   lab(g) {
     const back = room(g, { floor: 0x101019, wall: 0x0f1c26, stripe: 0x3fd0c8 });
@@ -261,55 +261,55 @@ const SETS = {
     g.add(at(plane(7.1, 3.7, basic(0xffffff, { map: waveTexture() })), 0, 3.5, back + 0.16));
     g.add(at(plane(3.6, 4.6, basic(0xffffff, { map: booksTexture(42) })), -6.4, 2.6, back + 0.06));
     g.add(at(plane(2.6, 0.9, basic(0xffffff, { map: signTexture('404', '#ff9f6b') })), 6.2, 5.2, back + 0.06));
-    g.add(at(part(new THREE.BoxGeometry(12, 0.2, 1.6), toon(0x2a2a44), 0.01), 0, 1, back + 1.8));
+    g.add(at(part(new THREE.BoxGeometry(12, 0.2, 1.6), toon(0x24364f), 0.01), 0, 1, back + 1.8));
     g.add(at(part(new THREE.BoxGeometry(12, 1, 0.1), toon(0x14141f), 0), 0, 0.5, back + 2.5));
-    return { background: 0x0b0b14 };
+    return { background: 0x08111c };
   },
   arena(g) {
     const floor = plane(60, 60, toon(0x0b0b12));
     floor.rotation.x = -Math.PI / 2;
     g.add(floor);
-    const grid = new THREE.GridHelper(60, 40, 0x8a2040, 0x5a1a30);
+    const grid = new THREE.GridHelper(60, 40, 0x2f7fd0, 0x1b3d6e);
     grid.position.y = 0.02;
     g.add(grid);
     g.add(at(plane(9, 1.9, basic(0xffffff, { map: signTexture('EXAME ESPECIAL') })), 0, 6.2, -9));
-    for (const [x, color] of [[-7, 0xf5f2ea], [7, 0xff2a4a]]) {
+    for (const [x, color] of [[-7, 0xf5f8ff], [7, 0x3aa3ff]]) {
       const beam = new THREE.Mesh(new THREE.ConeGeometry(4.5, 16, 20, 1, true), basic(color, { transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false }));
       g.add(at(beam, x, 8, -9));
     }
-    return { background: 0x1a0a1c, fog: [0x1a0a1c, 12, 40] };
+    return { background: 0x08142a, fog: [0x08142a, 12, 40] };
   },
   council(g) {
-    const back = room(g, { floor: 0x0f0a10, wall: 0x2a1a2a, stripe: 0xffc93c });
+    const back = room(g, { floor: 0x0c111c, wall: 0x1c2a40, stripe: 0xffc93c });
     g.add(at(part(new THREE.BoxGeometry(7.6, 4.4, 0.12), toon(0xf5f2ea), 0), 0, 3.7, back + 0.08));
     g.add(at(plane(7.3, 4.1, basic(0xffffff, { map: classesTexture('SISTEMA S') })), 0, 3.7, back + 0.16));
-    for (const s of [-1, 1]) g.add(at(plane(1.6, 5, toon(0xa8172f)), s * 6.4, 4, back + 0.06));
-    g.add(at(part(new THREE.BoxGeometry(12, 0.2, 1.8), toon(0x3a2630), 0.01), 0, 1, back + 2.2));
+    for (const s of [-1, 1]) g.add(at(plane(1.6, 5, toon(0x2f5d9e)), s * 6.4, 4, back + 0.06));
+    g.add(at(part(new THREE.BoxGeometry(12, 0.2, 1.8), toon(0x2a3448), 0.01), 0, 1, back + 2.2));
     g.add(at(plane(12, 0.1, basic(0xffc93c)), 0, 0.95, back + 3.11));
-    return { background: 0x140d16 };
+    return { background: 0x0b121e };
   },
   dorm(g) {
-    const back = room(g, { floor: 0x0f0e15, wall: 0x1c1a28 });
+    const back = room(g, { floor: 0x0c1220, wall: 0x1a2638 });
     g.add(at(plane(4.2, 3.6, basic(0xffffff, { map: nightTexture() })), -1.5, 3.5, back + 0.05));
-    for (const s of [-1, 1]) g.add(at(part(new THREE.BoxGeometry(0.9, 4.2, 0.2), toon(0xa8172f), 0.02), -1.5 + s * 2.6, 3.5, back + 0.2));
-    g.add(at(part(new THREE.BoxGeometry(4.4, 0.2, 1.4), toon(0x3a2a34), 0.02), 5.4, 1, back + 1.2));
+    for (const s of [-1, 1]) g.add(at(part(new THREE.BoxGeometry(0.9, 4.2, 0.2), toon(0x2f5d9e), 0.02), -1.5 + s * 2.6, 3.5, back + 0.2));
+    g.add(at(part(new THREE.BoxGeometry(4.4, 0.2, 1.4), toon(0x2c3a50), 0.02), 5.4, 1, back + 1.2));
     g.add(at(plane(1.5, 0.9, basic(0x5eea9a)), 5, 1.7, back + 1));
     g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 8), basic(0xffc93c)), 6.8, 1.8, back + 1.2));
     g.add(at(part(new THREE.BoxGeometry(4.6, 0.7, 2.2), toon(0xf5f2ea), 0.02), -6, 0.5, back + 1.4));
-    g.add(at(part(new THREE.BoxGeometry(2.6, 0.72, 2.22), toon(0xa8172f), 0), -5, 0.5, back + 1.4));
-    return { background: 0x0f0e15 };
+    g.add(at(part(new THREE.BoxGeometry(2.6, 0.72, 2.22), toon(0x3b6fb0), 0), -5, 0.5, back + 1.4));
+    return { background: 0x0c1220 };
   },
   library(g) {
-    const back = room(g, { floor: 0x120d14, wall: 0x1c1420 });
-    const sky = skyTexture([[0, '#3a2a8a'], [0.6, '#e8506a'], [1, '#ffc56e']]);
+    const back = room(g, { floor: 0x101624, wall: 0x1c2636 });
+    const sky = skyTexture([[0, '#2b7bd8'], [0.6, '#7fc0f4'], [1, '#d8efff']]);
     for (const x of [-6.6, 6.6]) g.add(at(plane(4.4, 5.6, basic(0xffffff, { map: booksTexture(x > 0 ? 9 : 4) })), x, 3, back + 0.06));
     for (const x of [-2.2, 0, 2.2]) g.add(at(plane(1.5, 4.6, basic(0xffffff, { map: sky })), x, 3.3, back + 0.05));
-    g.add(at(part(new THREE.BoxGeometry(11, 0.2, 1.6), toon(0x3a2630), 0.01), 0, 1, back + 2));
+    g.add(at(part(new THREE.BoxGeometry(11, 0.2, 1.6), toon(0x2e3a4c), 0.01), 0, 1, back + 2));
     for (const x of [-3.4, 3.4]) g.add(at(part(new THREE.ConeGeometry(0.45, 0.4, 12), toon(0x2fa66a), 0.05), x, 1.7, back + 2));
-    return { background: 0x120d14 };
+    return { background: 0x101624 };
   },
   rooftop(g) {
-    const floor = plane(40, 30, toon(0x1c1c28));
+    const floor = plane(40, 30, toon(0x8995a6));
     floor.rotation.x = -Math.PI / 2;
     g.add(at(floor, 0, 0, -8));
     const mesh = meshTexture();
@@ -317,17 +317,17 @@ const SETS = {
     mesh.repeat.set(14, 2);
     g.add(at(plane(40, 4, basic(0xffffff, { map: mesh, transparent: true })), 0, 2, -7));
     g.add(at(plane(40, 0.2, basic(0x0b0b12)), 0, 4, -6.98));
-    for (let i = 0; i < 16; i++) g.add(at(plane(3, 4 + ((i * 37) % 9), basic(i % 2 ? 0x3b1d5e : 0x2a1548)), -24 + i * 3.2, 0, -30));
-    g.add(at(part(new THREE.CylinderGeometry(1.6, 1.6, 2.4, 14), toon(0x3a3a52), 0.02), 7.5, 3, -5));
-    return { background: skyTexture([[0, '#1c1450'], [0.5, '#b0408a'], [0.85, '#ff8a5c'], [1, '#ffd27a']]) };
+    for (let i = 0; i < 16; i++) g.add(at(plane(3, 4 + ((i * 37) % 9), basic(i % 2 ? 0x7f9fc6 : 0x6a8bb5)), -24 + i * 3.2, 0, -30));
+    g.add(at(part(new THREE.CylinderGeometry(1.6, 1.6, 2.4, 14), toon(0xd5dde7), 0.02), 7.5, 3, -5));
+    return { background: skyTexture([[0, '#1d6bd0'], [0.5, '#56a8f0'], [0.85, '#a9d9fb'], [1, '#e6f5ff']]) };
   },
   mall(g) {
-    const floor = plane(40, 24, toon(0x14141f));
+    const floor = plane(40, 24, toon(0x1a2436));
     floor.rotation.x = -Math.PI / 2;
     g.add(at(floor, 0, 0, -5));
     [['CAFÉ', 0xff3355, '#ff3355'], ['MERCADO', 0xffc93c, '#ffc93c'], ['GAMES', 0x4fc8ff, '#4fc8ff']].forEach(([name, color, css], i) => {
       const x = (i - 1) * 6.4;
-      g.add(at(part(new THREE.BoxGeometry(6, 6, 2), toon(0x1c1c2a), 0.01), x, 3, -7.5));
+      g.add(at(part(new THREE.BoxGeometry(6, 6, 2), toon(0x1e2c44), 0.01), x, 3, -7.5));
       g.add(at(plane(4.8, 2.6, basic(0xffe6ad)), x, 1.9, -6.48));
       const awning = part(new THREE.BoxGeometry(5.8, 0.2, 1.4), toon(color), 0.02);
       awning.rotation.x = 0.35;
@@ -335,33 +335,33 @@ const SETS = {
       g.add(at(plane(4.6, 1, basic(0xffffff, { map: signTexture(name, css) })), x, 5.1, -6.48));
     });
     for (let i = 0; i < 17; i++) g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), basic([0xffc93c, 0xff3355, 0x4fc8ff, 0xf5f2ea][i % 4])), -9.6 + i * 1.2, 6.6 - Math.sin((i / 16) * Math.PI) * 0.8, -5.6));
-    return { background: skyTexture([[0, '#140c34'], [1, '#7a2a7a']]) };
+    return { background: skyTexture([[0, '#040b22'], [1, '#1d3f73']]) };
   },
   // Diante do portão: o campus de verdade ao fundo.
   gate(g) {
-    const ground = plane(80, 80, toon(0x20303a));
+    const ground = plane(80, 80, toon(0x6fa877));
     ground.rotation.x = -Math.PI / 2;
     g.add(at(ground, 0, 0, -20));
-    const path = plane(4, 60, toon(0x3a3654));
+    const path = plane(4, 60, toon(0xd9e1ea));
     path.rotation.x = -Math.PI / 2;
     g.add(at(path, 0, 0.02, -24));
     const dark = toon(0x14141f);
-    const red = toon(0xe8173f);
+    const red = toon(0x2f6fc7);
     for (const s of [-1, 1]) {
       g.add(at(part(new THREE.BoxGeometry(1.4, 6, 1.4), dark, 0.02), s * 4.6, 3, -11));
       g.add(at(part(new THREE.BoxGeometry(1.9, 0.45, 1.9), red, 0.02), s * 4.6, 6.2, -11));
       g.add(at(part(new THREE.BoxGeometry(14, 2, 0.25), dark, 0), s * 12, 1, -11));
       for (const z of [-17, -24, -31]) {
-        const trunk = part(new THREE.CylinderGeometry(0.2, 0.3, 2.4, 6), toon(0x2a1626), 0.04);
+        const trunk = part(new THREE.CylinderGeometry(0.2, 0.3, 2.4, 6), toon(0x5d4a3c), 0.04);
         g.add(at(trunk, s * 5.5, 1.2, z));
-        g.add(at(part(new THREE.IcosahedronGeometry(1.6, 1), toon(0xff7fae), 0.03), s * 5.5, 3.4, z));
+        g.add(at(part(new THREE.IcosahedronGeometry(1.6, 1), toon(z === -24 ? 0x8fa8f2 : 0x5fae6e), 0.03), s * 5.5, 3.4, z));
       }
     }
     g.add(at(plane(8, 1.4, basic(0xffffff, { map: signTexture('ACADEMIA PYRA', '#f5f2ea') })), 0, 7.1, -11));
     for (const [x, w, h] of [[-12, 8, 9], [0, 14, 12], [12, 8, 9]]) {
-      g.add(at(part(new THREE.BoxGeometry(w, h, 5), toon(0x1c1c30), 0.01), x, h / 2, -40));
+      g.add(at(part(new THREE.BoxGeometry(w, h, 5), toon(0xdbe3ec), 0.01), x, h / 2, -40));
     }
-    return { background: skyTexture(), fog: [0x4a2468, 20, 70] };
+    return { background: skyTexture(), fog: [0xcfe8fb, 24, 80] };
   },
   black() { return { background: 0x07070c }; },
 };
@@ -396,8 +396,8 @@ function dressSet(group, name) {
   if (name === 'classroom') {
     box(0, 1.52, -5.72, 8.5, 0.07, 0.32, brass);
     for (const x of [-6.4, 6.4]) {
-      box(x, 6.3, -5.78, 2.7, 0.08, 0.12, basic(0xfff0d3));
-      halo(x, 6.25, -5.5, 0xffd9a4, 3.4, 0.18);
+      box(x, 6.3, -5.78, 2.7, 0.08, 0.12, basic(0xf2f8ff));
+      halo(x, 6.25, -5.5, 0xe6f2ff, 3.4, 0.18);
     }
     const clock = painted(128, 128, (g, w, h) => {
       g.fillStyle = '#f3ead8'; g.beginPath(); g.arc(w / 2, h / 2, 60, 0, TAU); g.fill();
@@ -414,7 +414,7 @@ function dressSet(group, name) {
     for (let i = 0; i < 5; i++) {
       const z = -2 - i * 6;
       for (const x of [-3.35, 3.35]) box(x, 2.8, z, 0.12, 5.6, 0.18, brass);
-      halo(0, 5.85, z, 0xffe1b5, 3, 0.22);
+      halo(0, 5.85, z, 0xe9f4ff, 3, 0.22);
     }
   } else if (name === 'lab') {
     for (let i = 0; i < 5; i++) {
@@ -473,7 +473,7 @@ function dressSet(group, name) {
     group.add(windows);
     for (const x of [-4.6, 4.6]) halo(x, 6.35, -10.9, 0xffc98e, 2.2, 0.3);
   } else if (name === 'arena') {
-    for (const x of [-7, 7]) halo(x, 7.6, -8.9, x < 0 ? 0xc4dcff : 0xff577c, 6, 0.3);
+    for (const x of [-7, 7]) halo(x, 7.6, -8.9, x < 0 ? 0xc4dcff : 0x5aa8ff, 6, 0.3);
   }
 
   group.traverse((object) => {
@@ -502,9 +502,9 @@ export function createStage(container) {
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x07070c);
-  const fill = new THREE.HemisphereLight(0xd9dfff, 0x584154, 1.65);
+  const fill = new THREE.HemisphereLight(0xdcecff, 0x3e4a5e, 1.65);
   scene.add(fill);
-  const key = new THREE.DirectionalLight(0xffe3c5, 2.8);
+  const key = new THREE.DirectionalLight(0xfff8ef, 2.8);
   key.position.set(-5, 9, 7);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
@@ -512,7 +512,7 @@ export function createStage(container) {
   key.shadow.bias = -0.0005;
   key.shadow.normalBias = 0.025;
   key.target.position.set(0, 0, -1);
-  const rim = new THREE.DirectionalLight(0xaaa9ff, 1.25);
+  const rim = new THREE.DirectionalLight(0x9fd3ff, 1.25);
   rim.position.set(4, 4, -6);
   scene.add(key, key.target, rim);
   const camera = new THREE.PerspectiveCamera(34, 1, 0.3, 300);
@@ -598,9 +598,9 @@ export function createStage(container) {
       scene.fog = info.fog ? new THREE.Fog(...info.fog) : null;
       animated = info.animated || [];
       const cool = ['dorm', 'lab', 'arena'].includes(name);
-      fill.color.set(cool ? 0xc4d3ff : 0xd9dfff);
-      key.color.set(cool ? 0xe3e7ff : 0xffe3c5);
-      rim.color.set(name === 'arena' ? 0xff6d99 : cool ? 0x8f9fea : 0xb9b7ff);
+      fill.color.set(cool ? 0xc4d6ff : 0xdcecff);
+      key.color.set(cool ? 0xe3ebff : 0xfff6ea);
+      rim.color.set(name === 'arena' ? 0x6fb8ff : cool ? 0x8fb0f0 : 0x9fd3ff);
     },
     /** Coloca (ou atualiza) um personagem em uma posição e marca quem fala. */
     show(id, expression, pos) {
