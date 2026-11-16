@@ -404,7 +404,7 @@ assert __saida__.split() == [str(rolagem), str(dano)], "Mostre a rolagem e depoi
   ],
 
   duel: {
-    title: 'Prova de Mérito: O porteiro da arena',
+    title: 'Exame Especial: O porteiro da arena',
     seconds: 480,
     brief: 'Yuki não comete erros de lógica. Seu código vai ser testado com vários casos, não só um.',
     task: 'O porteiro da arena lê duas informações com `input()`: primeiro o `nivel` (um inteiro), depois a `classe` (um texto). Mostre **apenas** o destino do jogador:\n\n• classe `mestre` → `Arena principal`, em qualquer nível\n• nível 10 ou mais → `Arena principal`\n• nível de 5 a 9 → `Arena de treino`\n• abaixo disso → `Acesso negado`',

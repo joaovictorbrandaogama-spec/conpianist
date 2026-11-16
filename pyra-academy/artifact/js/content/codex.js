@@ -97,6 +97,59 @@ for linha in mapa:
     return max(vida - efetivo, 0)
 
 print(aplicar_dano(50, 20, 5))   # 35` },
+  { term: 'try / except', category: 'Erros', keys: ['try', 'except', 'exceção', 'excecao', 'tratar erro', 'tratamento de erro', 'raise', 'finally'],
+    text: 'try tenta executar um trecho; se a exceção indicada acontecer, o except assume em vez de o programa cair. Diga sempre o tipo do erro. raise levanta um erro de propósito.',
+    code: py`try:
+    idade = int("vinte")
+except ValueError:
+    idade = 0
+print(idade)
+
+def sacar(saldo, valor):
+    if valor > saldo:
+        raise ValueError("saldo insuficiente")
+    return saldo - valor
+
+print(sacar(100, 30))` },
+  { term: 'split() e join()', category: 'Texto', keys: ['split', 'join', 'separar texto', 'juntar texto', 'startswith', 'isdigit', 'registro'],
+    text: 'split corta um texto e devolve uma lista; join faz o caminho de volta e é chamado no separador. in, startswith, count e isdigit respondem perguntas sobre o texto.',
+    code: py`hora, aluno, motivo = "08:02;Davi;atraso".split(";")
+print(aluno, motivo)
+print(" | ".join(["A", "B", "C"]))
+print("42".isdigit(), "erro" in "sem erro")` },
+  { term: 'Fatias e sorted()', category: 'Coleções', keys: ['fatia', 'slice', 'sorted', 'ordenar', 'ordenação', 'reverse', 'key=', 'lambda'],
+    text: 'lista[inicio:fim] devolve um pedaço (o fim não entra). sorted devolve uma nova lista em ordem; key diz o que comparar e reverse=True inverte.',
+    code: py`notas = [72, 95, 58, 88]
+print(sorted(notas, reverse=True)[:3])
+alunos = [("Caio", 600), ("Sora", 2400)]
+print(sorted(alunos, key=lambda aluno: aluno[1]))
+print(max(notas), min(notas), sum(notas))` },
+  { term: 'Compreensão de lista', category: 'Coleções', keys: ['compreensão', 'compreensao', 'comprehension', 'filtrar', 'enumerate', 'zip'],
+    text: 'Cria uma lista a partir de outra em uma linha: [o que guardar for item in lista if condição]. enumerate entrega posição e item; zip percorre duas listas juntas.',
+    code: py`notas = [72, 45, 95]
+aprovados = [n for n in notas if n >= 60]
+print(aprovados)
+for posicao, nota in enumerate(aprovados, start=1):
+    print(posicao, nota)` },
+  { term: 'Tuplas', category: 'Coleções', keys: ['tupla', 'tuple', 'desempacotar', 'desempacotamento'],
+    text: 'Uma sequência que não muda, escrita com parênteses. Boa para registros de tamanho fixo, e pode ser desempacotada em variáveis.',
+    code: py`aluno = ("Nina", "D", 210)
+nome, turma, merito = aluno
+print(nome, turma, merito)
+print(aluno[0], len(aluno))` },
+  { term: 'Classes', category: 'Objetos', keys: ['classe em python', 'class ', 'objeto', '__init__', 'self', 'método', 'metodo', 'atributo'],
+    text: 'Uma classe é um molde: __init__ prepara cada objeto, self é o próprio objeto, atributos guardam os dados e métodos são as ações.',
+    code: py`class Conta:
+    def __init__(self, dono):
+        self.dono = dono
+        self.saldo = 0
+
+    def depositar(self, valor):
+        self.saldo += valor
+
+conta = Conta("Lara")
+conta.depositar(500)
+print(conta.dono, conta.saldo)` },
   { term: 'Lendo erros', category: 'Depuração', keys: ['erro', 'error', 'traceback', 'bug', 'depurar', 'debug', 'não funciona', 'nao funciona'],
     text: 'Leia a última linha do erro primeiro: ela diz o tipo e o motivo. A linha indicada é onde o Python percebeu o problema; às vezes a causa está na linha de cima. SyntaxError é escrita inválida; NameError é nome desconhecido; TypeError é mistura de tipos; IndentationError é recuo errado.',
     code: py`# Dúvida sobre o que uma variável guarda? Investigue:

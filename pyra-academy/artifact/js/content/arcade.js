@@ -293,4 +293,60 @@ for geracao in range(6):
     print()
     grade = proxima(grade)`,
   },
+  {
+    id: 'sistema-s', title: 'Sistema S: seis meses', tag: 'classes · try · sorted', level: 'Capítulo 6',
+    text: 'Você é representante da Turma D e tem seis meses para subir no placar. Cada escolha tem risco e recompensa. Desafio: crie uma quarta ação e faça as turmas rivais reagirem quando você passar delas.',
+    demo: ['1', '2', 'x', '1', '3', '2', '2'],
+    code: py`import random
+
+class Turma:
+    def __init__(self, letra, pontos):
+        self.letra = letra
+        self.pontos = pontos
+
+    def mudar(self, valor):
+        self.pontos = max(self.pontos + valor, 0)
+
+# número da opção -> (nome, pior resultado, melhor resultado)
+ACOES = {
+    "1": ("Grupo de estudos", 40, 90),
+    "2": ("Exame Especial contra a turma de cima", -80, 220),
+    "3": ("Dia de folga", -30, 10),
+}
+
+def ler_opcao():
+    while True:
+        resposta = input("Sua escolha (1, 2 ou 3): ").strip()
+        if resposta in ACOES:
+            return resposta
+        print("Opção inválida.")
+
+rivais = [Turma("A", 1000), Turma("B", 720), Turma("C", 460)]
+minha = Turma("D", 0)
+
+print("Você é representante da Turma D. Tem 6 meses para subir no Sistema S.")
+for mes in range(1, 7):
+    print(f"\n=== MÊS {mes} | Turma D: {minha.pontos} CP ===")
+    for numero, (nome, minimo, maximo) in ACOES.items():
+        print(f"[{numero}] {nome} (de {minimo} a {maximo} CP)")
+
+    nome, minimo, maximo = ACOES[ler_opcao()]
+    resultado = random.randint(minimo, maximo)
+    minha.mudar(resultado)
+    print(f"{nome}: {resultado:+d} CP")
+
+    for rival in rivais:
+        rival.mudar(random.randint(-40, 30))
+
+todas = sorted(rivais + [minha], key=lambda turma: turma.pontos, reverse=True)
+print("\n=== RESULTADO FINAL ===")
+for posicao, turma in enumerate(todas):
+    marca = " <- você" if turma is minha else ""
+    print(f"{posicao + 1}º lugar: antiga Turma {turma.letra} com {turma.pontos} CP{marca}")
+
+if todas[0] is minha:
+    print("A Turma D virou a Turma A. O campus inteiro está olhando para vocês.")
+else:
+    print("Ainda não foi desta vez. Rode de novo e teste outra estratégia.")`,
+  },
 ];

@@ -67,15 +67,15 @@ print("Meu primeiro programa.")`,
           expected: 'Olá, Academia!\nMeu primeiro programa.',
         },
         {
-          id: 'pp-2', level: 2, title: 'Crachá da Vaga 006',
-          task: 'Imprima o crachá abaixo, com as três linhas exatamente assim:\n\n`=== VAGA 006 ===`\n`Status: em treinamento`\n`Mérito: 0`',
+          id: 'pp-2', level: 2, title: 'ID estudantil',
+          task: 'Imprima o ID abaixo, com as três linhas exatamente assim:\n\n`=== MATRÍCULA D-40 ===`\n`Status: em treinamento`\n`Mérito: 0`',
           starter: py`# Três linhas, três prints
 `,
           hint: 'São três chamadas de print(), uma embaixo da outra. Os sinais de igual fazem parte do texto.',
-          solution: py`print("=== VAGA 006 ===")
+          solution: py`print("=== MATRÍCULA D-40 ===")
 print("Status: em treinamento")
 print("Mérito: 0")`,
-          expected: '=== VAGA 006 ===\nStatus: em treinamento\nMérito: 0',
+          expected: '=== MATRÍCULA D-40 ===\nStatus: em treinamento\nMérito: 0',
         },
         {
           id: 'pp-3', level: 3, title: 'Deixe a máquina calcular',
@@ -500,7 +500,7 @@ print(a + b)                # 8
 
 altura = float("1.75")
 print(str(10) + " pontos")` },
-          'Se o texto não for um número (por exemplo `int("dez")`), o Python para com um `ValueError`. Mais adiante você vai aprender a se proteger disso.',
+          'Se o texto não for um número (por exemplo `int("dez")`), o Python para com um `ValueError`. No capítulo 6 você vai aprender a se proteger disso com `try` e `except`.',
         ] },
       ],
       game: {
@@ -577,7 +577,7 @@ print(f"{nome} precisa de {nivel * 150} XP para o próximo nível.")`,
   ],
 
   duel: {
-    title: 'Prova de Mérito: Ficha de combate',
+    title: 'Seletiva da Turma D: Ficha de combate',
     seconds: 420,
     brief: 'Caio aposta que termina antes de você. O desafio junta tudo do capítulo: variáveis, contas e f-strings.',
     task: 'A heroína Aria ataca um inimigo. Usando as variáveis dadas, calcule:\n\n• `dano_por_golpe`: o ataque menos a defesa do inimigo\n• `dano_total`: o dano por golpe vezes a quantidade de golpes\n• `vida_restante`: a vida do inimigo menos o dano total\n\nDepois mostre exatamente estas três linhas (os números devem vir das variáveis):\n\n`Aria ataca 3 vezes!`\n`Dano total: 33`\n`Vida do inimigo: 17/50`',
@@ -613,7 +613,7 @@ assert "33" not in __fonte__ and "17" not in __fonte__, "Os números 33 e 17 pre
     taunts: [
       'Já declarei todas as variáveis. Você ainda está lendo o enunciado?',
       'Metade pronta. Dá tempo de eu pegar um café.',
-      'Só falta formatar a saída. Sente a pressão, Zero-Seis?',
+      'Só falta formatar a saída. Sente a pressão, Quarenta?',
       'Revisando… e pronto. Quer dizer, quase.',
     ],
   },

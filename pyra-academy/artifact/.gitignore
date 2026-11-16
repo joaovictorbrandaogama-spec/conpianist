@@ -1,0 +1,6 @@
+# Arquivos grandes do Pyodide: recrie com os comandos do README-ARTEFATO.md
+vendor/pyodide/pyodide.asm.wasm
+vendor/pyodide/pyodide.asm.js
+vendor/pyodide/pyodide.js
+vendor/pyodide/pyodide-lock.json
+vendor/pyodide/python_stdlib.wasm

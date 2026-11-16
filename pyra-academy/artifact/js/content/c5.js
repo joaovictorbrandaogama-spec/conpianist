@@ -490,9 +490,9 @@ assert _c["vida"] == 3 and _d["vida"] == 0, "Confira a ordem dos turnos: a ataca
   ],
 
   duel: {
-    title: 'Prova Final: O relatório da Sala Ômega',
+    title: 'Exame Especial: O relatório do telão',
     seconds: 720,
-    brief: 'Sora nunca perdeu uma prova. O desafio final pede uma função que funcione com qualquer turma, não só com a do exemplo.',
+    brief: 'Sora nunca perdeu um exame. O desafio pede uma função que funcione com qualquer turma, não só com a do exemplo.',
     task: 'Crie a função `relatorio(turma)`. Ela recebe uma lista de dicionários, cada um com `nome` e `merito`, e devolve um dicionário com três chaves:\n\n• `lider`: o nome de quem tem mais mérito\n• `media`: a média de mérito (divisão inteira da soma pela quantidade)\n• `acima`: a lista dos nomes com mérito **maior ou igual** à média, na ordem da turma\n\nDepois chame a função com a `turma` dada, guarde em `resultado` e mostre as três linhas:\n\n`Líder: Sora`\n`Média: 1470`\n`Acima da média: 2`',
     starter: py`def relatorio(turma):
     pass  # Devolva {"lider": ..., "media": ..., "acima": [...]}

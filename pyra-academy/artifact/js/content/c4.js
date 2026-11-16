@@ -443,7 +443,7 @@ assert "for" in __fonte__, "Desenhe o mapa com um for."`,
   ],
 
   duel: {
-    title: 'Prova de Mérito: O mercado paralelo',
+    title: 'Exame Especial: O mercado paralelo',
     seconds: 540,
     brief: 'Bianca negocia melhor do que programa — e programa muito bem. O desafio mistura dicionários, listas e condições.',
     task: 'Processe os pedidos na ordem. Cada pedido é uma lista `[item, quantidade]`.\n\n• Se o `estoque` do item for suficiente: diminua o estoque e some ao `total` o preço vezes a quantidade.\n• Se não for: mostre `Sem estoque: ITEM` e não venda nada desse pedido.\n\nNo fim, mostre `Total: N`.',

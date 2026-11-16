@@ -1,5 +1,5 @@
 // Bancada de código: editor com realce de sintaxe, terminal e verificação por testes.
-import { $, esc, icon, highlight, explainError, sfx, confirmBox } from './util.js';
+import { $, esc, icon, highlight, explainError, sfx , ask } from './util.js';
 import { PythonRunner } from './runner.js';
 import { state, save } from './state.js';
 
@@ -250,7 +250,7 @@ export function createWorkbench(host, o) {
   if (buttons.verify) buttons.verify.onclick = verify;
   buttons.stop.onclick = () => { token++; runner.stop(); setBusy(false); termStatus.textContent = 'Interrompido'; };
   $('[data-act="reset"]', host).onclick = async () => {
-    if (textarea.value !== o.starter && !(await confirmBox('Restaurar o código inicial? Suas alterações neste exercício serão apagadas.', { ok: 'Restaurar' }))) return;
+    if (textarea.value !== o.starter && !await ask('Restaurar o código inicial? Suas alterações neste exercício serão apagadas.', { ok: 'Restaurar', title: 'Editor' })) return;
     textarea.value = o.starter;
     delete state.drafts[o.key];
     save();

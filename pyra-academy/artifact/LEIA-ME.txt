@@ -1,0 +1,28 @@
+ACADEMIA PYRA — GRÁFICOS ATUALIZADOS
+
+Este pacote contém o projeto completo, com as melhorias gráficas implementadas.
+O ZIP original foi preservado separadamente; este é o projeto atualizado.
+
+COMO ABRIR LOCALMENTE
+
+1. Extraia o ZIP.
+2. Abra um terminal dentro da pasta academia-pyra.
+3. Execute:
+
+   python -m http.server 8765
+
+   No Windows, se necessário: py -m http.server 8765
+
+4. Abra http://localhost:8765 no navegador.
+
+Use HTTP, não abra index.html diretamente por file://.
+O projeto não exige npm, instalação de pacotes ou etapa de build.
+
+PUBLICAÇÃO
+
+O index.html continua sem doctype e sem os elementos html/head/body,
+conforme o formato do artefato original. Preserve a pasta vendor/ inteira.
+Nenhum addon, modelo, imagem ou biblioteca externa nova foi introduzido.
+A referência a Google Fonts já existente no projeto foi mantida.
+
+O resumo de mudanças e a validação estão em ALTERACOES.md.

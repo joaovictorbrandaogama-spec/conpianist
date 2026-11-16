@@ -1,0 +1,42 @@
+<title>Academia Pyra</title>
+<meta name="theme-color" content="#09090e">
+<meta name="description" content="Academia Pyra: escola de elite, Sistema S, Turma D e Python de verdade no navegador.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+<link rel="stylesheet" href="css/life.css">
+<script type="importmap">{ "imports": { "three": "./vendor/three/three.module.js" } }</script>
+<script type="module" src="js/main.js"></script>
+
+<a href="#main" class="skip">Pular para o conteúdo</a>
+<canvas id="dust" aria-hidden="true"></canvas>
+
+<header id="hud" class="hud">
+  <a class="brand" href="#campus" aria-label="Academia Pyra — voltar ao campus">
+    <svg viewBox="-60 -60 120 140" aria-hidden="true"><path d="M0-46 40-30V8C40 34 20 52 0 62-20 52-40 34-40 8V-30Z" fill="#09090e" stroke="#e8173f" stroke-width="6"/><path d="M-12-20H8a14 14 0 0 1 0 28H-4V34" fill="none" stroke="#f5f2ea" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span><strong>ACADEMIA PYRA</strong><small id="hud-class">Turma D · 1º ano</small></span>
+  </a>
+  <div class="hud-date" id="hud-date" aria-label="Data no jogo"></div>
+  <nav id="nav" aria-label="Navegação principal"></nav>
+  <div class="hud-right">
+    <a class="pill klass" id="hud-klass" href="#conselho" title="Sua turma no ranking de classes"><small>TURMA</small><b id="klass">D</b></a>
+    <a class="pill pp" href="#loja" title="Pontos privados"><small>PP</small><b id="pp" data-value="0">0</b></a>
+    <span class="pill merit" title="Seu Mérito"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 3 2.7 5.8 6.3.8-4.6 4.4 1.2 6.3L12 17.2l-5.6 3.1 1.2-6.3L3 9.6l6.3-.8Z"/></svg><b id="merit" data-value="0">0</b></span>
+    <a class="pill rank" href="#conselho/individual" title="Sua posição no ranking individual"><small>RANK</small><b id="rank">40º</b></a>
+    <button type="button" class="icon-btn" id="sound" aria-label="Ligar ou desligar o som"></button>
+    <button type="button" class="kurisu-btn" id="kurisu-btn"><span>Lab 404</span><small>Kurisu</small></button>
+    <button type="button" class="kurisu-btn monika-btn" id="monika-btn"><span>Clube</span><small>Monika</small></button>
+  </div>
+</header>
+
+<main id="main" tabindex="-1"></main>
+
+<aside id="tutor" class="tutor" hidden aria-label="Laboratório 404 — conversa com a tutora"></aside>
+<div id="vn" class="vn" hidden></div>
+<div id="title" class="title" hidden></div>
+<div id="wipe" class="wipe" aria-hidden="true"><i></i><i></i><i></i></div>
+<div id="rankup" class="rankup" hidden role="status"></div>
+<div id="modal" class="modal" hidden></div>
+<div id="toast" class="toast" role="status"></div>
+<noscript><p style="padding:40px;color:#fff;background:#09090e">A Academia Pyra precisa de JavaScript para funcionar.</p></noscript>

@@ -38,6 +38,15 @@ const ICONS = {
   eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M19 5l-2 2M7 17l-2 2"/>',
   flask: '<path d="M9 3h6M10 3v6L4 19a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-6-10V3M7 15h10"/>',
+  map: '<path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2Zm6-2v14m6-12v14"/>',
+  bag: '<path d="M5 8h14l-1 13H6Zm4 0V6a3 3 0 0 1 6 0v2"/>',
+  bed: '<path d="M3 19V6m0 9h18v4m0-4v-3a3 3 0 0 0-3-3h-7v6"/><circle cx="7" cy="11" r="2"/>',
+  coin: '<circle cx="12" cy="12" r="9"/><path d="M9.5 16V8H13a2.4 2.4 0 0 1 0 4.8H9.5"/>',
+  bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7Z"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4m8-4v4"/>',
+  heart: '<path d="M12 20s-8-5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6-8 11-8 11Z"/>',
+  shield: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6Z"/>',
+  archive: '<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v11h14V9M10 13h4"/>',
 };
 export const icon = (name) => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ICONS.code}</svg>`;
 
@@ -82,15 +91,19 @@ const ERRORS = [
   [/TypeError: .*missing \d+ required positional argument/, 'A função foi chamada com menos valores do que ela espera. Compare a chamada com os parâmetros no def.'],
   [/TypeError: .*takes \d+ positional arguments? but \d+ (was|were) given/, 'A função foi chamada com mais valores do que ela aceita. Compare a chamada com os parâmetros no def.'],
   [/TypeError: '(\w+)' object is not callable/, (m) => `Você colocou parênteses depois de algo que não é função (um ${m[1]}). Talvez uma variável tenha o mesmo nome de uma função.`],
+  [/TypeError: 'NoneType' object is not (subscriptable|iterable)/, 'Você tentou usar None como se fosse uma lista ou um dicionário. Confira se a função que gerou esse valor tem return (métodos como .sort() e .append() devolvem None).'],
+  [/TypeError: '(tuple|str)' object does not support item assignment/, (m) => `Um valor do tipo ${m[1]} não pode ser alterado por posição. Crie um valor novo em vez de mudar o antigo.`],
   [/TypeError: '(\w+)' object is not subscriptable/, (m) => `Você usou colchetes em um valor do tipo ${m[1]}, que não tem posições. Colchetes funcionam em listas, textos e dicionários.`],
   [/TypeError: '[<>]=?' not supported between instances of 'str' and 'int'|not supported between instances/, 'Você comparou texto com número. Valores vindos de input() são texto: converta com int() antes de comparar.'],
   [/TypeError/, 'Um valor de tipo inesperado apareceu em uma operação. Use print(type(valor)) para investigar o que cada variável guarda.'],
+  [/ValueError: (not enough|too many) values to unpack/, 'O desempacotamento não bateu: há mais (ou menos) variáveis à esquerda do = do que valores à direita. Confira quantos pedaços o split() devolveu.'],
   [/ValueError: invalid literal for int\(\)/, 'int() recebeu um texto que não é um número inteiro. Confira o que foi digitado ou guardado nessa variável.'],
   [/ValueError: could not convert string to float/, 'float() recebeu um texto que não é um número. Use ponto, não vírgula, nas casas decimais.'],
   [/ValueError/, 'A função recebeu um valor do tipo certo, mas com conteúdo inválido para o que ela faz.'],
   [/IndexError/, 'Você pediu uma posição que não existe. Em uma lista com 3 itens, as posições vão de 0 a 2.'],
   [/KeyError: (.+)/, (m) => `O dicionário não tem a chave ${m[1]}. Confira a grafia ou use .get() para ter um valor padrão.`],
   [/ZeroDivisionError/, 'Divisão por zero. Antes de dividir, verifique com um if se o divisor é diferente de zero.'],
+  [/AttributeError: 'NoneType' object has no attribute '(\w+)'/, (m) => `Você usou .${m[1]} em um valor None. Provavelmente uma função sem return foi guardada em uma variável, ou o __init__ não criou esse atributo.`],
   [/AttributeError: '(\w+)' object has no attribute '(\w+)'/, (m) => `Um valor do tipo ${m[1]} não tem ${m[2]}. Confira o tipo da variável ou a grafia do método.`],
   [/EOFError/, 'O programa pediu mais entradas com input() do que as disponíveis.'],
   [/RecursionError/, 'Uma função chamou a si mesma sem parar. Verifique a condição de parada.'],
@@ -124,8 +137,6 @@ let soundOn = true;
 export const sfx = {
   set enabled(value) { soundOn = !!value; },
   get enabled() { return soundOn; },
-  /** Contexto de áudio compartilhado (efeitos e trilha ambiente). */
-  context() { audio ??= new (window.AudioContext || window.webkitAudioContext)(); return audio; },
   play(name) {
     if (!soundOn) return;
     try {
@@ -147,7 +158,6 @@ export const sfx = {
       };
       if (name === 'type') tone(660 + Math.random() * 60, 0, 0.03, 'triangle', 0.012);
       else if (name === 'click') tone(520, 0, 0.07, 'triangle', 0.04, 260);
-      else if (name === 'step') tone(95 + Math.random() * 40, 0, 0.06, 'triangle', 0.028, -30);
       else if (name === 'whoosh') tone(220, 0, 0.28, 'sawtooth', 0.02, 700);
       else if (name === 'ok') { tone(523, 0, 0.12, 'triangle', 0.05); tone(659, 0.09, 0.12, 'triangle', 0.05); tone(784, 0.18, 0.22, 'triangle', 0.05); }
       else if (name === 'bad') { tone(240, 0, 0.16, 'square', 0.025, -80); tone(180, 0.12, 0.2, 'square', 0.025, -60); }
@@ -172,32 +182,35 @@ export function countUp(el, to, duration = 900) {
   requestAnimationFrame(tick);
 }
 
-// ---------- confirmação na própria página (o artefato não mostra confirm()) ----------
-export function confirmBox(message, { ok = 'Confirmar', cancel = 'Cancelar', danger = false } = {}) {
+// ---------- caixa de confirmação dentro da página (o visualizador bloqueia confirm()) ----------
+let modalResolve = null;
+/** Pergunta sim/não em um cartão sobre a tela. Resolve true ou false. */
+export function ask(message, { ok = 'Confirmar', cancel = 'Cancelar', danger = false, title = 'Confirmar' } = {}) {
+  const el = document.getElementById('modal');
+  if (!el) return Promise.resolve(false);
+  modalResolve?.(false);
+  el.innerHTML = `<div class="modal-card" role="alertdialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-text">
+    <small id="modal-title">${esc(title)}</small><p id="modal-text">${esc(message)}</p>
+    <div class="modal-actions"><button type="button" class="btn ghost" data-answer="0">${esc(cancel)}</button><button type="button" class="btn gold ${danger ? 'danger-fill' : ''}" data-answer="1">${esc(ok)}</button></div></div>`;
+  el.hidden = false;
   return new Promise((resolve) => {
-    const back = document.createElement('div');
-    back.className = 'ask-back';
-    back.innerHTML = `<div class="ask-card" role="alertdialog" aria-modal="true" aria-labelledby="ask-text">
-      <p id="ask-text">${esc(message)}</p>
-      <div class="ask-row"><button type="button" class="btn ghost" data-v="0">${esc(cancel)}</button><button type="button" class="btn ${danger ? 'danger-solid' : 'gold'}" data-v="1">${esc(ok)}</button></div>
-    </div>`;
-    const previous = document.activeElement;
-    const close = (value) => {
-      back.remove();
-      removeEventListener('keydown', onKey, true);
-      previous?.focus?.({ preventScroll: true });
+    const done = (value) => {
+      if (modalResolve !== finish) return;
+      modalResolve = null;
+      el.hidden = true;
+      el.innerHTML = '';
+      window.removeEventListener('keydown', onKey, true);
       resolve(value);
     };
-    const onKey = (event) => {
-      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(false); }
+    const finish = (value) => done(value);
+    modalResolve = finish;
+    const onKey = (event) => { if (event.key === 'Escape') { event.stopPropagation(); done(false); } };
+    window.addEventListener('keydown', onKey, true);
+    el.onclick = (event) => {
+      const button = event.target.closest('[data-answer]');
+      if (button) done(button.dataset.answer === '1');
+      else if (event.target === el) done(false);
     };
-    back.addEventListener('click', (event) => {
-      const button = event.target.closest('[data-v]');
-      if (button) close(button.dataset.v === '1');
-      else if (event.target === back) close(false);
-    });
-    addEventListener('keydown', onKey, true);
-    document.body.append(back);
-    back.querySelector('[data-v="1"]').focus({ preventScroll: true });
+    el.querySelector('[data-answer="1"]').focus({ preventScroll: true });
   });
 }

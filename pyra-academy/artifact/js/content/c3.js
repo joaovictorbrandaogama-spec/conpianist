@@ -372,7 +372,7 @@ print(f"Ataques: {ataques}")`,
   ],
 
   duel: {
-    title: 'Prova de Mérito: Sequência de combos',
+    title: 'Exame Especial: Sequência de combos',
     seconds: 480,
     brief: 'Theo detesta código repetido. Este desafio é um clássico de entrevistas, vestido de arena.',
     task: 'Percorra os turnos de 1 a 15. Para cada turno, mostre uma linha:\n\n• `Combo` se o turno for múltiplo de 3 **e** de 5\n• `Golpe` se for múltiplo só de 3\n• `Bloqueio` se for múltiplo só de 5\n• o próprio número nos outros casos\n\nConte quantos turnos foram `Golpe` e, no fim, mostre `Golpes: N`.',

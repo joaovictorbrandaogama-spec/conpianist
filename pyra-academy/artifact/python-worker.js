@@ -1,22 +1,7 @@
 /* Worker clássico: o interpretador e o código da pessoa ficam fora da thread da interface. */
-// Pyodide 0.29.2 é publicado junto com o jogo (o artefato não deixa baixar de outros sites).
-const CDN = new URL('./pyodide/', self.location.href).href;
-
-// O artefato não serve .zip: a biblioteca padrão vem em base64 num .txt e é
-// entregue ao Pyodide como se fosse o python_stdlib.zip original.
-const realFetch = self.fetch.bind(self);
-let stdlib;
-self.fetch = (input, init) => {
-  const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input?.url || '';
-  if (url.split('?')[0].endsWith('/python_stdlib.zip')) {
-    stdlib ??= realFetch(CDN + 'python_stdlib.zip.b64.txt')
-      .then((response) => { if (!response.ok) throw new Error('stdlib ' + response.status); return response.text(); })
-      .then((text) => { const raw = atob(text.trim()); const bytes = new Uint8Array(raw.length); for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i); return bytes; })
-      .catch((error) => { stdlib = null; throw error; });
-    return stdlib.then((bytes) => new Response(bytes, { status: 200, headers: { 'Content-Type': 'application/zip' } }));
-  }
-  return realFetch(input, init);
-};
+// O interpretador vem junto com o artefato (pasta vendor/pyodide). A biblioteca padrão é
+// publicada com extensão .wasm porque o visualizador só serve tipos de arquivo da web.
+const BASE = new URL('vendor/pyodide/', self.location.href).href;
 let runtimePromise;
 
 const BOOTSTRAP = `
@@ -148,8 +133,8 @@ def _pyra_execute(code, check, expected, inputs_json, interactive, seed):
 async function getRuntime() {
   if (!runtimePromise) {
     runtimePromise = (async () => {
-      importScripts(CDN + 'pyodide.js');
-      const pyodide = await loadPyodide({ indexURL: CDN });
+      importScripts(BASE + 'pyodide.js');
+      const pyodide = await loadPyodide({ indexURL: BASE, stdLibURL: BASE + 'python_stdlib.wasm' });
       pyodide.runPython(BOOTSTRAP);
       return pyodide;
     })();
@@ -165,7 +150,7 @@ self.onmessage = async ({ data }) => {
     pyodide = await getRuntime();
   } catch {
     runtimePromise = null;
-    self.postMessage({ id, type: 'fatal', error: 'Não foi possível carregar o Python neste visualizador. Recarregue a página e execute novamente.' });
+    self.postMessage({ id, type: 'fatal', error: 'Não foi possível carregar o Python. Recarregue a página e execute novamente.' });
     return;
   }
   if (type === 'warm') { self.postMessage({ id, type: 'result', result: { warmed: true } }); return; }
