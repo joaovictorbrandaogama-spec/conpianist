@@ -118,13 +118,18 @@ export function skyTexture(stops = [[0, '#1f6fd1'], [0.42, '#4b9ff0'], [0.78, '#
     }
   } else {
     // Nuvens pintadas no fundo, sem partículas ou texturas remotas.
+    const glow = g.createRadialGradient(90, 120, 6, 90, 120, 120);
+    glow.addColorStop(0, 'rgba(255,252,236,.9)');
+    glow.addColorStop(0.18, 'rgba(255,250,230,.5)');
+    glow.addColorStop(1, 'rgba(255,250,230,0)');
+    g.fillStyle = glow; g.fillRect(0, 0, 220, 250);
     // Cúmulos: grupos de bolhas brancas com base achatada e sombra azulada embaixo.
     for (let i = 0; i < 9; i++) {
       const cx = random() * 600 - 40, cy = 120 + random() * 210, width = 50 + random() * 70;
       for (let k = 0; k < 7; k++) {
         const x = cx + (k / 6 - 0.5) * width * 1.6, y = cy - Math.sin((k / 6) * Math.PI) * width * 0.32, rad = width * (0.28 + random() * 0.18);
         const puff = g.createRadialGradient(x, y, 1, x, y, rad);
-        puff.addColorStop(0, 'rgba(255,255,255,.78)');
+        puff.addColorStop(0, 'rgba(255,255,255,.9)');
         puff.addColorStop(0.6, 'rgba(255,255,255,.45)');
         puff.addColorStop(1, 'rgba(255,255,255,0)');
         g.save(); g.translate(x, y); g.scale(1.25, 0.62); g.translate(-x, -y);
@@ -595,7 +600,7 @@ export function buildCampus() {
   group.add(instances(new THREE.BoxGeometry(1, 1, 1), toon(0xffffff), roofKit));
 
   const bollards = [], bollardTops = [];
-  for (const z of [16, 21, 26, 35, 44]) for (const sx of [-1, 1]) {
+  for (const z of [16, 21, 26, 35]) for (const sx of [-1, 1]) {
     bollards.push({ p: [sx * 2.45, 0.35, z], s: [1, 1, 1] });
     bollardTops.push({ p: [sx * 2.45, 0.74, z], s: [1, 1, 1] });
     colliders.push({ minX: sx * 2.45 - 0.15, maxX: sx * 2.45 + 0.15, minZ: z - 0.15, maxZ: z + 0.15 });

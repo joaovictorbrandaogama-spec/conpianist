@@ -309,7 +309,11 @@ const SETS = {
     g.add(at(plane(4.2, 3.6, basic(0xffffff, { map: nightTexture() })), -1.5, 3.5, back + 0.05));
     for (const s of [-1, 1]) g.add(at(part(new THREE.BoxGeometry(0.9, 4.2, 0.2), toon(0x2f5d9e), 0.02), -1.5 + s * 2.6, 3.5, back + 0.2));
     g.add(at(part(new THREE.BoxGeometry(4.4, 0.2, 1.4), toon(0x2c3a50), 0.02), 5.4, 1, back + 1.2));
-    g.add(at(plane(1.5, 0.9, basic(0x5eea9a)), 5, 1.7, back + 1));
+    g.add(at(part(new THREE.BoxGeometry(1.62, 1.0, 0.06), toon(0x1a2638), 0), 5, 1.7, back + 0.97));
+    g.add(at(plane(1.5, 0.9, basic(0xffffff, { map: painted(160, 96, (c, w, h) => {
+      c.fillStyle = '#0b1a2a'; c.fillRect(0, 0, w, h);
+      [['#5eea9a', 70], ['#7fc8ff', 110], ['#f5f2ea', 54], ['#5eea9a', 92], ['#ffc93c', 40], ['#7fc8ff', 82]].forEach(([col, len], i) => { c.fillStyle = col; c.fillRect(10 + (i % 3 ? 12 : 0), 12 + i * 13, len, 5); });
+    }) })), 5, 1.7, back + 1.01));
     g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 8), basic(0xffc93c)), 6.8, 1.8, back + 1.2));
     const lampPool = new THREE.Mesh(new THREE.CircleGeometry(2.2, 24), basic(0xffd98a, { map: glowMap(), transparent: true, opacity: 0.28, depthWrite: false, blending: THREE.AdditiveBlending }));
     lampPool.rotation.x = -Math.PI / 2;
