@@ -263,7 +263,7 @@ function grove(spots, random) {
 
 function lamp(x, z) {
   const group = new THREE.Group();
-  const metal = toon(0x282737);
+  const metal = toon(0x34445e);
   group.add(at(part(new THREE.CylinderGeometry(0.07, 0.11, 3.4, 8), metal, 0), 0, 1.7, 0));
   group.add(at(part(new THREE.CylinderGeometry(0.22, 0.3, 0.22, 8), metal, 0), 0, 0.11, 0));
   group.add(at(part(new THREE.ConeGeometry(0.46, 0.18, 8), metal, 0), 0, 3.78, 0));
@@ -513,11 +513,12 @@ export function buildCampus() {
   fence(-40, -39, 40, -39);
 
   // canteiros com flores na frente dos prédios e cerca viva junto ao muro
-  const beds = [], blooms = [], hedges = [];
+  const beds = [], soil = [], blooms = [], hedges = [];
   const flowerColors = [0xffffff, 0x8fc6ff, 0x6f8df7, 0xfff1a6, 0xbfe3ff];
   const fr = rng(31);
   const bed = (x, z, w, d) => {
     beds.push({ p: [x, 0.12, z], s: [w, 0.24, d] });
+    soil.push({ p: [x, 0.25, z], s: [w - 0.24, 0.04, d - 0.24] });
     for (let i = 0; i < Math.round(w * d * 2.2); i++) blooms.push({ p: [x + (fr() - 0.5) * (w - 0.3), 0.34, z + (fr() - 0.5) * (d - 0.3)], s: [0.13, 0.13, 0.13], color: flowerColors[Math.floor(fr() * flowerColors.length)] });
   };
   for (const sx of [-1, 1]) { bed(sx * 9.5, -23.6, 6, 1.2); bed(sx * 4.6, 25, 3.4, 1.2); }
@@ -527,7 +528,8 @@ export function buildCampus() {
     hedges.push({ p: [(x1 + x2) / 2, 0.55, (z1 + z2) / 2], s: [0.9, 1.1, length], r: [0, Math.atan2(x2 - x1, z2 - z1), 0] });
   };
   hedgeLine(-39.2, -38, -39.2, 46); hedgeLine(39.2, -38, 39.2, 46); hedgeLine(-38.5, -38.3, 38.5, -38.3);
-  group.add(instances(new THREE.BoxGeometry(1, 1, 1), toon(0x8a7a66), beds));
+  group.add(instances(new THREE.BoxGeometry(1, 1, 1), toon(0xe2e8ef), beds));
+  group.add(instances(new THREE.BoxGeometry(1, 1, 1), toon(0x4d6b45), soil));
   group.add(instances(new THREE.IcosahedronGeometry(1, 0), toon(0xffffff), blooms));
   group.add(instances(new THREE.BoxGeometry(1, 1, 1), toon(0x3f8a55), hedges));
 
