@@ -263,6 +263,11 @@ const SETS = {
       g.add(at(strip, 0, 5.98, -2 - i * 6));
     });
     g.add(at(plane(3, 4.4, basic(0xdff1ff)), 0, 2.2, -29.9));
+    // vasos com plantas entre as portas
+    for (const z of [-5.5, -10.5, -15.5]) {
+      g.add(at(part(new THREE.CylinderGeometry(0.32, 0.25, 0.6, 10), toon(0xe9eef4), 0.03), 2.9, 0.3, z));
+      g.add(at(part(new THREE.IcosahedronGeometry(0.55, 0), toon(0x4f9e62), 0.03), 2.9, 1.05, z));
+    }
     return { background: 0xdfe9f3, fog: [0xdfe9f3, 26, 70] };
   },
   lab(g) {

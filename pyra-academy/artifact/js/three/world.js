@@ -577,6 +577,17 @@ export function buildCampus() {
   // 8. dormitório
   place('dorm', block(10, 14, 8, '#cbd8e8', 17, { cols: 5, rows: 6, lit: 0.45 }));
 
+  const roofKit = [];
+  const kr = rng(19);
+  for (const site of Object.values(SITES)) {
+    if (site.h > 12) continue;
+    for (let i = 0; i < 3; i++) {
+      const w = 0.9 + kr() * 1.2;
+      roofKit.push({ p: [site.x + (kr() - 0.5) * (site.w - 3), site.h + 0.35 + 0.4, site.z + (kr() - 0.5) * (site.d - 3)], s: [w, 0.8, w * 0.8], color: [0xc9d2dc, 0xaeb9c6, 0xdfe6ee][i] });
+    }
+  }
+  group.add(instances(new THREE.BoxGeometry(1, 1, 1), toon(0xffffff), roofKit));
+
   // portão, cerca e câmeras
   for (const s of [-1, 1]) {
     group.add(at(part(new THREE.BoxGeometry(1.6, 6, 1.6), dark, 0.02), s * 4.4, 3, GATE_Z));
@@ -656,6 +667,46 @@ export function buildCampus() {
     tufts.push({ p: [x, 0.09, z], s: [0.16, 0.18 + sr() * 0.12, 0.16], r: [0, sr() * 6, 0], color: sr() < 0.5 ? 0x5d9a66 : 0x8cc792 });
   }
   group.add(instances(new THREE.ConeGeometry(0.6, 1, 4), toon(0xffffff), tufts));
+
+  // mastros com a bandeira da Academia, tremulando (pano com ondas na própria malha)
+  const flagMap = (() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 160;
+    const g = canvas.getContext('2d');
+    g.fillStyle = '#2f6fc7'; g.fillRect(0, 0, 256, 160);
+    g.fillStyle = '#f5f2ea'; g.fillRect(0, 64, 256, 32);
+    g.translate(128, 80); g.scale(0.9, 0.9);
+    g.fillStyle = '#0b1a33'; g.strokeStyle = '#f5f2ea'; g.lineWidth = 6;
+    const shield = new Path2D('M0-46 40-30V8C40 34 20 52 0 62-20 52-40 34-40 8V-30Z');
+    g.fill(shield); g.stroke(shield);
+    g.lineWidth = 9; g.lineCap = g.lineJoin = 'round';
+    g.stroke(new Path2D('M-12-20H8a14 14 0 0 1 0 28H-4V34'));
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
+  })();
+  for (const sx of [-1, 1]) {
+    const x = sx * 6.5, z = -11;
+    group.add(at(part(new THREE.CylinderGeometry(0.07, 0.1, 7, 8), toon(0xdfe6ee), 0.02), x, 3.5, z));
+    group.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), toon(0xffc93c)), x, 7.05, z));
+    const clothGeometry = new THREE.PlaneGeometry(2.4, 1.5, 12, 4);
+    clothGeometry.translate(1.2, 0, 0);
+    const base = clothGeometry.attributes.position.array.slice();
+    const cloth = new THREE.Mesh(clothGeometry, toon(0xffffff, { map: flagMap, side: THREE.DoubleSide }));
+    cloth.position.set(x, 6.1, z);
+    cloth.rotation.y = sx < 0 ? 0 : Math.PI;
+    group.add(cloth);
+    animated.push((t) => {
+      const pos = clothGeometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const bx = base[i * 3];
+        pos.setZ(i, Math.sin(bx * 2.4 - t * 4 + sx) * 0.12 * bx);
+        pos.setY(i, base[i * 3 + 1] - bx * 0.05);
+      }
+      pos.needsUpdate = true;
+    });
+    colliders.push({ minX: x - 0.2, maxX: x + 0.2, minZ: z - 0.2, maxZ: z + 0.2 });
+  }
 
   // árvores, postes e bancos
   const r = rng(77);
