@@ -366,6 +366,7 @@ const SETS = {
     const path = plane(4, 60, toon(0xd9e1ea));
     path.rotation.x = -Math.PI / 2;
     g.add(at(path, 0, 0.02, -24));
+    for (const s of [-1, 1]) g.add(at(part(new THREE.BoxGeometry(0.7, 0.9, 24), toon(0x3f8a55), 0.03), s * 3, 0.45, -28));
     const dark = toon(0x2a3a55);
     const red = toon(0x2f6fc7);
     for (const s of [-1, 1]) {

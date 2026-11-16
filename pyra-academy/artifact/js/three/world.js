@@ -243,6 +243,7 @@ function block(w, h, d, wall, seed, { cols = 6, rows = 3, lit = 0.55, glow, roof
     trim.push({ p: [x, h / 2, z], s: [0.32, h, 0.28] });
   }
   group.add(instances(new THREE.BoxGeometry(1, 1, 1), toon(0xf3f6fa), trim));
+  group.add(at(part(new THREE.BoxGeometry(w + 0.36, 0.55, d + 0.36), toon(0x9aa8ba), 0.01), 0, 0.27, 0));
   return group;
 }
 
@@ -837,7 +838,7 @@ export function createWorld(container, { mode = 'play', minimap = null, onPrompt
     const night = currentPeriod === 'night';
     if (area.sites) {
       scene.background = night ? skies.night : skies.aft;
-      scene.fog = new THREE.Fog(night ? 0x0d1a36 : 0xcfe8fb, night ? 48 : 80, night ? 145 : 210);
+      scene.fog = new THREE.Fog(night ? 0x0d1a36 : 0xcfe8fb, night ? 55 : 110, night ? 160 : 290);
       hemi.color.set(night ? 0x8fb0ee : 0xd2eaff);
       hemi.groundColor.set(night ? 0x1f2b40 : 0x5c7f68);
       hemi.intensity = night ? 1.15 : 1.5;

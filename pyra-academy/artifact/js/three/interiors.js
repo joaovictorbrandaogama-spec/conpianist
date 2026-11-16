@@ -518,6 +518,7 @@ export function buildMall(night = false) {
     const ring = new THREE.Mesh(new THREE.RingGeometry(r, r + 0.025, 36), rippleMat);
     ring.rotation.x = -Math.PI / 2; group.add(at(ring, 0, 0.612, -5));
   }
+  for (const x of [-16.6, 16.6]) plant(x, -1.2);   // cantos da frente, longe da entrada
   lighting(group, night, shops.map(([, x]) => [x, 3.86, -9.54]));
   return {
     group, colliders,
