@@ -633,6 +633,29 @@ export function buildCampus() {
   group.add(instances(new THREE.BoxGeometry(1, 1, 1), toon(0x4d6b45), soil));
   group.add(instances(new THREE.IcosahedronGeometry(1, 0), toon(0xffffff), blooms));
   group.add(instances(new THREE.BoxGeometry(1, 1, 1), toon(0x3f8a55), hedges));
+  // arbustos baixos ao longo das fachadas (longe das portas) e tufos de grama espalhados
+  const shrubs = [];
+  const sr = rng(57);
+  for (const site of Object.values(SITES)) {
+    const front = site.door[1] > site.z + 1 ? 1 : site.door[1] < site.z - 1 ? -1 : 0;
+    const sideX = site.door[0] > site.x + 1 ? 1 : site.door[0] < site.x - 1 ? -1 : 0;
+    for (let i = 0; i < 9; i++) {
+      const k = (i + 0.5) / 9 - 0.5;
+      let x, z;
+      if (front) { x = site.x + k * (site.w - 1); z = site.z + front * (site.d / 2 + 0.7); if (Math.abs(x - site.door[0]) < 3) continue; }
+      else { x = site.x + sideX * (site.w / 2 + 0.7); z = site.z + k * (site.d - 1); if (Math.abs(z - site.door[1]) < 3) continue; }
+      const size = 0.45 + sr() * 0.25;
+      shrubs.push({ p: [x, size * 0.6, z], s: [size * 1.3, size, size * 1.3], r: [0, sr() * 6, 0], color: [0x3f8a55, 0x4f9e62, 0x5aae70][i % 3] });
+    }
+  }
+  group.add(instances(new THREE.IcosahedronGeometry(1, 0), toon(0xffffff), shrubs));
+  const tufts = [];
+  for (let i = 0; i < 420; i++) {
+    const x = (sr() - 0.5) * 76, z = -36 + sr() * 80;
+    if (Math.abs(x) < 2.6 || Math.hypot(x, z) < 11) continue;   // fora do caminho central e da praça
+    tufts.push({ p: [x, 0.09, z], s: [0.16, 0.18 + sr() * 0.12, 0.16], r: [0, sr() * 6, 0], color: sr() < 0.5 ? 0x5d9a66 : 0x8cc792 });
+  }
+  group.add(instances(new THREE.ConeGeometry(0.6, 1, 4), toon(0xffffff), tufts));
 
   // árvores, postes e bancos
   const r = rng(77);

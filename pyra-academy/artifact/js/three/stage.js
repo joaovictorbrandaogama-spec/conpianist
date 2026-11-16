@@ -409,6 +409,12 @@ function dressSet(group, name) {
     box(x, y, z, 0.045, h, 0.06);
   };
 
+  // luz suave na parede do fundo dos cenários internos escuros: separa o elenco do fundo
+  if (['council', 'dorm', 'lab', 'library', 'mall', 'arena'].includes(name)) {
+    halo(0, 4.6, -5.6, { council: 0xffe7a8, dorm: 0x9fc4ff, lab: 0x7fe6dc, library: 0xbcd0ff, mall: 0xbcd8ff, arena: 0x8fc4ff }[name], 12, 0.14);
+    halo(0, 0.6, -2.5, 0xbcd8ff, 9, 0.08);
+  }
+
   if (name === 'classroom') {
     box(0, 1.52, -5.72, 8.5, 0.07, 0.32, brass);
     for (const x of [-6.4, 6.4]) {
