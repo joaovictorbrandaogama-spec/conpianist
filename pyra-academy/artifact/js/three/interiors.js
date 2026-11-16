@@ -233,6 +233,21 @@ function sunPatch(group, x, z, w, d, turn = 0, opacity = 0.2) {
   group.add(patch);
 }
 
+// Cartaz de parede com material iluminado (escurece à noite, ao contrário das placas).
+function poster(group, x, y, z, w, h, draw, turn) {
+  const map = painted(128, Math.round(128 * h / w), draw);
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), toon(0xffffff, { map }));
+  mesh.position.set(x, y, z);
+  mesh.rotation.y = turn;
+  group.add(mesh);
+}
+const posterArt = {
+  python: (g, w, h) => { g.fillStyle = '#1d3f73'; g.fillRect(0, 0, w, h); g.fillStyle = '#ffc93c'; g.fillRect(12, 14, w - 24, 26); g.fillStyle = '#1d3f73'; g.font = 'bold 18px sans-serif'; g.fillText('PYTHON', 22, 34); g.fillStyle = '#9fd2f5'; for (let i = 0; i < 6; i++) g.fillRect(14, 58 + i * 16, 30 + (i * 37) % 70, 6); },
+  agenda: (g, w, h) => { g.fillStyle = '#f5f2ea'; g.fillRect(0, 0, w, h); g.fillStyle = '#2f6fc7'; g.fillRect(0, 0, w, 24); for (let r = 0; r < 4; r++) for (let c = 0; c < 5; c++) { g.fillStyle = (r + c) % 3 ? '#dfe6ee' : '#ffc93c'; g.fillRect(8 + c * 23, 34 + r * 22, 19, 17); } },
+  mapa: (g, w, h) => { g.fillStyle = '#cfe8fb'; g.fillRect(0, 0, w, h); g.fillStyle = '#74ad7c'; g.beginPath(); g.ellipse(w / 2, h / 2, w * 0.38, h * 0.34, 0, 0, 6.3); g.fill(); g.fillStyle = '#e3e9f0'; for (const [px, py] of [[50, 40], [80, 50], [60, 80], [40, 70]]) g.fillRect(px, py, 12, 9); },
+  ranking: (g, w, h) => { g.fillStyle = '#0d1728'; g.fillRect(0, 0, w, h); [['#ffc93c', 96], ['#4fc8ff', 74], ['#5eea9a', 52], ['#ff3355', 10]].forEach(([c, len], i) => { g.fillStyle = c; g.fillRect(14, 22 + i * 26, len, 14); }); },
+};
+
 export function buildSchool(night = false) {
   const group = new THREE.Group();
   const colliders = [];
@@ -263,6 +278,9 @@ export function buildSchool(night = false) {
   plaque(-17.82, 2.2, -8, 3.4, 2.2, windowTexture(night), Math.PI / 2);
   plaque(-17.82, 2.2, -3.5, 3.4, 2.2, windowTexture(night), Math.PI / 2);
   if (!night) for (const z of [-8, -3.5]) sunPatch(group, -15.2, z + 0.6, 5, 3.2, 0.25);
+  poster(group, -2.17, 2.3, -10.5, 1.6, 2.1, posterArt.python, -Math.PI / 2);
+  poster(group, -2.17, 2.3, -7.4, 1.8, 1.6, posterArt.agenda, -Math.PI / 2);
+  poster(group, -2.17, 2.3, -4.2, 1.6, 1.6, posterArt.ranking, -Math.PI / 2);
   box(-10, -12.2, 3, 0.95, 1, toon(0x2a1f2a));
   for (const z of [-10, -7, -4]) for (const x of [-15, -11.8, -8.6, -5.4]) desk(x, z);
   tag('SALA DA TURMA D', -10, 1.7, -0.2, '#ff3355');
@@ -273,6 +291,8 @@ export function buildSchool(night = false) {
   plaque(9, 2.4, -11.82, 6, 1.4, sign('CLUBE DE CÓDIGO CRIATIVO', '#0b1a12', '#5fd39a', 1024));
   plaque(15.82, 2.2, -6, 3.6, 2.2, windowTexture(night), -Math.PI / 2);
   if (!night) sunPatch(group, 13.3, -5.4, 5, 3.4, -0.25);
+  poster(group, 2.17, 2.3, -9.6, 1.6, 2.1, posterArt.python, Math.PI / 2);
+  poster(group, 2.17, 2.3, -6.2, 1.8, 1.6, posterArt.mapa, Math.PI / 2);
   for (const x of [4, 6.2, 11.8, 14]) box(x, -11.3, 2, 2.6, 0.8, toon(0x4a3326));
   for (const [x, z] of [[5, -6], [13, -6]]) {
     box(x, z, 2.4, 0.08, 1.2, toon(0xf1ece0), 0.76, false);

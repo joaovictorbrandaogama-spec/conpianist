@@ -196,11 +196,11 @@ function room(g, { floor = 0x2a3a55, wall = 0x26344c, width = 18, depth = 9, hei
   }
   return -depth + 3;   // z da parede do fundo
 }
-const desk = (x, z, color = 0x2a2a40) => {
+const desk = (x, z, color = 0xb79e7c) => {
   const group = new THREE.Group();
   group.add(at(part(new THREE.BoxGeometry(1.7, 0.1, 0.8), toon(color), 0.03), 0, 0.85, 0));
-  group.add(at(part(new THREE.BoxGeometry(1.5, 0.8, 0.06), toon(0x14141f), 0), 0, 0.42, 0.3));
-  const metal = toon(0x514b59);
+  group.add(at(part(new THREE.BoxGeometry(1.5, 0.8, 0.06), toon(0x2c3e5c), 0), 0, 0.42, 0.3));
+  const metal = toon(0x7f8da3);
   for (const sx of [-0.72, 0.72]) {
     group.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.8, 0.6), metal), sx, 0.4, 0));
   }

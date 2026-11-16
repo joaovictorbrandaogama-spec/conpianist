@@ -331,6 +331,30 @@ export function buildCampus() {
   sea.position.y = -0.12;
   group.add(sea);
   animated.push((t) => { seaMap.offset.set(t * 0.004, t * 0.0025); });
+  const foam = new THREE.Mesh(new THREE.RingGeometry(85.4, 87.6, 72), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4, depthWrite: false }));
+  foam.rotation.x = -Math.PI / 2;
+  foam.position.set(0, -0.06, 4);
+  group.add(foam);
+  animated.push((t) => { foam.material.opacity = 0.28 + Math.sin(t * 0.9) * 0.14; foam.scale.setScalar(1 + Math.sin(t * 0.9) * 0.004); });
+  // farol na praia (fora da cerca): torre branca com faixas azuis e luz que gira
+  const lighthouse = new THREE.Group();
+  lighthouse.add(at(part(new THREE.CylinderGeometry(1.1, 1.6, 9, 16), toon(0xf4f7fb), 0.02), 0, 4.5, 0));
+  for (const y of [2.4, 5.4]) lighthouse.add(at(part(new THREE.CylinderGeometry(1.36 - y * 0.03, 1.42 - y * 0.03, 1, 16), toon(0x2f6fc7), 0), 0, y, 0));
+  lighthouse.add(at(part(new THREE.CylinderGeometry(1.35, 1.35, 0.3, 16), toon(0x26354f), 0), 0, 9.1, 0));
+  lighthouse.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 1.1, 12), new THREE.MeshBasicMaterial({ color: 0xfff3c4 })), 0, 9.8, 0));
+  lighthouse.add(at(part(new THREE.ConeGeometry(1.0, 1.2, 12), toon(0x26354f), 0), 0, 10.9, 0));
+  const beam = new THREE.Mesh(new THREE.ConeGeometry(2.4, 26, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff1c0, transparent: true, opacity: 0.0, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+  beam.rotation.z = Math.PI / 2;
+  beam.position.x = 13;
+  const beamPivot = new THREE.Group();
+  beamPivot.position.y = 9.8;
+  beamPivot.add(beam);
+  lighthouse.add(beamPivot);
+  beam.material.userData.nightOpacity = 0.22;
+  LAMPS.push(beam.material);
+  lighthouse.position.set(-58, 0, -50);
+  group.add(lighthouse);
+  animated.push((t) => { beamPivot.rotation.y = t * 0.6; });
   // morros baixos no contorno da ilha (fora da cerca, só cenário)
   const hills = [];
   const hillRandom = rng(64);
