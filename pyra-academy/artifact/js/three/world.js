@@ -184,6 +184,56 @@ function lawnTexture() {
   return texture;
 }
 
+// Campo fora do muro: grama sem faixas de corte, manchas largas e flores miúdas.
+function meadowTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 256;
+  const g = canvas.getContext('2d');
+  const r = rng(27);
+  g.fillStyle = '#6ea56d'; g.fillRect(0, 0, 256, 256);
+  g.filter = 'blur(16px)';
+  for (let i = 0; i < 14; i++) {
+    const x = r() * 256, y = r() * 256, radius = 20 + r() * 36;
+    g.fillStyle = r() < 0.5 ? 'rgba(130,186,118,.55)' : 'rgba(84,142,92,.5)';
+    for (const dx of [-256, 0, 256]) for (const dy of [-256, 0, 256]) { g.beginPath(); g.arc(x + dx, y + dy, radius, 0, TAU); g.fill(); }
+  }
+  g.filter = 'none';
+  for (let i = 0; i < 700; i++) {
+    g.fillStyle = r() < 0.5 ? 'rgba(46,96,62,.18)' : 'rgba(214,246,206,.13)';
+    g.fillRect(r() * 256, r() * 256, 1 + r() * 2, 2 + r() * 3);
+  }
+  for (let i = 0; i < 60; i++) {
+    g.fillStyle = ['#f6f4ea', '#ffe27a', '#c9b8f2'][i % 3];
+    g.fillRect(r() * 256, r() * 256, 2, 2);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+// Sombras de nuvem: manchas suaves sobre branco, contínuas nas bordas para repetir sem emenda.
+function cloudShadowTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 256;
+  const g = canvas.getContext('2d');
+  const r = rng(77);
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, 256, 256);
+  g.filter = 'blur(14px)';
+  for (let cloud = 0; cloud < 5; cloud++) {
+    const cx = r() * 256, cy = r() * 256;
+    for (let puff = 0; puff < 6; puff++) {
+      const x = cx + (r() - 0.5) * 70, y = cy + (r() - 0.5) * 34, radius = 12 + r() * 18;
+      g.fillStyle = 'rgba(176,196,222,.42)';
+      for (const dx of [-256, 0, 256]) for (const dy of [-256, 0, 256]) { g.beginPath(); g.arc(x + dx, y + dy, radius, 0, TAU); g.fill(); }
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
 // Água do mar em volta da ilha: ondinhas claras sobre azul.
 function seaTexture() {
   const canvas = document.createElement('canvas');
@@ -339,7 +389,7 @@ export function buildCampus() {
   const group = new THREE.Group();
   const colliders = [];
   const animated = [];
-  const buildings = [];
+  const buildings = [], tags = [];
   const dark = toon(0x26354f);
   const cream = toon(0xf5f2ea);
   const red = toon(0x2f6fc7);           // destaque da Academia (era carmim)
@@ -349,11 +399,30 @@ export function buildCampus() {
   const lawn = lawnTexture();
   const groundGeometry = new THREE.CircleGeometry(78, 72);
   const groundUV = groundGeometry.attributes.uv;
-  for (let i = 0; i < groundUV.count; i++) groundUV.setXY(i, groundUV.getX(i) * 40, groundUV.getY(i) * 40);
-  const ground = new THREE.Mesh(groundGeometry, toon(0xffffff, { map: lawn }));
+  for (let i = 0; i < groundUV.count; i++) groundUV.setXY(i, groundUV.getX(i) * 14, groundUV.getY(i) * 14);
+  const ground = new THREE.Mesh(groundGeometry, toon(0xffffff, { map: meadowTexture() }));
   ground.rotation.x = -Math.PI / 2;
   ground.position.z = 4;
   group.add(ground);
+  // gramado cortado em faixas só dentro do muro (o mesmo tamanho de faixa de antes: 3,9 m por tile)
+  const yardGeometry = new THREE.PlaneGeometry(80, 86);
+  const yardUV = yardGeometry.attributes.uv;
+  for (let i = 0; i < yardUV.count; i++) yardUV.setXY(i, yardUV.getX(i) * 80 / 3.9, yardUV.getY(i) * 86 / 3.9);
+  const yard = new THREE.Mesh(yardGeometry, toon(0xffffff, { map: lawn }));
+  yard.rotation.x = -Math.PI / 2;
+  yard.position.set(0, 0.01, 4);
+  group.add(yard);
+  // sombras de nuvem passando devagar sobre a ilha (só de dia; multiplica o que já está no chão)
+  const shadeMap = cloudShadowTexture();
+  const shadeGeometry = new THREE.CircleGeometry(92, 48);
+  const shadeUV = shadeGeometry.attributes.uv;
+  for (let i = 0; i < shadeUV.count; i++) shadeUV.setXY(i, shadeUV.getX(i) * 2.6, shadeUV.getY(i) * 2.6);
+  const cloudShade = new THREE.Mesh(shadeGeometry, new THREE.MeshBasicMaterial({ map: shadeMap, transparent: true, depthWrite: false, blending: THREE.MultiplyBlending, premultipliedAlpha: true, toneMapped: false, fog: false }));
+  cloudShade.rotation.x = -Math.PI / 2;
+  cloudShade.position.set(0, 0.075, 4);
+  cloudShade.renderOrder = -1;
+  group.add(cloudShade);
+  animated.push((t) => { shadeMap.offset.set(t * 0.006, t * 0.0022); });
   const beach = new THREE.Mesh(new THREE.RingGeometry(77.5, 86, 72), toon(0xf1e7cf));
   beach.rotation.x = -Math.PI / 2;
   beach.position.set(0, -0.02, 4);
@@ -548,6 +617,7 @@ export function buildCampus() {
     tag.position.set(site.x, site.h + 2.6, site.z);
     tag.scale.multiplyScalar(1.5);
     group.add(tag);
+    tags.push(tag);
     // marca luminosa na porta
     const mark = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.25, 28), new THREE.MeshBasicMaterial({ color: site.color, transparent: true, opacity: 0.85 }));
     mark.rotation.x = -Math.PI / 2;
@@ -832,7 +902,7 @@ export function buildCampus() {
     const materials = [...copies.values()].map((material) => ({ material, transparent: material.transparent, opacity: material.opacity, depthWrite: material.depthWrite }));
     return { box: box.expandByScalar(0.3), shells, materials, fade: 1 };
   });
-  return { group, colliders, animated, windows: WINDOWS, lamps: LAMPS, occluders };
+  return { group, colliders, animated, windows: WINDOWS, lamps: LAMPS, occluders, cloudShade, tags };
 }
 
 // Onde cada personagem fica no campus.
@@ -959,6 +1029,12 @@ export function createWorld(container, { mode = 'play', minimap = null, onPrompt
       }
       for (const shell of item.shells) shell.visible = item.fade > 0.6;
     }
+    // as placas com o nome dos prédios servem de longe; de perto, tapariam a vista
+    for (const tag of campus.tags) {
+      const opacity = THREE.MathUtils.smoothstep(camera.position.distanceTo(tag.position), 8, 15);
+      tag.material.opacity = opacity;
+      tag.visible = opacity > 0.01;
+    }
   }
 
   // ---------- período do dia e luz ----------
@@ -975,6 +1051,7 @@ export function createWorld(container, { mode = 'play', minimap = null, onPrompt
       sun.position.set(night ? 28 : -35, night ? 58 : 55, night ? -26 : 30);
       for (const m of campus.windows) m.emissiveIntensity = night ? 1.55 : 0.06;
       for (const m of campus.lamps) m.opacity = night ? m.userData.nightOpacity ?? 0.4 : 0;
+      campus.cloudShade.visible = !night;
     } else {
       // dentro dos prédios a luz é sempre de lâmpada; só as janelas mudam
       scene.background = new THREE.Color(INTERIOR_BACKDROP);
