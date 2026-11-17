@@ -1028,6 +1028,8 @@ export function createWorld(container, { mode = 'play', minimap = null, onPrompt
         area.group.add(ring);
         area.marks.push(ring);
       }
+      area.tags = [];
+      area.group.traverse((object) => { if (object.userData.roomTag) area.tags.push(object); });
       built.set(key, area);
     }
     return built.get(key);
@@ -1061,6 +1063,15 @@ export function createWorld(container, { mode = 'play', minimap = null, onPrompt
     // as placas com o nome dos prédios servem de longe; de perto, tapariam a vista
     for (const tag of campus.tags) {
       const opacity = THREE.MathUtils.smoothstep(camera.position.distanceTo(tag.position), 8, 15);
+      tag.material.opacity = opacity;
+      tag.visible = opacity > 0.01;
+    }
+  }
+
+  // As placas das salas ficam na porta; com o jogador ali, cobririam o próprio personagem.
+  function fadeRoomTags() {
+    for (const tag of area.tags) {
+      const opacity = THREE.MathUtils.smoothstep(Math.hypot(tag.position.x - pos.x, tag.position.z - pos.z), 2.2, 4.6);
       tag.material.opacity = opacity;
       tag.visible = opacity > 0.01;
     }
@@ -1414,6 +1425,7 @@ export function createWorld(container, { mode = 'play', minimap = null, onPrompt
       camera.position.lerp(camWant, Math.min(1, dt * 4));
       camera.lookAt(look);
       if (area.sites) fadeOccluders(dt);
+      else fadeRoomTags();
       if (frame % 5 === 0) drawMinimap();
     }
     frame += 1;

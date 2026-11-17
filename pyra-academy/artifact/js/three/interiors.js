@@ -185,6 +185,7 @@ function kit(group, colliders) {
   const tag = (text, x, y, z, color = '#3aa3ff') => {
     const sprite = label(text, { border: color, size: 40 });
     sprite.scale.multiplyScalar(0.5);
+    sprite.userData.roomTag = true;   // o mundo esconde a placa quando o jogador chega perto
     sprite.position.set(x, y, z);
     group.add(sprite);
     return sprite;
@@ -343,6 +344,24 @@ export function buildSchool(night = false) {
   // Clube de Código Criativo
   wall(2, -12, 16, -12, WALL, wallMat);
   wall(2, -12, 2, 0, WALL, wallMat);
+  // vitrine de troféus na parede maciça entre a Sala D e o clube, virada para o corredor
+  box(0, 0.16, 3.3, 2.1, 0.3, toon(0x3b2a26), 0.92, false);
+  plaque(0, 1.97, 0.32, 3.1, 1.9, painted(320, 196, (g, w, h) => {
+    g.fillStyle = '#3b2a26'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#16233a'; g.fillRect(10, 10, w - 20, h - 48);
+    g.fillStyle = 'rgba(190,225,255,.16)'; g.beginPath(); g.moveTo(10, 10); g.lineTo(120, 10); g.lineTo(40, h - 38); g.lineTo(10, h - 38); g.fill();
+    for (const y of [70, 140]) { g.fillStyle = '#c4a17a'; g.fillRect(10, y, w - 20, 5); }
+    const cup = (x, y, s, c) => {
+      g.fillStyle = c;
+      g.beginPath(); g.moveTo(x - 12 * s, y - 34 * s); g.lineTo(x + 12 * s, y - 34 * s); g.lineTo(x + 7 * s, y - 16 * s); g.lineTo(x - 7 * s, y - 16 * s); g.fill();
+      g.fillRect(x - 2 * s, y - 16 * s, 4 * s, 9 * s); g.fillRect(x - 8 * s, y - 7 * s, 16 * s, 7 * s);
+    };
+    cup(60, 70, 1.3, '#ffc93c'); cup(160, 70, 1.6, '#ffd75e'); cup(260, 70, 1.2, '#c9d3de');
+    for (const [x, c] of [[50, '#ffc93c'], [90, '#c9d3de'], [130, '#d68a54']]) { g.fillStyle = '#2f6fc7'; g.fillRect(x - 3, 92, 6, 22); g.fillStyle = c; g.beginPath(); g.arc(x, 122, 10, 0, 6.3); g.fill(); }
+    cup(220, 140, 1.1, '#d68a54'); cup(270, 140, 1.0, '#ffc93c');
+    g.fillStyle = '#ffc93c'; g.font = 'bold 22px Anton, Impact, sans-serif'; g.textAlign = 'center';
+    g.fillText('MÉRITO · ACADEMIA PYRA', w / 2, h - 13);
+  }));
   wall(16, -12, 16, 0, WALL, wallMat);
   plaque(9, 2.4, -11.82, 6, 1.4, sign('CLUBE DE CÓDIGO CRIATIVO', '#0b1a12', '#5fd39a', 1024));
   plaque(15.82, 2.2, -6, 3.6, 2.2, windowTexture(night), -Math.PI / 2);
