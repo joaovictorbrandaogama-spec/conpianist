@@ -343,6 +343,39 @@ function grove(spots, random) {
   return group;
 }
 
+// Entrada de prédio, de frente para +z no espaço local: moldura, porta de vidro em duas folhas,
+// marquise na cor do prédio, degraus rasos e duas arandelas que acendem à noite.
+let sconceGlow = null;
+function entrance({ glass, accent, width = 3.2, canopy = true }) {
+  const group = new THREE.Group();
+  group.add(at(part(new THREE.BoxGeometry(width + 0.6, 3.9, 0.3), toon(0x1f3557), 0.02), 0, 1.95, 0.12));
+  const pane = new THREE.MeshBasicMaterial({ color: glass });
+  for (const sx of [-1, 1]) group.add(at(new THREE.Mesh(new THREE.PlaneGeometry(width / 2 - 0.1, 3.1), pane), sx * width / 4, 1.6, 0.28));
+  const handle = new THREE.MeshBasicMaterial({ color: 0xf5f2ea });
+  for (const sx of [-1, 1]) group.add(at(new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.6), handle), sx * 0.18, 1.5, 0.29));
+  group.add(at(new THREE.Mesh(new THREE.PlaneGeometry(width - 0.1, 0.32), new THREE.MeshBasicMaterial({ color: 0xdff1ff })), 0, 3.48, 0.28));
+  if (canopy) {
+    group.add(at(part(new THREE.BoxGeometry(width + 1.4, 0.24, 1.5), toon(accent), 0.03), 0, 4.0, 0.95));
+    group.add(at(new THREE.Mesh(new THREE.BoxGeometry(width + 1.42, 0.06, 1.52), toon(0xf3f6fa)), 0, 3.87, 0.95));
+  }
+  const step = toon(0xeef2f6);
+  group.add(at(part(new THREE.BoxGeometry(width + 1.2, 0.09, 0.7), step, 0), 0, 0.045, 0.35));
+  group.add(at(part(new THREE.BoxGeometry(width + 0.4, 0.09, 0.38), step, 0), 0, 0.135, 0.19));
+  sconceGlow ||= new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffd98a, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+  if (!LAMPS.includes(sconceGlow)) { sconceGlow.userData.nightOpacity = 0.55; LAMPS.push(sconceGlow); }
+  const bulb = new THREE.MeshBasicMaterial({ color: 0xfff1c8 });
+  for (const sx of [-1, 1]) {
+    const x = sx * (width / 2 + 0.75);
+    group.add(at(part(new THREE.BoxGeometry(0.26, 0.42, 0.2), toon(0x26354f), 0.04), x, 2.75, 0.14));
+    group.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.26, 0.04), bulb), x, 2.75, 0.25));
+    const halo = new THREE.Sprite(sconceGlow);
+    halo.scale.set(1.5, 1.5, 1);
+    group.add(at(halo, x, 2.75, 0.4));
+  }
+  return group;
+}
+const facing = (group, x, z, turn) => { group.position.set(x, 0, z); group.rotation.y = turn; return group; };
+
 function lamp(x, z) {
   const group = new THREE.Group();
   const metal = toon(0x34445e);
@@ -386,6 +419,7 @@ function glowTexture() {
 export function buildCampus() {
   WINDOWS = [];
   LAMPS = [];
+  sconceGlow = null;
   const group = new THREE.Group();
   const colliders = [];
   const animated = [];
@@ -393,7 +427,6 @@ export function buildCampus() {
   const dark = toon(0x26354f);
   const cream = toon(0xf5f2ea);
   const red = toon(0x2f6fc7);           // destaque da Academia (era carmim)
-  const warm = new THREE.MeshBasicMaterial({ color: 0xdff1ff });
 
   // chão, praça e caminhos
   const lawn = lawnTexture();
@@ -649,21 +682,19 @@ export function buildCampus() {
   // 2. prédio de exames
   const exames = block(12, 8, 10, '#8f9db0', 7, { cols: 5, rows: 3, lit: 0.3, glow: '#ff5a70' });
   for (const y of [2.2, 4.4, 6.6]) exames.add(at(new THREE.Mesh(new THREE.BoxGeometry(12.1, 0.18, 10.1), new THREE.MeshBasicMaterial({ color: 0xe8173f })), 0, y, 0));
-  exames.add(at(new THREE.Mesh(new THREE.PlaneGeometry(2.6, 3.4), new THREE.MeshBasicMaterial({ color: 0xff5a70 })), 0, 1.7, 5.03));
+  exames.add(facing(entrance({ glass: 0xff7d8f, accent: 0xe8173f, width: 2.8 }), 0, 5, 0));
   place('exames', exames);
 
   // 3. conselho estudantil, com colunas
   const conselho = block(12, 8, 10, '#e7e4dc', 9, { cols: 5, rows: 2, lit: 0.6 });
   for (const x of [-4.5, -1.5, 1.5, 4.5]) conselho.add(at(part(new THREE.CylinderGeometry(0.45, 0.5, 8, 10), cream, 0.03), x, 4, 5.7));
   conselho.add(at(part(new THREE.BoxGeometry(13, 1, 2.4), toon(0xffc93c), 0.02), 0, 8.6, 5.4));
-  conselho.add(at(new THREE.Mesh(new THREE.PlaneGeometry(2.4, 3.4), warm), 0, 1.7, 5.03));
+  conselho.add(facing(entrance({ glass: 0xfff0c9, accent: 0xffc93c, width: 1.7, canopy: false }), 0, 5, 0));
   place('conselho', conselho);
 
   // 4. sala de informática
   const info = block(10, 7, 12, '#a3b9c3', 11, { cols: 5, rows: 3, lit: 0.8, glow: '#4fc8ff' });
-  const doorCyan = new THREE.Mesh(new THREE.PlaneGeometry(3, 3.2), new THREE.MeshBasicMaterial({ color: 0x4fc8ff }));
-  doorCyan.rotation.y = -Math.PI / 2;
-  info.add(at(doorCyan, -5.03, 1.6, 0));
+  info.add(facing(entrance({ glass: 0x7fd8ff, accent: 0x2f8fc7 }), -5, 0, -Math.PI / 2));
   place('info', info);
 
   // 5. biblioteca
@@ -672,9 +703,7 @@ export function buildCampus() {
   gable.rotation.y = Math.PI / 4;
   gable.scale.z = 1.25;
   biblio.add(at(gable, 0, 8.6, 0));
-  const doorWarm = new THREE.Mesh(new THREE.PlaneGeometry(3, 3.2), warm);
-  doorWarm.rotation.y = Math.PI / 2;
-  biblio.add(at(doorWarm, 5.03, 1.6, 0));
+  biblio.add(facing(entrance({ glass: 0xffe9bf, accent: 0xa9714f }), 5, 0, Math.PI / 2));
   place('biblio', biblio);
 
   // 6. laboratório 404, com antena
@@ -683,9 +712,7 @@ export function buildCampus() {
   const dish = part(new THREE.SphereGeometry(1.3, 14, 8, 0, TAU, 0, Math.PI / 2.4), toon(0xf5f2ea, { side: THREE.DoubleSide }), 0);
   dish.rotation.set(Math.PI + 0.7, 0, 0.3);
   lab.add(at(dish, 2, 7.6, -1));
-  const doorTeal = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 3), new THREE.MeshBasicMaterial({ color: 0xff9f6b }));
-  doorTeal.rotation.y = -Math.PI / 2;
-  lab.add(at(doorTeal, -4.53, 1.5, 0));
+  lab.add(facing(entrance({ glass: 0xffc29b, accent: 0xff8a4c, width: 2.6 }), -4.5, 0, -Math.PI / 2));
   place('lab404', lab);
 
   // 7. galeria: três lojas com toldo
@@ -706,7 +733,9 @@ export function buildCampus() {
   place('galeria', galeriaWrap);
 
   // 8. dormitório
-  place('dorm', block(10, 14, 8, '#cbd8e8', 17, { cols: 5, rows: 6, lit: 0.45 }));
+  const dorm = block(10, 14, 8, '#cbd8e8', 17, { cols: 5, rows: 6, lit: 0.45 });
+  dorm.add(facing(entrance({ glass: 0xfff0c9, accent: 0x8f78e8 }), 0, -4, Math.PI));
+  place('dorm', dorm);
 
   const roofKit = [];
   const kr = rng(19);
