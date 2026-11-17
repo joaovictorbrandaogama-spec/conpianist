@@ -339,6 +339,7 @@ export function buildCampus() {
   const group = new THREE.Group();
   const colliders = [];
   const animated = [];
+  const buildings = [];
   const dark = toon(0x26354f);
   const cream = toon(0xf5f2ea);
   const red = toon(0x2f6fc7);           // destaque da Academia (era carmim)
@@ -453,8 +454,9 @@ export function buildCampus() {
     const angle = Math.atan2(x2 - x1, z2 - z1);
     for (const side of [-1, 1]) borders.push({ p: [(x1 + x2) / 2 + Math.cos(angle) * width * 0.5 * side, 0.025, (z1 + z2) / 2 - Math.sin(angle) * width * 0.5 * side], s: [0.12, 0.025, length], r: [0, angle, 0] });
   };
-  for (const site of Object.values(SITES)) path(0, 0, site.door[0], site.door[1]);
-  path(0, 0, 0, GATE_Z + 6, 4);
+  const fromPlaza = (x, z) => { const l = Math.hypot(x, z); return [x / l * 9.7, z / l * 9.7]; };
+  for (const site of Object.values(SITES)) path(...fromPlaza(site.door[0], site.door[1]), site.door[0], site.door[1]);
+  path(0, 9.7, 0, GATE_Z + 6, 4);
   group.add(instances(new THREE.BoxGeometry(1, 1, 1), toon(0xf6f9fc), borders));
 
   // estátua do brasão no centro da praça
@@ -495,6 +497,7 @@ export function buildCampus() {
     const site = SITES[key];
     mesh.position.set(site.x, 0, site.z);
     group.add(mesh);
+    buildings.push(mesh);
     colliders.push({ minX: site.x - site.w / 2, maxX: site.x + site.w / 2, minZ: site.z - site.d / 2, maxZ: site.z + site.d / 2 });
     const tag = label(site.name.toUpperCase(), { border: site.color });
     tag.position.set(site.x, site.h + 2.6, site.z);
@@ -611,19 +614,22 @@ export function buildCampus() {
   group.add(instances(new THREE.CylinderGeometry(0.12, 0.12, 0.08, 8), new THREE.MeshBasicMaterial({ color: 0xfff1c8 }), bollardTops));
 
   // portão, cerca e câmeras
+  const gate = new THREE.Group();
   for (const s of [-1, 1]) {
-    group.add(at(part(new THREE.BoxGeometry(1.6, 6, 1.6), dark, 0.02), s * 4.4, 3, GATE_Z));
-    group.add(at(part(new THREE.BoxGeometry(2.1, 0.5, 2.1), red, 0.02), s * 4.4, 6.2, GATE_Z));
+    gate.add(at(part(new THREE.BoxGeometry(1.6, 6, 1.6), dark, 0.02), s * 4.4, 3, GATE_Z));
+    gate.add(at(part(new THREE.BoxGeometry(2.1, 0.5, 2.1), red, 0.02), s * 4.4, 6.2, GATE_Z));
     const camera = part(new THREE.BoxGeometry(0.9, 0.45, 0.5), toon(0x20202c), 0.05);
-    group.add(at(camera, s * 4.4, 6.9, GATE_Z - 0.4));
+    gate.add(at(camera, s * 4.4, 6.9, GATE_Z - 0.4));
     const led = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff2a4a }));
-    group.add(at(led, s * 4.4, 7.05, GATE_Z - 0.7));
+    gate.add(at(led, s * 4.4, 7.05, GATE_Z - 0.7));
     animated.push((t) => { led.visible = Math.sin(t * 5 + s) > 0; });
   }
   const sign = label('ACADEMIA PYRA', { border: '#f5f2ea', size: 72 });
   sign.position.set(0, 7.6, GATE_Z);
   sign.scale.multiplyScalar(1.7);
-  group.add(sign);
+  gate.add(sign);
+  group.add(gate);
+  buildings.push(gate);
   const wallStone = toon(0xe3e9f0);
   const spikes = [];
   const fence = (x1, z1, x2, z2) => {
@@ -756,7 +762,32 @@ export function buildCampus() {
     bench.rotation.y = turn;
     group.add(at(bench, x, 0, z));
   }
-  return { group, colliders, animated, windows: WINDOWS, lamps: LAMPS };
+  // caixas dos prédios (para a câmera saber quando um deles esconde o jogador)
+  group.updateMatrixWorld(true);
+  const occluders = buildings.map((mesh) => {
+    const box = new THREE.Box3().setFromObject(mesh, true);
+    // Cada prédio ganha a sua cópia dos materiais: o vermelho, o azul-escuro e a pedra
+    // também servem a postes, bancos e cercas, que não podem ficar translúcidos junto.
+    const copies = new Map();
+    const own = (material) => {
+      if (material.side === THREE.BackSide || material.userData.sharedResource || LAMPS.includes(material)) return material;
+      if (!copies.has(material)) {
+        const copy = material.clone();
+        copies.set(material, copy);
+        if (WINDOWS.includes(material)) WINDOWS.push(copy);
+      }
+      return copies.get(material);
+    };
+    const shells = [];
+    mesh.traverse((object) => {
+      if (!object.isMesh && !object.isSprite) return;
+      if (object.material?.side === THREE.BackSide) { shells.push(object); return; }
+      object.material = Array.isArray(object.material) ? object.material.map(own) : own(object.material);
+    });
+    const materials = [...copies.values()].map((material) => ({ material, transparent: material.transparent, opacity: material.opacity, depthWrite: material.depthWrite }));
+    return { box: box.expandByScalar(0.3), shells, materials, fade: 1 };
+  });
+  return { group, colliders, animated, windows: WINDOWS, lamps: LAMPS, occluders };
 }
 
 // Onde cada personagem fica no campus.
@@ -860,6 +891,30 @@ export function createWorld(container, { mode = 'play', minimap = null, onPrompt
   let areaName = 'campus';
   let area = AREAS.campus;
   scene.add(area.group);
+
+  // ---------- prédios entre a câmera e quem joga ficam transparentes ----------
+  const sightRay = new THREE.Ray(), sightTarget = new THREE.Vector3(), sightHit = new THREE.Vector3();
+  function fadeOccluders(dt) {
+    sightTarget.set(pos.x, 1.4, pos.z);
+    const distance = camera.position.distanceTo(sightTarget);
+    sightRay.origin.copy(camera.position);
+    sightRay.direction.copy(sightTarget).sub(camera.position).normalize();
+    for (const item of campus.occluders) {
+      const hit = item.box.containsPoint(camera.position) || (sightRay.intersectBox(item.box, sightHit) && sightHit.distanceTo(camera.position) < distance - 0.6);
+      const want = hit ? 0.22 : 1;
+      if (item.fade === want) continue;
+      item.fade += (want - item.fade) * Math.min(1, dt * 8);
+      if (Math.abs(item.fade - want) < 0.02) item.fade = want;
+      const solid = item.fade >= 0.999;
+      for (const entry of item.materials) {
+        const transparent = solid ? entry.transparent : true;
+        if (entry.material.transparent !== transparent) { entry.material.transparent = transparent; entry.material.needsUpdate = true; }
+        entry.material.depthWrite = solid ? entry.depthWrite : false;
+        entry.material.opacity = solid ? entry.opacity : entry.opacity * item.fade;
+      }
+      for (const shell of item.shells) shell.visible = item.fade > 0.6;
+    }
+  }
 
   // ---------- período do dia e luz ----------
   function applyLight() {
@@ -1207,6 +1262,7 @@ export function createWorld(container, { mode = 'play', minimap = null, onPrompt
       camWant.set(pos.x, area.camera.h, pos.z + area.camera.d);
       camera.position.lerp(camWant, Math.min(1, dt * 4));
       camera.lookAt(look);
+      if (area.sites) fadeOccluders(dt);
       if (frame % 5 === 0) drawMinimap();
     }
     frame += 1;
