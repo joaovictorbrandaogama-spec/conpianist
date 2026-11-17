@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { toon, part, label, createCharacter } from './models.js';
 import { CAST, lookOf } from '../art/characters.js';
-import { buildSchool, buildDorm, buildMall } from './interiors.js';
+import { buildSchool, buildDorm, buildMall, INTERIOR_BACKDROP } from './interiors.js';
 
 const TAU = Math.PI * 2;
 const at = (object, x, y, z) => { object.position.set(x, y, z); return object; };
@@ -305,12 +305,12 @@ function lamp(x, z) {
   halo.scale.set(2.8, 2.8, 1);
   halo.position.y = 3.5;
   group.add(halo);
-  const pool = new THREE.Mesh(new THREE.CircleGeometry(2.6, 24), new THREE.MeshBasicMaterial({ map: glowTexture(), color: 0xffc56e, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+  const pool = new THREE.Mesh(new THREE.CircleGeometry(3.3, 24), new THREE.MeshBasicMaterial({ map: glowTexture(), color: 0xffc56e, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
   pool.rotation.x = -Math.PI / 2;
   pool.position.y = 0.05;
   group.add(pool);
   halo.material.userData.nightOpacity = 0.42;
-  pool.material.userData.nightOpacity = 0.28;
+  pool.material.userData.nightOpacity = 0.8;
   LAMPS.push(halo.material, pool.material);
   group.position.set(x, 0, z);
   return group;
@@ -440,8 +440,9 @@ export function buildCampus() {
   ring.position.y = 0.04;
   group.add(ring);
   const paving = toon(0xe9eff5, { map: stone });
-  const borders = [];
+  const borders = [], segments = [];
   const path = (x1, z1, x2, z2, width = 3) => {
+    segments.push([x1, z1, x2, z2, width]);
     const length = Math.hypot(x2 - x1, z2 - z1);
     const geometry = new THREE.PlaneGeometry(width, length);
     const uv = geometry.attributes.uv;
@@ -458,14 +459,58 @@ export function buildCampus() {
   for (const site of Object.values(SITES)) path(...fromPlaza(site.door[0], site.door[1]), site.door[0], site.door[1]);
   path(0, 9.7, 0, GATE_Z + 6, 4);
   group.add(instances(new THREE.BoxGeometry(1, 1, 1), toon(0xf6f9fc), borders));
+  // luzes de chão embutidas na borda dos caminhos dos prédios: pontos claros de dia,
+  // poças quentes à noite (duas chamadas de desenho para todas)
+  const groundLights = [], groundPools = [];
+  for (const [x1, z1, x2, z2, width] of segments.slice(0, -1)) {
+    const length = Math.hypot(x2 - x1, z2 - z1);
+    const ux = (x2 - x1) / length, uz = (z2 - z1) / length;
+    const count = Math.max(1, Math.round(length / 3.4));
+    for (let i = 0; i < count; i++) {
+      const k = (i + 0.5) / count, side = i % 2 ? 1 : -1;
+      const x = x1 + (x2 - x1) * k + uz * side * (width / 2 - 0.22), z = z1 + (z2 - z1) * k - ux * side * (width / 2 - 0.22);
+      groundLights.push({ p: [x, 0.035, z], s: [1, 1, 1] });
+      groundPools.push({ p: [x, 0.03, z], s: [1, 1, 1], r: [-Math.PI / 2, 0, 0] });
+    }
+  }
+  group.add(instances(new THREE.CylinderGeometry(0.1, 0.1, 0.03, 10), new THREE.MeshBasicMaterial({ color: 0xfff1c8 }), groundLights));
+  const groundGlow = new THREE.MeshBasicMaterial({ map: glowTexture(), color: 0xffc879, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+  groundGlow.userData.nightOpacity = 0.34;
+  LAMPS.push(groundGlow);
+  group.add(instances(new THREE.CircleGeometry(1.15, 18), groundGlow, groundPools));
 
   // estátua do brasão no centro da praça
   const stoneMat = toon(0xdfe6ee);
   group.add(at(part(new THREE.CylinderGeometry(1.82, 1.88, 0.55, 24), stoneMat, 0.03), 0, 0.27, 0));
-  const water = new THREE.Mesh(new THREE.CircleGeometry(1.62, 32), toon(0x5cb8f2));   // iluminada: escurece à noite
+  const water = new THREE.Mesh(new THREE.CircleGeometry(1.64, 32), toon(0x5cb8f2));   // iluminada: escurece à noite
   water.rotation.x = -Math.PI / 2;
-  water.position.y = 0.5;
+  water.position.y = 0.56;
   group.add(water);
+  const lip = part(new THREE.TorusGeometry(1.73, 0.12, 8, 40), stoneMat, 0.03);
+  lip.rotation.x = -Math.PI / 2;
+  group.add(at(lip, 0, 0.6, 0));
+  const ripples = [0, 0.5].map((phase) => {
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 0.97, 36), new THREE.MeshBasicMaterial({ color: 0xeaf8ff, transparent: true, opacity: 0, depthWrite: false }));
+    ring.rotation.x = -Math.PI / 2;
+    group.add(at(ring, 0, 0.575, 0));
+    return { ring, phase };
+  });
+  animated.push((t) => {
+    for (const { ring, phase } of ripples) {
+      const k = (t * 0.35 + phase) % 1;
+      ring.scale.setScalar(0.62 + k * 0.95);
+      ring.material.opacity = Math.sin(k * Math.PI) * 0.5;
+    }
+  });
+  const waterGlow = new THREE.Mesh(new THREE.CircleGeometry(1.64, 32), new THREE.MeshBasicMaterial({ map: glowTexture(), color: 0x5fd2ff, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+  waterGlow.rotation.x = -Math.PI / 2;
+  group.add(at(waterGlow, 0, 0.585, 0));
+  const sprayGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0x7fdcff, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+  sprayGlow.scale.set(2.4, 2.4, 1);
+  group.add(at(sprayGlow, 0, 2.2, 0));
+  waterGlow.material.userData.nightOpacity = 0.75;
+  sprayGlow.material.userData.nightOpacity = 0.3;
+  LAMPS.push(waterGlow.material, sprayGlow.material);
   group.add(at(part(new THREE.CylinderGeometry(0.42, 0.55, 1.5, 12), stoneMat, 0.03), 0, 0.95, 0));
   group.add(at(part(new THREE.CylinderGeometry(0.95, 0.5, 0.22, 16), stoneMat, 0.03), 0, 1.75, 0));
   const spray = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.32, 0.9, 10, 1, true), toon(0xd8f1ff, { transparent: true, opacity: 0.55, depthWrite: false }));
@@ -924,7 +969,7 @@ export function createWorld(container, { mode = 'play', minimap = null, onPrompt
       scene.fog = new THREE.Fog(night ? 0x0d1a36 : 0xcfe8fb, night ? 55 : 110, night ? 160 : 290);
       hemi.color.set(night ? 0x8fb0ee : 0xd2eaff);
       hemi.groundColor.set(night ? 0x1f2b40 : 0x5c7f68);
-      hemi.intensity = night ? 1.15 : 1.5;
+      hemi.intensity = night ? 0.98 : 1.5;
       sun.color.set(night ? 0xb1c7ff : 0xfff3e0);
       sun.intensity = night ? 0.85 : 2.45;
       sun.position.set(night ? 28 : -35, night ? 58 : 55, night ? -26 : 30);
@@ -932,7 +977,7 @@ export function createWorld(container, { mode = 'play', minimap = null, onPrompt
       for (const m of campus.lamps) m.opacity = night ? m.userData.nightOpacity ?? 0.4 : 0;
     } else {
       // dentro dos prédios a luz é sempre de lâmpada; só as janelas mudam
-      scene.background = new THREE.Color(0x07060c);
+      scene.background = new THREE.Color(INTERIOR_BACKDROP);
       scene.fog = null;
       hemi.color.set(0xeef5ff);
       hemi.groundColor.set(0x2c3444);

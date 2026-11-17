@@ -223,6 +223,60 @@ function kit(group, colliders) {
 const WALL = 3.2;
 const LOW = 0.8;
 
+// Cor do fundo dos interiores (usada pelo mundo) e do degradê em que a área externa some.
+export const INTERIOR_BACKDROP = 0x0a1322;
+
+// Lado de fora da parede frontal cortada. A câmera enxerga além dela, então em vez de um
+// vazio preto há a calçada da saída, a grama do pátio e um degradê até o fundo da cena.
+function apron(group, x0, x1, z, night) {
+  const width = x1 - x0 + 14, cx = (x0 + x1) / 2, depth = 15;
+  const lambert = (map) => new THREE.MeshLambertMaterial({ map, color: 0xffffff });
+  const ground = (x, zc, w, d, material, y) => {
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, d), material);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.receiveShadow = true;
+    group.add(at(mesh, x, y, zc));
+    return mesh;
+  };
+  const stone = floorTexture(night ? '#38445e' : '#c6d0dc', night ? '#334058' : '#bac5d2', 1);
+  stone.repeat.set(width / 2.4, 4 / 2.4);
+  ground(cx, z + 2, width, 4, lambert(stone), 0.004);
+  const walk = stone.clone();
+  walk.repeat.set(3.6 / 2.4, (depth - 4) / 2.4);
+  ground(0, z + 4 + (depth - 4) / 2, 3.6, depth - 4, lambert(walk), 0.006);
+  const lawn = painted(8, 64, (g, w, h) => {
+    g.fillStyle = night ? '#1f3d3a' : '#7cbc6d'; g.fillRect(0, 0, w, h);
+    g.fillStyle = night ? '#1b3734' : '#72b064'; g.fillRect(0, 0, w, h / 2);
+  });
+  lawn.wrapS = lawn.wrapT = THREE.RepeatWrapping;
+  lawn.repeat.set(1, (depth - 4) / 2.4);
+  ground(cx, z + 4 + (depth - 4) / 2, width, depth - 4, lambert(lawn), 0.002);
+  // meio-fio entre a calçada e a grama, aberto no caminho
+  const curb = toon(night ? 0x4c5873 : 0xe6ecf2);
+  for (const [a, b] of [[x0 - 7, -1.8], [1.8, x1 + 7]]) {
+    const piece = new THREE.Mesh(new THREE.BoxGeometry(b - a, 0.1, 0.22), curb);
+    group.add(at(piece, (a + b) / 2, 0.05, z + 4));
+  }
+  // sebes baixas dos dois lados do caminho
+  const hedge = toon(night ? 0x24483f : 0x3f8a5c);
+  for (const sx of [-1, 1]) {
+    const bush = part(new THREE.BoxGeometry(5.5, 0.6, 0.9), hedge, 0.02);
+    bush.castShadow = true;
+    group.add(at(bush, sx * 5.2, 0.3, z + 5.4));
+  }
+  // degradê até a cor do fundo, por cima da grama
+  const fadeMap = painted(4, 128, (g, w, h) => {
+    const c = `#${INTERIOR_BACKDROP.toString(16).padStart(6, '0')}`;
+    const fade = g.createLinearGradient(0, h, 0, 0);
+    fade.addColorStop(0, c + '00');
+    fade.addColorStop(0.55, c + (night ? 'b0' : '70'));
+    fade.addColorStop(1, c + 'ff');
+    g.fillStyle = fade; g.fillRect(0, 0, w, h);
+  });
+  const veil = basic(0xffffff, { map: fadeMap, transparent: true, depthWrite: false });
+  ground(cx, z + 5 + (depth - 5) / 2, width + 0.2, depth - 5, veil, 0.7).renderOrder = 2;
+}
+
 // =============================== PRÉDIO PRINCIPAL ===============================
 // Mancha de sol no chão, ao lado de uma janela (só de dia). Bordas suaves, mistura aditiva.
 let sunMap = null;
@@ -260,6 +314,7 @@ export function buildSchool(night = false) {
   floor(-22, 0, 22, 6, floorTexture('#5a6b82', '#506076', 16));
   floor(-18, -14, -2, 0, floorTexture('#a08b70', '#937e64', 8, true));
   floor(2, -12, 16, 0, floorTexture('#2e5a48', '#27503f', 6));
+  apron(group, -22, 22, 6, night);
 
   // corredor: parede sul baixa com a saída no meio; fundos com janelas
   wall(-22, 6, -1.8, 6, LOW, lowMat);
@@ -370,6 +425,7 @@ export function buildDorm(night = false) {
   const lowMat = toon(0x3a5687);
   floor(-12, -10, 12, 0, floorTexture('#344462', '#2e3c57', 10));
   floor(12, -10, 22, -2, floorTexture('#80634f', '#745944', 5, true));
+  apron(group, -12, 22, 0, night);
   wall(-12, 0, -1.8, 0, LOW, lowMat);
   wall(1.8, 0, 12, 0, LOW, lowMat);
   wall(-12, -10, 12, -10, WALL, wallMat);
@@ -464,6 +520,7 @@ export function buildMall(night = false) {
   const wallMat = toon(0x2c3f5e);
   const lowMat = toon(0x2a5a6a);
   floor(-18, -10, 18, 0, floorTexture('#dfe6ee', '#cfd8e3', 12));
+  apron(group, -18, 18, 0, night);
   wall(-18, 0, -1.8, 0, LOW, lowMat);
   wall(1.8, 0, 18, 0, LOW, lowMat);
   wall(-18, -10, 18, -10, WALL + 0.8, wallMat);
