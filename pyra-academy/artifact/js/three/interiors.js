@@ -7,11 +7,14 @@ import { toon, part, label } from './models.js';
 const at = (object, x, y, z) => { object.position.set(x, y, z); return object; };
 const basic = (color, extra = {}) => new THREE.MeshBasicMaterial({ color, ...extra });
 
-function painted(width, height, draw) {
+// Pinta em resolução maior (o desenho usa as medidas lógicas): cartazes e pisos ficam nítidos.
+function painted(width, height, draw, scale = 2) {
   const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  draw(canvas.getContext('2d'), width, height);
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  const g = canvas.getContext('2d');
+  g.scale(scale, scale);
+  draw(g, width, height);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
@@ -70,7 +73,7 @@ const floorTexture = (a, b, n = 8, wood = false) => {
       for (const v of [0, 128, 256]) { g.beginPath(); g.moveTo(v, 0); g.lineTo(v, h); g.moveTo(0, v); g.lineTo(w, v); g.stroke(); }
       g.strokeStyle = 'rgba(15,15,30,.14)'; g.lineWidth = 2; g.strokeRect(5, 5, 118, 118); g.strokeRect(133, 133, 118, 118);
     }
-  });
+  }, 4);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(n, n);
   return t;
@@ -144,6 +147,7 @@ function kit(group, colliders) {
     return materials.get(color);
   };
   const trim = material(0xc9d3de);
+  const cut = material(0x4a5b78);   // topo das paredes cortadas, como numa planta
   const foot = material(0x4f5b6c);
   const wall = (x0, z0, x1, z1, h, mat, thick = 0.3) => {
     const w = Math.abs(x1 - x0) || thick;
@@ -153,7 +157,7 @@ function kit(group, colliders) {
     mesh.castShadow = mesh.receiveShadow = true;
     group.add(mesh);
     // Moldura e rodapé dentro do traçado do muro, inclusive nas paredes baixas.
-    const cap = new THREE.Mesh(new THREE.BoxGeometry(w + 0.02, 0.06, d + 0.02), trim);
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(w + 0.02, 0.06, d + 0.02), h > LOW + 0.1 ? cut : trim);
     group.add(at(cap, mesh.position.x, h - 0.03, mesh.position.z));
     const base = new THREE.Mesh(new THREE.BoxGeometry(w + 0.015, 0.18, d + 0.015), foot);
     group.add(at(base, mesh.position.x, 0.09, mesh.position.z));
@@ -209,7 +213,7 @@ function kit(group, colliders) {
   const plant = (x, z) => {
     box(x, z, 0.6, 0.5, 0.6, material(0x78604f), 0);
     box(x, z, 0.65, 0.08, 0.65, material(0xc4aa81), 0.43, false);
-    const leaf = new THREE.SphereGeometry(1, 7, 5);
+    const leaf = new THREE.SphereGeometry(1, 12, 8);
     for (let i = 0; i < 5; i++) {
       const a = i * Math.PI * 2 / 5;
       const sprig = new THREE.Mesh(leaf, material(i % 2 ? 0x6caa7b : 0x3d8265));
@@ -282,7 +286,7 @@ function apron(group, x0, x1, z, night) {
 // Mancha de sol no chão, ao lado de uma janela (só de dia). Bordas suaves, mistura aditiva.
 let sunMap = null;
 function sunPatch(group, x, z, w, d, turn = 0, opacity = 0.2) {
-  sunMap ||= painted(128, 128, (g, W, H) => { g.filter = 'blur(10px)'; g.fillStyle = '#fff'; g.fillRect(18, 18, W - 36, H - 36); });
+  sunMap ||= painted(128, 128, (g, W, H) => { g.filter = 'blur(20px)'; g.fillStyle = '#fff'; g.fillRect(18, 18, W - 36, H - 36); });
   const patch = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ map: sunMap, color: 0xfff4dc, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
   patch.rotation.set(-Math.PI / 2, 0, turn);
   patch.position.set(x, 0.025, z);
@@ -384,6 +388,14 @@ export function buildSchool(night = false) {
   box(0, -7, 4.3, WALL, 14, mass);
   box(-20, -7, 4.3, WALL, 14, mass);
   box(19, -6, 6.3, WALL, 12, mass);
+  // topo dos blocos maciços no mesmo tom escuro do corte das paredes
+  const cutTop = toon(0x4a5b78);
+  for (const [x, z, w, d] of [[0, -7, 4.3, 14], [-20, -7, 4.3, 14], [19, -6, 6.3, 12]]) {
+    const top = new THREE.Mesh(new THREE.PlaneGeometry(w, d), cutTop);
+    top.rotation.x = -Math.PI / 2;
+    top.position.set(x, WALL + 0.004, z);
+    group.add(top);
+  }
   // corredor: armários e mural
   for (const x of [-21.2, -20.0, -18.8, 17.8, 19.0, 20.2]) box(x, 0.45, 1.1, 2.2, 0.5, toon(0x3a4a6a));
   plaque(-21.82, 2, 3, 3, 2, classesTexture(), Math.PI / 2);
@@ -557,10 +569,10 @@ export function buildMall(night = false) {
   box(-4, -8.2, 3.4, 1, 0.8, toon(0x3a2a26));
   box(-15.6, -7, 1, 1.6, 2.4, toon(0x5eea9a));
   // fonte, bancos e plantas
-  const basin = part(new THREE.CylinderGeometry(1.6, 1.8, 0.6, 20), toon(0xf1ece0), 0.02);
+  const basin = part(new THREE.CylinderGeometry(1.6, 1.8, 0.6, 48), toon(0xf1ece0), 0.02);
   basin.position.set(0, 0.3, -5);
   group.add(basin);
-  group.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 0.05, 20), basic(0x4fc8ff)), 0, 0.58, -5));
+  group.add(at(new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 0.05, 48), basic(0x4fc8ff)), 0, 0.58, -5));
   colliders.push({ minX: -1.8, maxX: 1.8, minZ: -6.8, maxZ: -3.2 });
   for (const x of [-9, 9]) box(x, -3, 2.6, 0.5, 0.8, toon(0x8e5a3a));
   for (const x of [-16.6, 16.6]) plant(x, -1.2);
@@ -592,7 +604,7 @@ export function buildMall(night = false) {
   details(group, 0x3b3943, shelfEdges);
   const rippleMat = basic(0xd9f5ed, { transparent: true, opacity: 0.48, depthWrite: false });
   for (const r of [0.42, 0.8, 1.18]) {
-    const ring = new THREE.Mesh(new THREE.RingGeometry(r, r + 0.025, 36), rippleMat);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(r, r + 0.025, 72), rippleMat);
     ring.rotation.x = -Math.PI / 2; group.add(at(ring, 0, 0.612, -5));
   }
   for (const x of [-16.6, 16.6]) plant(x, -1.2);   // cantos da frente, longe da entrada
