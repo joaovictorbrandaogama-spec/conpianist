@@ -894,7 +894,7 @@ export function createWorld(container, { mode = 'play', minimap = null, onPrompt
   let npcs = [];
   function modelFor(id) {
     if (cache.has(id)) return cache.get(id);
-    const model = createCharacter(CAST[id], 'neutral');
+    const model = createCharacter(CAST[id], 'neutral', { detail: 'low' });
     const tag = label(CAST[id].name, { border: CAST[id].color, size: 40 });
     tag.position.y = 2.25;
     tag.scale.multiplyScalar(0.42);

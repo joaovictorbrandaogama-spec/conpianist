@@ -509,7 +509,11 @@ function buildHair(c) {
 // ---------- corpos-base com esqueleto (arquivos do projeto) ----------
 // O corpo vem de um .glb (servido como .wasm, porque o artefato não serve .glb). O uniforme é
 // pintado por região do corpo: cada triângulo pertence ao osso que mais o move.
-const BODY_FILES = { male: new URL('../../vendor/bodies/body_male.wasm', import.meta.url).href };
+const BODY_FILES = {
+  male: new URL('../../vendor/bodies/body_male.wasm', import.meta.url).href,
+  female: new URL('../../vendor/bodies/body_female.wasm', import.meta.url).href,
+};
+const NECK_Y = 1.452;   // altura do pescoço em que a cabeça desenhada e os detalhes do uniforme se encaixam
 const BODIES = {};
 const REGIONS = ['skin', 'jacket', 'lower', 'shoe'];
 const regionOf = (name) => /^(Head|Neck|Hand|Thumb|Index|Middle|Ring|Little)/.test(name) ? 'skin'
@@ -518,6 +522,8 @@ const regionOf = (name) => /^(Head|Neck|Hand|Thumb|Index|Middle|Ring|Little)/.te
 const INFLATE = { skin: 0, jacket: 0.012, lower: 0.007, shoe: 0.01 };   // tecido sobre a pele
 
 function inflated(geometry, amount) {
+  geometry.userData.inflated ||= new Map();
+  if (geometry.userData.inflated.has(amount)) return geometry.userData.inflated.get(amount);
   const source = geometry.attributes.position, normal = geometry.attributes.normal;
   const out = new Float32Array(source.count * 3);
   for (let i = 0; i < source.count; i++) {
@@ -525,7 +531,9 @@ function inflated(geometry, amount) {
     out[i * 3 + 1] = source.getY(i) + normal.getY(i) * amount;
     out[i * 3 + 2] = source.getZ(i) + normal.getZ(i) * amount;
   }
-  return new THREE.BufferAttribute(out, 3);
+  const attribute = new THREE.BufferAttribute(out, 3);
+  geometry.userData.inflated.set(amount, attribute);
+  return attribute;
 }
 
 async function loadBody(kind, url) {
@@ -548,40 +556,54 @@ async function loadBody(kind, url) {
   }
   // Cortes geométricos (retos) em vez da fronteira entre ossos, que deixa a barra serrilhada:
   // a barra do blazer numa altura fixa e o punho a uma distância fixa do pulso.
+  const scale = NECK_Y / where.Neck.y;   // todos os corpos ficam com o pescoço na mesma altura
   const hem = where.Hips.y - 0.02;
+  const sockTop = where.LowerLegL.y - 0.1;   // meia até um pouco abaixo do joelho (personagens de saia)
+  const skirtTop = 0.93 / scale;              // a saia desenhada começa em y ≈ 0,93: o blazer termina ali
+  const skirtBottom = 0.74 / scale;           // e termina em y ≈ 0,72
+  const coatBottom = 0.7 / scale;             // barra do jaleco e do paletó do conselho
   const wrist = {}, along = {};
   for (const side of ['L', 'R']) {
     wrist[side] = where['Hand' + side];
     along[side] = where['Hand' + side].clone().sub(where['LowerArm' + side]).normalize();
   }
   const centroid = new THREE.Vector3(), tmp = new THREE.Vector3();
-  const regionOfTriangle = (a, b, c) => {
+  const regionOfTriangle = (a, b, c, mode) => {
+    const skirt = mode === 'skirt';
     const ba = dominant[a], bb = dominant[b], bc = dominant[c];
     const name = names[ba === bb || ba === bc ? ba : bb === bc ? bb : ba];
     centroid.fromBufferAttribute(pos, a).add(tmp.fromBufferAttribute(pos, b)).add(tmp.fromBufferAttribute(pos, c)).divideScalar(3);
     const side = name.endsWith('L') ? 'L' : name.endsWith('R') ? 'R' : '';
-    if (/^(Hips|Spine|Chest|UpperChest|UpperLeg)/.test(name)) return centroid.y >= hem ? 'jacket' : 'lower';
+    if (/^(Hips|Spine|Chest|UpperChest|UpperLeg)/.test(name) && centroid.y >= (skirt ? skirtTop : mode === 'coat' ? coatBottom : hem)) return 'jacket';
+    if (skirt && /^(UpperLeg|LowerLeg)/.test(name)) return centroid.y > skirtBottom || centroid.y < sockTop ? 'lower' : 'skin';
+    if (/^(Hips|Spine|Chest|UpperChest|UpperLeg)/.test(name)) return 'lower';
     if (side && /^(Shoulder|UpperArm|LowerArm|Hand|Thumb|Index|Middle|Ring|Little)/.test(name)) {
       return tmp.copy(centroid).sub(wrist[side]).dot(along[side]) < -0.018 ? 'jacket' : 'skin';
     }
     return regionOf(name);
   };
   const index = geometry.index.array;
-  const lists = REGIONS.map(() => []);
   // As mãos do manequim são muito detalhadas para o tamanho na tela: os vértices de cada
   // célula de 9 mm passam a usar um só representante (os atributos continuam compartilhados).
   const handBone = (v) => /^(Hand|Thumb|Index|Middle|Ring|Little)/.test(names[dominant[v]]);
-  const cell = new Map(), keep = (v) => {
-    if (!handBone(v)) return v;
-    const key = `${Math.round(pos.getX(v) / 0.009)},${Math.round(pos.getY(v) / 0.009)},${Math.round(pos.getZ(v) / 0.009)}`;
-    if (!cell.has(key)) cell.set(key, v);
-    return cell.get(key);
+  // Versão leve (campus): todos os vértices de cada célula de 2,4 cm viram um só.
+  const cluster = (size, only) => {
+    const cell = new Map();
+    return (v) => {
+      if (only && !only(v)) return v;
+      const key = `${Math.round(pos.getX(v) / size)},${Math.round(pos.getY(v) / size)},${Math.round(pos.getZ(v) / size)}`;
+      if (!cell.has(key)) cell.set(key, v);
+      return cell.get(key);
+    };
   };
+  const split = (mode, low) => {
+  const lists = REGIONS.map(() => []);
+  const keep = low ? cluster(0.024) : cluster(0.009, handBone);
   for (let t = 0; t < index.length; t += 3) {
     const a = index[t], b = index[t + 1], c = index[t + 2];
     if ([a, b, c].every((v) => names[dominant[v]] === 'Head')) continue;   // a cabeça do manequim fica escondida
-    const region = regionOfTriangle(a, b, c);
-    const tri = region === 'skin' ? [keep(a), keep(b), keep(c)] : [a, b, c];
+    const region = regionOfTriangle(a, b, c, mode);
+    const tri = low || region === 'skin' ? [keep(a), keep(b), keep(c)] : [a, b, c];
     if (tri[0] === tri[1] || tri[1] === tri[2] || tri[0] === tri[2]) continue;
     lists[REGIONS.indexOf(region)].push(...tri);
   }
@@ -599,7 +621,16 @@ async function loadBody(kind, url) {
     };
     regions[name] = { surface: make(INFLATE[name]), outline: name === 'skin' ? null : make(INFLATE[name] + 0.005) };
   });
-  BODIES[kind] = { scene: gltf.scene, regions };
+  return regions;
+  };
+  // Frente do peito, para assentar lapelas e gravata (desenhadas num plano em z ≈ 0,12).
+  let chestFront = 0;
+  for (let i = 0; i < pos.count; i++) {
+    const y = pos.getY(i);
+    if (Math.abs(pos.getX(i)) < 0.09 && y > where.Neck.y - 0.24 && y < where.Neck.y - 0.08) chestFront = Math.max(chestFront, pos.getZ(i));
+  }
+  const variants = { pants: split('pants') };
+  BODIES[kind] = { scene: gltf.scene, variant: (mode, low) => (variants[mode + (low ? '-low' : '')] ||= split(mode, low)), scale, front: chestFront * scale + INFLATE.jacket - 0.12 };
 }
 
 /** Resolve quando os corpos terminaram de carregar (ou falharam: aí o corpo procedural continua). */
@@ -628,14 +659,16 @@ function hinge(bone) {
   return (angle) => { bone.quaternion.copy(rest).multiply(turn.setFromAxisAngle(axis, angle)); };
 }
 
-function buildRig(c, template, mat) {
+function buildRig(c, template, mat, skirt, low) {
   const root = cloneRig(template.scene);
+  root.scale.setScalar(template.scale);
   let original = null;
   root.traverse((object) => { if (object.isSkinnedMesh && !original) original = object; });
   const { skeleton, bindMatrix, parent } = original;
   parent.remove(original);
   const paint = { skin: mat.skin, jacket: mat.cloth, lower: mat.lower, shoe: mat.shoe };
-  for (const [name, region] of Object.entries(template.regions)) {
+  const mode = skirt ? 'skirt' : c.outfit === 'labcoat' || c.outfit === 'council' ? 'coat' : 'pants';
+  for (const [name, region] of Object.entries(template.variant(mode, low))) {
     for (const [geometry, material] of [[region.surface, paint[name]], [region.outline, outlineMaterial]]) {
       if (!geometry) continue;
       const piece = new THREE.SkinnedMesh(geometry, material);
@@ -664,7 +697,7 @@ function buildRig(c, template, mat) {
 }
 
 // ---------- corpo e uniforme ----------
-function buildBody(c, rigged = false) {
+function buildBody(c, rigged = false, low = false) {
   const body = new THREE.Group();
   const skin = ctoon(c.skin);
   const skinShade = ctoon(c.shade);
@@ -764,8 +797,8 @@ function buildBody(c, rigged = false) {
   combine(body, 0.003);
   let rig = null;
   if (rigged) {
-    rig = buildRig(c, bodyFor(c), mat);
-    body.position.z = 0.004;   // lapelas e gravata assentam sobre o peito do manequim
+    rig = buildRig(c, bodyFor(c), mat, skirt, low);
+    body.position.z = Math.max(0, bodyFor(c).front);   // lapelas e gravata assentam sobre o peito do manequim
   }
   // Alguns trajes não usam todas as cores; descarte materiais nunca associados.
   const used = new Set();
@@ -775,10 +808,11 @@ function buildBody(c, rigged = false) {
   return { body, legs, arms, rig };
 }
 
-/** Personagem de pé (~1,9 m), olhando para +Z; contrato público preservado. */
-export function createCharacter(c, expression = 'neutral') {
+/** Personagem de pé (~1,9 m), olhando para +Z; contrato público preservado.
+ *  `detail: 'low'` usa o corpo simplificado (personagens pequenos na tela, como no campus). */
+export function createCharacter(c, expression = 'neutral', { detail = 'full' } = {}) {
   const group = new THREE.Group();
-  const { body, legs, arms, rig } = buildBody(c, !!bodyFor(c));
+  const { body, legs, arms, rig } = buildBody(c, !!bodyFor(c), detail === 'low');
   group.add(body);
   if (rig) group.add(rig.root);
   const canvas = document.createElement('canvas');
